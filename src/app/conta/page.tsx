@@ -1,0 +1,11 @@
+"use client";
+import Link from "next/link";
+import { Heart, MapPin, ReceiptText, UserRound } from "lucide-react";
+import { allProducts, catalog } from "@/lib/catalog";
+import { customerDeviceActions, useCustomerDeviceState } from "@/lib/customer-device-store";
+export default function AccountPage(){
+  const state=useCustomerDeviceState(value=>value);
+  const favoriteNames=state.favorites.map(ref=>{const [kind,id]=ref.split(":");return kind==="flavor"?catalog.flavors.find(item=>item.id===id)?.name:allProducts.find(item=>item.id===id)?.name}).filter(Boolean) as string[];
+  return <main className="min-h-screen bg-basso-paper p-4"><div className="mx-auto max-w-3xl py-10"><Link href="/" className="text-sm font-bold text-basso-wine">← Voltar ao cardápio</Link><div className="surface mt-5 p-6"><UserRound className="text-basso-wine" size={32}/><h1 className="mt-4 font-display text-3xl font-bold">Conta do cliente</h1><p className="mt-2 text-sm text-black/50">Dados deste dispositivo, favoritos e pedidos anteriores. A fidelidade interna não é exibida ao cliente.</p><div className="mt-6 grid gap-3 sm:grid-cols-3"><Card icon={<MapPin/>} title="Endereços" text="O último endereço permanece protegido no checkout do navegador."/><Card icon={<Heart/>} title="Favoritos" text={`${favoriteNames.length} item(ns) salvo(s).`}/><Card icon={<ReceiptText/>} title="Histórico" text={`${state.orders.length} pedido(s) salvo(s) neste dispositivo.`}/></div>{favoriteNames.length>0&&<section className="mt-6"><div className="flex items-center justify-between"><h2 className="font-display text-xl font-bold">Favoritos</h2><button className="btn-ghost text-red-600" onClick={()=>state.favorites.forEach(ref=>customerDeviceActions.toggleFavorite(ref))}>Limpar</button></div><div className="mt-3 flex flex-wrap gap-2">{favoriteNames.map(name=><span key={name} className="chip">{name}</span>)}</div></section>}<Link href="/meus-pedidos" className="btn-primary mt-6">Consultar e repetir pedidos</Link></div></div></main>
+}
+function Card({icon,title,text}:{icon:React.ReactNode;title:string;text:string}){return <div className="rounded-2xl bg-basso-paper p-4"><span className="text-basso-wine">{icon}</span><h2 className="mt-2 font-bold">{title}</h2><p className="mt-1 text-xs text-black/50">{text}</p></div>}

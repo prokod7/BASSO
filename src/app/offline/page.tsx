@@ -1,0 +1,4 @@
+"use client";
+import Link from "next/link";
+import { RefreshCw, WifiOff } from "lucide-react";
+export default function OfflinePage(){return <main className="grid min-h-screen place-items-center bg-basso-paper p-6"><div className="surface max-w-md p-8 text-center"><WifiOff className="mx-auto text-basso-wine" size={52}/><h1 className="mt-4 font-display text-3xl font-bold">Você está offline</h1><p className="mt-2 text-sm text-black/50">Algumas telas já sincronizadas continuam disponíveis. Novas operações essenciais podem entrar na fila local e serão reenviadas quando a conexão voltar.</p><button className="btn-primary mt-6 w-full" onClick={()=>location.reload()}><RefreshCw size={18}/>Tentar novamente</button><Link href="/" className="btn-ghost mt-2 w-full">Voltar ao início</Link></div></main>}

@@ -1,0 +1,6 @@
+"use client";
+import L from "leaflet";
+import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
+const pin=L.divIcon({className:"lfb-map-marker",html:'<span class="lfb-map-marker__bubble lfb-map-marker__bubble--destination"><span>📍</span></span>',iconSize:[38,38],iconAnchor:[19,34]});
+function ClickHandler({onChange}:{onChange:(latitude:number,longitude:number)=>void}){useMapEvents({click:e=>onChange(e.latlng.lat,e.latlng.lng)});return null}
+export function LocationPicker({latitude,longitude,onChange}:{latitude:number;longitude:number;onChange:(latitude:number,longitude:number)=>void}){return <div className="mt-4 overflow-hidden rounded-2xl border border-black/10"><MapContainer center={[latitude,longitude]} zoom={16} scrollWheelZoom={false} className="h-64 w-full"><TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/><ClickHandler onChange={onChange}/><Marker draggable position={[latitude,longitude]} icon={pin} eventHandlers={{dragend:event=>{const p=event.target.getLatLng();onChange(p.lat,p.lng)}}}/></MapContainer><p className="bg-white p-3 text-xs text-black/50">Toque no mapa ou arraste o pino para ajustar a entrada, numeração ou condomínio.</p></div>}

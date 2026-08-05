@@ -1,0 +1,263 @@
+{
+  "generatedAt": "2026-08-03T21:53:32.343Z",
+  "passed": 51,
+  "failed": 0,
+  "sha256": "2cde432281fe611ac4374436a0cadb75a8320938fc597165fa9a0b6cefcf6192",
+  "results": [
+    {
+      "name": "42 pizzas tradicionais",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "11 pizzas premium",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "11 pizzas doces",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "29 bebidas",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "20 adicionais",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "1 combo oficial",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Sobremesa com 2 variações",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Bordas desativadas",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Broto meio a meio desativado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Adicionais: máximo 5 unidades",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Adicionais: máximo 2 do mesmo",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Observações: máximo 500 caracteres",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Fidelidade: 10 pontos / saldo 15",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Recompensa apenas Mozzarella/Calabresa Tradicional",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "15 mesas",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "10 mesas de 5 lugares",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "5 mesas de 2 lugares",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "IDs únicos em cada cadastro",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Preços em centavos inteiros",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Ingredientes cadastrados em todos os sabores",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Todos os assets referenciados existem",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Telas públicas e operacionais presentes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Nenhum componente de seleção de borda",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Validação explícita contra bordas",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Migrações SQL 001–011 presentes",
+      "ok": true,
+      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql"
+    },
+    {
+      "name": "RLS habilitado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Auditoria imutável",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Chaves de idempotência",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Webhook e filas com deduplicação",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Restrição de Broto no banco",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Restrição de borda no banco",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Estoque somente em produtos rastreados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Fidelidade limitada a 15",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Marketplace sem perfil no CRM",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "QR de mesa abre/reutiliza comanda de forma atômica",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "QR não cria perfil no CRM",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Pagamentos parciais fecham comanda e liberam mesa",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Junção e separação de mesas",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Recompensa exige autorização transacional",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Checkout preserva mesa e comanda do QR",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "QR não cobra nem fecha automaticamente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "API pública aceita somente delivery, retirada e QR",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Recompensa bloqueada no checkout público",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "APIs de gestão financeira e CRM presentes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Saúde e retentativa de integrações presentes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Fluxos transacionais de salão presentes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "PWA com ícones 192 e 512",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Service worker presente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Bridge de impressão presente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Cron de filas presente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Nenhum segredo evidente versionado",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+import { catalog } from "@/lib/catalog";
+import { addonPrice, comboTotal, pizzaTotal, validatePizzaSelection } from "@/lib/pricing";
+import type { Addon, CartItem, Flavor, OrderChannel, PizzaSelection, ComboSelection } from "@/types";
+
+interface RuntimeProduct {
+  id: string;
+  name: string;
+  description: string;
+  category: "beverages" | "desserts" | "combo";
+  price: number;
+  active: boolean;
+  stockTracked: boolean;
+  availableChannels: OrderChannel[];
+  availableSchedule: unknown;
+  stockAvailable: boolean;
+  config?: Record<string, unknown>;
+}
+
+export interface RuntimeMenu {
+  flavors: Flavor[];
+  addons: Addon[];
+  products: RuntimeProduct[];
+}
+
+function saoPauloClock(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(date);
+  const map = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  const weekday = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(map.weekday);
+  return { weekday, minutes: Number(map.hour) * 60 + Number(map.minute) };
+}
+
+function toMinutes(value: unknown) {
+  if (typeof value !== "string" || !/^\d{2}:\d{2}$/.test(value)) return null;
+  const [hour, minute] = value.split(":").map(Number);
+  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 ? hour * 60 + minute : null;
+}
+
+export function scheduleAllows(schedule: unknown, date = new Date()): boolean {
+  if (!schedule || typeof schedule !== "object" || Array.isArray(schedule) || Object.keys(schedule as object).length === 0) return true;
+  const config = schedule as { days?: number[]; start?: string; end?: string; windows?: Array<{ days?: number[]; start?: string; end?: string }> };
+  const windows = Array.isArray(config.windows) && config.windows.length ? config.windows : [config];
+  const clock = saoPauloClock(date);
+  return windows.some(window => {
+    if (Array.isArray(window.days) && !window.days.includes(clock.weekday)) return false;
+    const start = toMinutes(window.start);
+    const end = toMinutes(window.end);
+    if (start == null || end == null) return true;
+    return start <= end ? clock.minutes >= start && clock.minutes <= end : clock.minutes >= start || clock.minutes <= end;
+  });
+}
+
+export async function loadRuntimeMenu(db: any): Promise<RuntimeMenu> {
+  const [flavorsResult, addonsResult, productsResult, inventoryResult] = await Promise.all([
+    db.from("pizza_flavors").select("id,name,category,price_grande_cents,price_broto_cents,ingredients,description,featured,active,available_channels,available_schedule"),
+    db.from("addons").select("id,name,price_cents,max_quantity,active"),
+    db.from("products").select("id,name,category,description,price_cents,stock_tracked,active,available_channels,available_schedule,config"),
+    db.from("inventory_items").select("product_id,quantity,allow_negative")
+  ]);
+  const failed = [flavorsResult, addonsResult, productsResult, inventoryResult].find(result => result.error);
+  if (failed?.error) throw failed.error;
+  const inventory = new Map((inventoryResult.data || []).map((row: any) => [row.product_id, row]));
+  return {
+    flavors: (flavorsResult.data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      category: row.category,
+      priceGrande: Number(row.price_grande_cents),
+      priceBroto: Number(row.price_broto_cents),
+      ingredients: row.ingredients || [],
+      description: row.description || "",
+      featured: Boolean(row.featured),
+      active: Boolean(row.active),
+      availableChannels: row.available_channels || [],
+      availableSchedule: row.available_schedule || {}
+    })) as Array<Flavor & { availableChannels: OrderChannel[]; availableSchedule: unknown }>,
+    addons: (addonsResult.data || []).map((row: any) => ({ id: row.id, name: row.name, price: Number(row.price_cents), maxQuantity: Number(row.max_quantity || 2), active: Boolean(row.active) })),
+    products: (productsResult.data || []).map((row: any) => {
+      const stock = inventory.get(row.id) as any;
+      const stockAvailable = !row.stock_tracked || !stock || Boolean(stock.allow_negative) || Number(stock.quantity) > 0;
+      return { id: row.id, name: row.name, description: row.description || "", category: row.category, price: Number(row.price_cents), active: Boolean(row.active), stockTracked: Boolean(row.stock_tracked), availableChannels: row.available_channels || [], availableSchedule: row.available_schedule || {}, stockAvailable, config: row.config || {} };
+    })
+  };
+}
+
+function channelAvailable(item: { active: boolean; availableChannels?: OrderChannel[]; availableSchedule?: unknown }, channel: OrderChannel) {
+  return item.active && (!item.availableChannels?.length || item.availableChannels.includes(channel)) && scheduleAllows(item.availableSchedule);
+}
+
+export async function priceItemsWithRuntime(db: any, items: CartItem[], channel: OrderChannel, allowReward = false): Promise<{ items: CartItem[]; subtotal: number; menu: RuntimeMenu }> {
+  const menu = await loadRuntimeMenu(db);
+  const flavors = menu.flavors.map(flavor => ({ ...flavor, active: channelAvailable(flavor as any, channel) }));
+  const addons = menu.addons;
+  const products = menu.products.map(product => ({ ...product, active: channelAvailable(product, channel) && product.stockAvailable }));
+  const normalized: CartItem[] = [];
+  let subtotal = 0;
+
+  for (const item of items) {
+    if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 99) throw new Error("Quantidade inválida.");
+    const rawSelection = (item.selection || {}) as Record<string, unknown>;
+    if (["border","borda","borderId","bordaId"].some(key => key in rawSelection)) throw new Error("Bordas não existem neste sistema.");
+    let unitPrice = 0;
+    let name = item.name;
+
+    if (item.kind === "reward") {
+      if (!allowReward) throw new Error("Recompensa exige autorização operacional.");
+      const selection = item.selection as PizzaSelection | undefined;
+      if (!selection || !["mozzarella","calabresa-tradicional"].includes(selection.flavorA) || selection.size !== "grande" || selection.flavorB) throw new Error("Recompensa inválida.");
+      validatePizzaSelection(selection, flavors, addons);
+      unitPrice = addonPrice(selection.addons, addons);
+      const flavor = flavors.find(row => row.id === selection.flavorA)!;
+      name = `Recompensa • Pizza Grande ${flavor.name}`;
+    } else if (item.kind === "pizza") {
+      const selection = item.selection as PizzaSelection | undefined;
+      if (!selection) throw new Error("Configuração de pizza inválida.");
+      unitPrice = pizzaTotal(selection, flavors, addons);
+      const a = flavors.find(row => row.id === selection.flavorA)!;
+      const b = selection.flavorB ? flavors.find(row => row.id === selection.flavorB) : undefined;
+      name = `Pizza ${selection.size === "grande" ? "Grande" : "Broto"} • ${a.name}${b ? ` / ${b.name}` : ""}`;
+    } else if (item.kind === "combo") {
+      const selection = item.selection as ComboSelection | undefined;
+      const combo = products.find(product => product.id === catalog.combo.id && product.category === "combo");
+      if (!selection || !combo?.active) throw new Error("Combo inválido ou indisponível.");
+      const beverage = products.find(product => product.id === selection.beverage && product.category === "beverages");
+      if (!beverage?.active) throw new Error("Refrigerante do combo indisponível.");
+      const grande = flavors.find(flavor => flavor.id === selection.grandeFlavor);
+      const sweet = flavors.find(flavor => flavor.id === catalog.combo.options.sweetFlavor);
+      if (!grande?.active || !sweet?.active) throw new Error("Um dos sabores do combo está indisponível.");
+      unitPrice = comboTotal(selection, addons, combo.price, [selection.beverage]);
+      name = combo.name;
+    } else {
+      const product = products.find(row => row.id === item.productId && row.category !== "combo");
+      if (!product?.active) throw new Error("Produto inválido, esgotado ou indisponível.");
+      unitPrice = product.price;
+      name = product.name;
+    }
+
+    normalized.push({ ...item, name, unitPrice });
+    subtotal += unitPrice * item.quantity;
+  }
+  return { items: normalized, subtotal, menu };
+}

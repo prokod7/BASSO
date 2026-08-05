@@ -1,0 +1,6 @@
+import { NextRequest,NextResponse } from "next/server";
+import { z } from "zod";
+import { requireOperationalRole } from "@/lib/authz";
+import { createAdminClient } from "@/lib/supabase/admin";
+const schema=z.object({code:z.string().min(2).max(30),type:z.enum(["percentage","fixed"]),value:z.number().int().positive(),totalLimit:z.number().int().positive().nullable(),minimum:z.number().int().nonnegative().nullable(),channels:z.array(z.enum(["own_delivery","pickup","counter","dine_in","ifood","99food","table_qr"])).min(1),active:z.boolean()});
+export async function POST(request:NextRequest){try{await requireOperationalRole(["manager","counter"]);const c=schema.parse(await request.json());const db=createAdminClient();if(!db)return NextResponse.json({error:"Supabase não configurado."},{status:503});const {data,error}=await db.from("coupons").insert({code:c.code.toUpperCase(),discount_type:c.type,value:c.value,total_limit:c.totalLimit,minimum_cents:c.minimum,channels:c.channels,active:c.active}).select("id").single();if(error)throw error;return NextResponse.json({id:data.id},{status:201})}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Cupom inválido."},{status:400})}}

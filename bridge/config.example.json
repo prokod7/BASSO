@@ -1,0 +1,12 @@
+{
+  "baseUrl": "https://cardapio.seudominio.com.br",
+  "apiKey": "troque-por-uma-chave-longa-e-aleatoria",
+  "pollIntervalMs": 3000,
+  "batchSize": 3,
+  "paperColumns": 42,
+  "printers": {
+    "cozinha": { "type": "tcp", "host": "192.168.0.50", "port": 9100, "timeoutMs": 8000 },
+    "bar": { "type": "tcp", "host": "192.168.0.51", "port": 9100, "timeoutMs": 8000 },
+    "counter": { "type": "system", "name": "EPSON TM-T20" }
+  }
+}

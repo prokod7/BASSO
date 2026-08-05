@@ -1,0 +1,3 @@
+import { NextRequest,NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+export async function GET(request:NextRequest,{params}:{params:Promise<{id:string}>}){const {id}=await params;const token=request.nextUrl.searchParams.get("token");if(!token)return NextResponse.json({error:"Token obrigatório."},{status:401});const db=createAdminClient();if(!db)return NextResponse.json({error:"Supabase não configurado."},{status:503});const {data,error}=await db.rpc("get_public_order",{p_order_id:id,p_token:token});if(error||!data)return NextResponse.json({error:"Pedido não encontrado ou link expirado."},{status:404});return NextResponse.json(data,{headers:{"Cache-Control":"no-store"}})}

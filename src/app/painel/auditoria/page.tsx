@@ -1,0 +1,6 @@
+"use client";
+import { FileClock, Filter, ShieldCheck } from "lucide-react";
+import { PageHeader } from "@/components/internal/PageHeader";
+import { useDemoState } from "@/lib/demo-store";
+import { shortDateTime } from "@/lib/utils";
+export default function AuditPage(){const audit=useDemoState(s=>s.audit);return <><PageHeader title="Auditoria e histórico" icon={FileClock} description="Registro imutável de mudanças de status, cancelamentos, estornos, descontos, caixa, estoque, fidelidade, integrações e configurações." actions={<button className="btn-secondary"><Filter size={17}/>Filtros avançados</button>}/><div className="surface overflow-hidden"><div className="divide-y divide-black/5">{audit.map(a=><div key={a.id} className="grid gap-3 p-4 md:grid-cols-[160px_1fr_1fr_180px]"><div className="flex items-center gap-2 text-xs font-bold text-basso-wine"><ShieldCheck size={16}/>{a.actor}</div><div><strong className="text-sm">{a.action}</strong><p className="text-xs text-black/40">{a.entity} • {a.entityId}</p></div><p className="text-sm text-black/50">{a.details||"Sem detalhes adicionais"}</p><span className="text-xs text-black/40">{shortDateTime(a.createdAt)}</span></div>)}</div></div><p className="mt-4 text-xs text-black/45">Em produção, a tabela de auditoria usa políticas que impedem alteração ou exclusão pelo cliente da aplicação.</p></>}

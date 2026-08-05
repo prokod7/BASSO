@@ -1,0 +1,1847 @@
+{
+  "business": {
+    "name": "La Forneria Basso",
+    "cnpj": "62.332.415/0001-10",
+    "address": "Rua do Progresso, 407, Centro, Rio Grande da Serra/SP",
+    "instagram": "@laforneriabasso",
+    "phone": "(11) 97235-6751",
+    "whatsapp": "5511972356751",
+    "timezone": "America/Sao_Paulo",
+    "hours": {
+      "monday": null,
+      "tuesday": [
+        "18:00",
+        "23:00"
+      ],
+      "wednesday": [
+        "18:00",
+        "23:00"
+      ],
+      "thursday": [
+        "18:00",
+        "23:00"
+      ],
+      "friday": [
+        "18:00",
+        "23:00"
+      ],
+      "saturday": [
+        "18:00",
+        "23:00"
+      ],
+      "sunday": [
+        "18:00",
+        "23:00"
+      ]
+    }
+  },
+  "categories": [
+    {
+      "id": "traditional",
+      "name": "Pizzas Tradicionais",
+      "type": "pizza"
+    },
+    {
+      "id": "premium",
+      "name": "Pizzas Premium",
+      "type": "pizza"
+    },
+    {
+      "id": "sweet",
+      "name": "Pizzas Doces",
+      "type": "pizza"
+    },
+    {
+      "id": "combo",
+      "name": "Combo",
+      "type": "product"
+    },
+    {
+      "id": "beverages",
+      "name": "Bebidas",
+      "type": "product"
+    },
+    {
+      "id": "desserts",
+      "name": "Sobremesas",
+      "type": "product"
+    }
+  ],
+  "flavors": [
+    {
+      "id": "alho-e-oleo",
+      "name": "Alho e Óleo",
+      "category": "traditional",
+      "priceGrande": 5000,
+      "priceBroto": 3500,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "alho frito",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, alho frito, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "aliche",
+      "name": "Aliche",
+      "category": "traditional",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "aliche",
+        "rodelas de tomate regadas em azeite de oliva",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, aliche, rodelas de tomate regadas em azeite de oliva e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "aliche-com-mozzarella",
+      "name": "Aliche com Mozzarella",
+      "category": "traditional",
+      "priceGrande": 6500,
+      "priceBroto": 4250,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "aliche",
+        "rodelas de tomate regadas em azeite de oliva",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, aliche, rodelas de tomate regadas em azeite de oliva e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "atum-solido",
+      "name": "Atum Sólido",
+      "category": "traditional",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "atum sólido",
+        "cebola fatiada",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, atum sólido, cebola fatiada e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "atum-solido-com-mozzarella",
+      "name": "Atum Sólido com Mozzarella",
+      "category": "traditional",
+      "priceGrande": 6500,
+      "priceBroto": 4250,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "atum sólido",
+        "mozzarella",
+        "cebola",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, atum sólido, mozzarella, cebola e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "bacon",
+      "name": "Bacon",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "bacon",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, bacon, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "baiana",
+      "name": "Baiana",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "calabresa moída",
+        "cebola",
+        "molho de pimenta",
+        "pimentão",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, calabresa moída, cebola, molho de pimenta, pimentão, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "bauru",
+      "name": "Bauru",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "presunto",
+        "mozzarella",
+        "tomate fatiado",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, presunto, mozzarella, tomate fatiado, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "bella-italia",
+      "name": "Bella Itália",
+      "category": "traditional",
+      "priceGrande": 6700,
+      "priceBroto": 4350,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "frango desfiado",
+        "tomate seco",
+        "champignon",
+        "mozzarella",
+        "requeijão",
+        "bacon",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, frango desfiado, tomate seco, champignon, mozzarella, requeijão, bacon, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "brocolis",
+      "name": "Brócolis",
+      "category": "traditional",
+      "priceGrande": 5000,
+      "priceBroto": 3500,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "brócolis",
+        "alho desidratado",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, brócolis, alho desidratado, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "brocolis-ii",
+      "name": "Brócolis II",
+      "category": "traditional",
+      "priceGrande": 6500,
+      "priceBroto": 4250,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "brócolis",
+        "palmito",
+        "tomate seco",
+        "requeijão",
+        "mozzarella",
+        "bacon",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, brócolis, palmito, tomate seco, requeijão, mozzarella, bacon, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "calabresa-com-catupiry",
+      "name": "Calabresa com Catupiry",
+      "category": "traditional",
+      "priceGrande": 5700,
+      "priceBroto": 3850,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "calabresa",
+        "catupiry",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, calabresa, catupiry, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "calabresa-com-mozzarella",
+      "name": "Calabresa com Mozzarella",
+      "category": "traditional",
+      "priceGrande": 5200,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "calabresa",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, calabresa, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "calabresa-tradicional",
+      "name": "Calabresa Tradicional",
+      "category": "traditional",
+      "priceGrande": 5000,
+      "priceBroto": 3500,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "calabresa",
+        "cebola",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, calabresa, cebola, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "calabria",
+      "name": "Calabria",
+      "category": "traditional",
+      "priceGrande": 6500,
+      "priceBroto": 4250,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "calabresa moída",
+        "tomate em cubos",
+        "cebola",
+        "requeijão",
+        "pimenta cambuci",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, calabresa moída, tomate em cubos, cebola, requeijão, pimenta cambuci, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "cheddar",
+      "name": "Cheddar",
+      "category": "traditional",
+      "priceGrande": 5000,
+      "priceBroto": 3500,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "cheddar",
+        "bacon",
+        "cebola",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, cheddar, bacon, cebola, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "cinco-queijos",
+      "name": "Cinco Queijos",
+      "category": "traditional",
+      "priceGrande": 6500,
+      "priceBroto": 4250,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "provolone",
+        "parmesão",
+        "gorgonzola",
+        "requeijão cremoso",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, provolone, parmesão, gorgonzola, requeijão cremoso, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "dois-queijos",
+      "name": "Dois Queijos",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "catupiry",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, catupiry, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "don-pietro",
+      "name": "Don Pietro",
+      "category": "traditional",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "lombo canadense",
+        "palmito",
+        "bacon",
+        "mozzarella",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, lombo canadense, palmito, bacon, mozzarella, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "escarola",
+      "name": "Escarola",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3900,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "escarola",
+        "bacon"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, escarola e bacon.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "frango-com-catupiry",
+      "name": "Frango com Catupiry",
+      "category": "traditional",
+      "priceGrande": 5700,
+      "priceBroto": 3850,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "frango",
+        "catupiry",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, frango, catupiry, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "frango-com-mozzarella",
+      "name": "Frango com Mozzarella",
+      "category": "traditional",
+      "priceGrande": 5200,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "frango",
+        "mozzarella",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, frango, mozzarella, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "lombinho",
+      "name": "Lombinho",
+      "category": "traditional",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "lombo canadense",
+        "cebola",
+        "requeijão",
+        "bacon",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, lombo canadense, cebola, requeijão, bacon, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "margherita",
+      "name": "Margherita",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "tomate fatiado",
+        "manjericão",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, tomate fatiado, manjericão, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "milho",
+      "name": "Milho",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "milho",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, milho, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "mozzarella",
+      "name": "Mozzarella",
+      "category": "traditional",
+      "priceGrande": 5000,
+      "priceBroto": 3500,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "tomate",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, tomate, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "mineira",
+      "name": "Mineira",
+      "category": "traditional",
+      "priceGrande": 6500,
+      "priceBroto": 4250,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "provolone",
+        "parmesão",
+        "gorgonzola",
+        "queijo minas fresco",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, provolone, parmesão, gorgonzola, queijo minas fresco, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "napolitana",
+      "name": "Napolitana",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "tomate",
+        "parmesão",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, tomate, parmesão, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "palmito",
+      "name": "Palmito",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "palmito",
+        "requeijão",
+        "bacon",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, palmito, requeijão, bacon, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "parmegiana",
+      "name": "Parmegiana",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "presunto",
+        "tomate em cubos",
+        "mozzarella",
+        "parmesão fresco",
+        "segunda camada de passata",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, presunto, tomate em cubos, mozzarella, parmesão fresco, segunda camada de passata, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "portuguesa",
+      "name": "Portuguesa",
+      "category": "traditional",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "presunto",
+        "ervilha",
+        "palmito",
+        "cebola",
+        "ovo",
+        "mozzarella",
+        "bacon",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, presunto, ervilha, palmito, cebola, ovo, mozzarella, bacon, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "pepperoni",
+      "name": "Pepperoni",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "pepperoni",
+        "mozzarella",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, pepperoni, mozzarella, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "pepperoni-com-cream-cheese",
+      "name": "Pepperoni com Cream Cheese",
+      "category": "traditional",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "pepperoni",
+        "cream cheese",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, pepperoni, cream cheese, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "quattro-formaggi",
+      "name": "Quattro Formaggi",
+      "category": "traditional",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "parmesão",
+        "provolone",
+        "requeijão",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, parmesão, provolone, requeijão, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "romana",
+      "name": "Romana",
+      "category": "traditional",
+      "priceGrande": 6500,
+      "priceBroto": 4250,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "frango desfiado",
+        "catupiry",
+        "palmito",
+        "mozzarella",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, frango desfiado, catupiry, palmito, mozzarella, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "salame",
+      "name": "Salame",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 4150,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "salame",
+        "salsa",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, salame, salsa e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "tarantella",
+      "name": "Tarantella",
+      "category": "traditional",
+      "priceGrande": 6500,
+      "priceBroto": 4250,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "presunto",
+        "mozzarella",
+        "calabresa",
+        "tomate fatiado",
+        "cebola",
+        "bacon",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, presunto, mozzarella, calabresa, tomate fatiado, cebola, bacon, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "tomate-seco-com-rucula",
+      "name": "Tomate Seco com Rúcula",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "tomate seco",
+        "mozzarella",
+        "rúcula",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, tomate seco, mozzarella, rúcula, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "toscana",
+      "name": "Toscana",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "calabresa moída",
+        "mozzarella",
+        "cebola",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, calabresa moída, mozzarella, cebola, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "troiana",
+      "name": "Troiana",
+      "category": "traditional",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "lombo canadense",
+        "catupiry",
+        "mozzarella",
+        "parmesão",
+        "bacon",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, lombo canadense, catupiry, mozzarella, parmesão, bacon, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "tres-queijos",
+      "name": "Três Queijos",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "catupiry",
+        "parmesão",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, catupiry, parmesão, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "vegetariana",
+      "name": "Vegetariana",
+      "category": "traditional",
+      "priceGrande": 5500,
+      "priceBroto": 3750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "brócolis",
+        "palmito",
+        "ervilha",
+        "milho",
+        "tomate",
+        "mozzarella",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, brócolis, palmito, ervilha, milho, tomate, mozzarella, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "atum-solido-com-cream-cheese",
+      "name": "Atum Sólido com Cream Cheese",
+      "category": "premium",
+      "priceGrande": 7000,
+      "priceBroto": 4500,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "atum sólido",
+        "molho tarê",
+        "cream cheese",
+        "cebolinha",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, atum sólido, molho tarê, cream cheese, cebolinha e azeitonas pretas.",
+      "featured": true,
+      "active": true
+    },
+    {
+      "id": "camarao",
+      "name": "Camarão",
+      "category": "premium",
+      "priceGrande": 10000,
+      "priceBroto": 6000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "sugo bianco",
+        "camarões salteados no alho",
+        "óleo",
+        "catupiry",
+        "limão siciliano"
+      ],
+      "description": "Massa de longa fermentação, sugo bianco, camarões salteados no alho e óleo, catupiry e limão siciliano.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "caprese",
+      "name": "Caprese",
+      "category": "premium",
+      "priceGrande": 7000,
+      "priceBroto": 4500,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella de búfala",
+        "tomate-cereja",
+        "manjericão",
+        "redução de balsâmico"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella de búfala, tomate-cereja, manjericão e redução de balsâmico.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "costela-barbecue",
+      "name": "Costela Barbecue",
+      "category": "premium",
+      "priceGrande": 7500,
+      "priceBroto": 4750,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "costela desfiada",
+        "cebola crispy",
+        "requeijão",
+        "mozzarella",
+        "barbecue",
+        "orégano"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, costela desfiada, cebola crispy, requeijão, mozzarella, barbecue e orégano.",
+      "featured": true,
+      "active": true
+    },
+    {
+      "id": "doritos",
+      "name": "Doritos",
+      "category": "premium",
+      "priceGrande": 7000,
+      "priceBroto": 4500,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "frango desfiado",
+        "Doritos",
+        "cheddar",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, frango desfiado, Doritos, cheddar e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "la-nordestina",
+      "name": "La Nordestina",
+      "category": "premium",
+      "priceGrande": 8000,
+      "priceBroto": 5000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "carne de sol",
+        "queijo coalho",
+        "pimenta biquinho",
+        "cebolinha",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, carne de sol, queijo coalho, pimenta biquinho, cebolinha e azeitonas pretas.",
+      "featured": true,
+      "active": true
+    },
+    {
+      "id": "la-toscana-blue",
+      "name": "La Toscana Blue",
+      "category": "premium",
+      "priceGrande": 6500,
+      "priceBroto": 4250,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "linguiça toscana",
+        "gorgonzola",
+        "cream cheese",
+        "cebola roxa",
+        "cebolinha",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, linguiça toscana, gorgonzola, cream cheese, cebola roxa, cebolinha e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "salmao-com-cream-cheese",
+      "name": "Salmão com Cream Cheese",
+      "category": "premium",
+      "priceGrande": 10000,
+      "priceBroto": 6000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "salmão",
+        "molho tarê",
+        "cream cheese",
+        "cebolinha",
+        "pimenta biquinho"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, salmão, molho tarê, cream cheese, cebolinha e pimenta biquinho.",
+      "featured": true,
+      "active": true
+    },
+    {
+      "id": "sapori-di-parma",
+      "name": "Sapori di Parma",
+      "category": "premium",
+      "priceGrande": 10000,
+      "priceBroto": 6000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella de búfala",
+        "presunto de Parma",
+        "rúcula fresca",
+        "lascas de parmesão",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella de búfala, presunto de Parma, rúcula fresca, lascas de parmesão e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "seis-queijos",
+      "name": "Seis Queijos",
+      "category": "premium",
+      "priceGrande": 7000,
+      "priceBroto": 4500,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella",
+        "provolone",
+        "parmesão",
+        "queijo minas fresco",
+        "gorgonzola",
+        "requeijão",
+        "orégano",
+        "azeitonas pretas"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella, provolone, parmesão, queijo minas fresco, gorgonzola, requeijão, orégano e azeitonas pretas.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "file-mignon",
+      "name": "Filé Mignon",
+      "category": "premium",
+      "priceGrande": 10000,
+      "priceBroto": 6000,
+      "ingredients": [
+        "Massa de longa fermentação",
+        "passata di pomodoro",
+        "mozzarella de búfala",
+        "filé mignon",
+        "tomate seco",
+        "rúcula",
+        "cream cheese"
+      ],
+      "description": "Massa de longa fermentação, passata di pomodoro, mozzarella de búfala, filé mignon, tomate seco, rúcula e cream cheese.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "alegria-de-confites",
+      "name": "Alegria de Confites",
+      "category": "sweet",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa napolitana",
+        "chocolate ao leite",
+        "confetes coloridos"
+      ],
+      "description": "Massa napolitana, chocolate ao leite e confetes coloridos.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "amor-proibido",
+      "name": "Amor Proibido",
+      "category": "sweet",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa napolitana",
+        "goiabada cremosa",
+        "queijo minas curado",
+        "açúcar mascavo flambado"
+      ],
+      "description": "Massa napolitana, goiabada cremosa, queijo minas curado e açúcar mascavo flambado.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "brigadeiro",
+      "name": "Brigadeiro",
+      "category": "sweet",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa napolitana",
+        "chocolate ao leite ou creme de avelã com granulado. Informar a opção na observação"
+      ],
+      "description": "Massa napolitana, chocolate ao leite ou creme de avelã com granulado. Informar a opção na observação.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "chocolate",
+      "name": "Chocolate",
+      "category": "sweet",
+      "priceGrande": 5500,
+      "priceBroto": 3800,
+      "ingredients": [
+        "Massa napolitana",
+        "chocolate ao leite",
+        "creme de avelã ou chocolate branco"
+      ],
+      "description": "Massa napolitana, chocolate ao leite, creme de avelã ou chocolate branco.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "chocolate-com-morango",
+      "name": "Chocolate com Morango",
+      "category": "sweet",
+      "priceGrande": 6500,
+      "priceBroto": 4250,
+      "ingredients": [
+        "Massa napolitana",
+        "chocolate ao leite",
+        "creme de avelã ou chocolate branco",
+        "morango"
+      ],
+      "description": "Massa napolitana, chocolate ao leite, creme de avelã ou chocolate branco e morango.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "kinder-bueno",
+      "name": "Kinder Bueno",
+      "category": "sweet",
+      "priceGrande": 7000,
+      "priceBroto": 4500,
+      "ingredients": [
+        "Massa napolitana",
+        "creme de avelã",
+        "creme de Ninho",
+        "pedaços de Kinder Bueno"
+      ],
+      "description": "Massa napolitana, creme de avelã, creme de Ninho e pedaços de Kinder Bueno.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "kitkat",
+      "name": "KitKat",
+      "category": "sweet",
+      "priceGrande": 7000,
+      "priceBroto": 4500,
+      "ingredients": [
+        "Massa napolitana",
+        "chocolate ao leite",
+        "creme de Ninho",
+        "KitKat"
+      ],
+      "description": "Massa napolitana, chocolate ao leite, creme de Ninho e KitKat.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "laka-oreo",
+      "name": "Laka Oreo",
+      "category": "sweet",
+      "priceGrande": 7000,
+      "priceBroto": 4500,
+      "ingredients": [
+        "Massa napolitana",
+        "chocolate branco",
+        "bolacha Oreo moída",
+        "finalizada com mini Oreo"
+      ],
+      "description": "Massa napolitana, chocolate branco e bolacha Oreo moída, finalizada com mini Oreo.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "sonho-de-valsa",
+      "name": "Sonho de Valsa",
+      "category": "sweet",
+      "priceGrande": 6000,
+      "priceBroto": 4000,
+      "ingredients": [
+        "Massa napolitana",
+        "creme de Ninho",
+        "creme de avelã",
+        "pedaços de Sonho de Valsa"
+      ],
+      "description": "Massa napolitana, creme de Ninho, creme de avelã e pedaços de Sonho de Valsa.",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "rafaello",
+      "name": "Rafaello",
+      "category": "sweet",
+      "priceGrande": 8000,
+      "priceBroto": 5000,
+      "ingredients": [
+        "Massa napolitana",
+        "creme de Ninho",
+        "morango",
+        "coco ralado",
+        "Rafaello"
+      ],
+      "description": "Massa napolitana, creme de Ninho, morango, coco ralado e Rafaello.",
+      "featured": true,
+      "active": true
+    },
+    {
+      "id": "tortuguita",
+      "name": "Tortuguita",
+      "category": "sweet",
+      "priceGrande": 7000,
+      "priceBroto": 4500,
+      "ingredients": [
+        "Massa napolitana",
+        "creme de Ninho ou creme de avelã",
+        "Tortuguita",
+        "Chocoball. Informar a base escolhida na observação"
+      ],
+      "description": "Massa napolitana, creme de Ninho ou creme de avelã, Tortuguita e Chocoball. Informar a base escolhida na observação.",
+      "featured": false,
+      "active": true
+    }
+  ],
+  "addons": [
+    {
+      "id": "queijo-coalho",
+      "name": "Queijo coalho",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "catupiry",
+      "name": "Catupiry",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "granulado",
+      "name": "Granulado",
+      "price": 700,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "mozzarella",
+      "name": "Mozzarella",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "gorgonzola",
+      "name": "Gorgonzola",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "bacon",
+      "name": "Bacon",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "ovo",
+      "name": "Ovo",
+      "price": 700,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "milho",
+      "name": "Milho",
+      "price": 700,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "tomate",
+      "name": "Tomate",
+      "price": 700,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "cebola",
+      "name": "Cebola",
+      "price": 700,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "presunto",
+      "name": "Presunto",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "morango",
+      "name": "Morango",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "palmito",
+      "name": "Palmito",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "cebolinha",
+      "name": "Cebolinha",
+      "price": 500,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "cheddar",
+      "name": "Cheddar",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "champignon",
+      "name": "Champignon",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "manjericao",
+      "name": "Manjericão",
+      "price": 700,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "cream-cheese",
+      "name": "Cream cheese",
+      "price": 1000,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "rucula",
+      "name": "Rúcula",
+      "price": 700,
+      "active": true,
+      "maxQuantity": 2
+    },
+    {
+      "id": "alho-frito",
+      "name": "Alho frito",
+      "price": 500,
+      "active": true,
+      "maxQuantity": 2
+    }
+  ],
+  "beverages": [
+    {
+      "id": "vinho-seco",
+      "name": "Vinho Seco",
+      "description": "Vinho tinto seco, 1 litro. Escolha indicada para acompanhar a pizza.",
+      "price": 4500,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "vinho-da-casa-tinto-suave",
+      "name": "Vinho da Casa – Tinto Suave",
+      "description": "Vinho tinto suave Uva Bordô, 1 litro.",
+      "price": 3000,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "suco-de-laranja-integral-natural-one-1-7-l",
+      "name": "Suco de Laranja Integral Natural One 1,7 L",
+      "description": "",
+      "price": 4000,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "agua-mineral-500-ml",
+      "name": "Água Mineral 500 ml",
+      "description": "",
+      "price": 500,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "agua-mineral-com-gas-500-ml",
+      "name": "Água Mineral com Gás 500 ml",
+      "description": "",
+      "price": 590,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "agua-tonica-fys-lata-350-ml",
+      "name": "Água Tônica FYS lata 350 ml",
+      "description": "Normal ou Zero.",
+      "price": 600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "h2oh-limoneto-500-ml",
+      "name": "H2OH Limoneto 500 ml",
+      "description": "Normal ou Zero.",
+      "price": 700,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "h2oh-limao-500-ml",
+      "name": "H2OH Limão 500 ml",
+      "description": "Normal ou Zero.",
+      "price": 700,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "agua-tonica-schweppes-lata-350-ml",
+      "name": "Água Tônica Schweppes lata 350 ml",
+      "description": "Normal ou Zero.",
+      "price": 600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "coca-cola-lata-350-ml",
+      "name": "Coca-Cola lata 350 ml",
+      "description": "",
+      "price": 600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "coca-cola-zero-lata-350-ml",
+      "name": "Coca-Cola Zero lata 350 ml",
+      "description": "",
+      "price": 600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "guarana-antarctica-lata-350-ml",
+      "name": "Guaraná Antarctica lata 350 ml",
+      "description": "",
+      "price": 600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "guarana-antarctica-zero-lata-350-ml",
+      "name": "Guaraná Antarctica Zero lata 350 ml",
+      "description": "",
+      "price": 600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "fanta-laranja-lata-350-ml",
+      "name": "Fanta Laranja lata 350 ml",
+      "description": "",
+      "price": 600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "fanta-uva-lata-350-ml",
+      "name": "Fanta Uva lata 350 ml",
+      "description": "",
+      "price": 600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "suco-del-valle-lata-290-ml",
+      "name": "Suco Del Valle lata 290 ml",
+      "description": "Sabores: uva, pêssego, goiaba e maracujá. Informar o sabor na observação.",
+      "price": 700,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "cerveja-long-neck",
+      "name": "Cerveja Long Neck",
+      "description": "Budweiser, Spaten, Corona ou Heineken. Informar a preferência.",
+      "price": 1100,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "original-long-neck-300-ml",
+      "name": "Original Long Neck 300 ml",
+      "description": "",
+      "price": 600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "itubaina-lata-350-ml",
+      "name": "Itubaína lata 350 ml",
+      "description": "",
+      "price": 600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "coca-cola-1-l",
+      "name": "Coca-Cola 1 L",
+      "description": "",
+      "price": 1100,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "coca-cola-zero-1-l",
+      "name": "Coca-Cola Zero 1 L",
+      "description": "",
+      "price": 1100,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "coca-cola-2-l",
+      "name": "Coca-Cola 2 L",
+      "description": "",
+      "price": 1600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "coca-cola-zero-2-l",
+      "name": "Coca-Cola Zero 2 L",
+      "description": "",
+      "price": 1600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "fanta-laranja-2-l",
+      "name": "Fanta Laranja 2 L",
+      "description": "",
+      "price": 1600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "fanta-uva-2-l",
+      "name": "Fanta Uva 2 L",
+      "description": "",
+      "price": 1600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "guarana-antarctica-2-l",
+      "name": "Guaraná Antarctica 2 L",
+      "description": "",
+      "price": 1600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "guarana-antarctica-zero-2-l",
+      "name": "Guaraná Antarctica Zero 2 L",
+      "description": "",
+      "price": 1600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "sprite-2-l",
+      "name": "Sprite 2 L",
+      "description": "",
+      "price": 1600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    },
+    {
+      "id": "sprite-zero-2-l",
+      "name": "Sprite Zero 2 L",
+      "description": "",
+      "price": 1600,
+      "active": true,
+      "stockTracked": true,
+      "category": "beverages"
+    }
+  ],
+  "desserts": [
+    {
+      "id": "pudim-tradicional",
+      "name": "Pudim no Copo Americano - Tradicional",
+      "description": "Pudim no Copo Americano, 180 ml.",
+      "price": 1500,
+      "active": true,
+      "stockTracked": true,
+      "category": "desserts",
+      "variant": "Pudim Tradicional"
+    },
+    {
+      "id": "pudim-frutas-vermelhas",
+      "name": "Pudim no Copo Americano - Frutas Vermelhas",
+      "description": "Pudim no Copo Americano, 180 ml.",
+      "price": 1500,
+      "active": true,
+      "stockTracked": true,
+      "category": "desserts",
+      "variant": "Pudim Frutas Vermelhas"
+    }
+  ],
+  "combo": {
+    "id": "combo-grande-broto-refri",
+    "name": "Pizza Grande + Broto Doce + Refrigerante 2 L",
+    "description": "Pizza Grande (Calabresa Tradicional ou Mozzarella) + Broto Brigadeiro + refrigerante 2 L selecionado.",
+    "price": 7999,
+    "active": true,
+    "category": "combo",
+    "options": {
+      "grandeFlavors": [
+        "calabresa-tradicional",
+        "mozzarella"
+      ],
+      "sweetFlavor": "brigadeiro",
+      "beverages": [
+        "guarana-antarctica-2-l",
+        "guarana-antarctica-zero-2-l",
+        "fanta-uva-2-l",
+        "fanta-laranja-2-l"
+      ],
+      "masses": [
+        "traditional",
+        "integral"
+      ]
+    }
+  },
+  "sizes": [
+    {
+      "id": "grande",
+      "name": "Grande",
+      "maxFlavors": 2
+    },
+    {
+      "id": "broto",
+      "name": "Broto",
+      "maxFlavors": 1
+    }
+  ],
+  "masses": [
+    {
+      "id": "traditional",
+      "name": "Tradicional de longa fermentação",
+      "price": 0
+    },
+    {
+      "id": "integral",
+      "name": "Integral de longa fermentação",
+      "price": 0
+    }
+  ],
+  "tables": [
+    {
+      "number": 1,
+      "capacity": 5,
+      "status": "free"
+    },
+    {
+      "number": 2,
+      "capacity": 5,
+      "status": "free"
+    },
+    {
+      "number": 3,
+      "capacity": 5,
+      "status": "free"
+    },
+    {
+      "number": 4,
+      "capacity": 5,
+      "status": "free"
+    },
+    {
+      "number": 5,
+      "capacity": 5,
+      "status": "free"
+    },
+    {
+      "number": 6,
+      "capacity": 5,
+      "status": "free"
+    },
+    {
+      "number": 7,
+      "capacity": 5,
+      "status": "free"
+    },
+    {
+      "number": 8,
+      "capacity": 5,
+      "status": "free"
+    },
+    {
+      "number": 9,
+      "capacity": 5,
+      "status": "free"
+    },
+    {
+      "number": 10,
+      "capacity": 5,
+      "status": "free"
+    },
+    {
+      "number": 11,
+      "capacity": 2,
+      "status": "free"
+    },
+    {
+      "number": 12,
+      "capacity": 2,
+      "status": "free"
+    },
+    {
+      "number": 13,
+      "capacity": 2,
+      "status": "free"
+    },
+    {
+      "number": 14,
+      "capacity": 2,
+      "status": "free"
+    },
+    {
+      "number": 15,
+      "capacity": 2,
+      "status": "free"
+    }
+  ],
+  "mostOrdered": [
+    "atum-solido-com-cream-cheese",
+    "costela-barbecue",
+    "la-nordestina",
+    "salmao-com-cream-cheese",
+    "rafaello"
+  ],
+  "rules": {
+    "halfPrice": "half_plus_half",
+    "brotoHalf": false,
+    "borders": false,
+    "maxAddonUnits": 5,
+    "maxSameAddon": 2,
+    "notesMaxLength": 500,
+    "premiumWithTraditional": false,
+    "sweetWithSavory": true,
+    "loyaltyThreshold": 10,
+    "loyaltyMax": 15,
+    "loyaltyRewardFlavors": [
+      "mozzarella",
+      "calabresa-tradicional"
+    ]
+  }
+}
