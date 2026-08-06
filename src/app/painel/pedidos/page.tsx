@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ClipboardList, Download, Grid2X2, KanbanSquare, List, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/internal/PageHeader";
@@ -14,7 +14,7 @@ import type { Order, OrderChannel, OrderStatus } from "@/types";
 const activeStatuses: OrderStatus[] = ["received", "confirmed", "preparing", "ready", "out_for_delivery"];
 type ViewMode = "kanban" | "list" | "cards";
 
-export default function OrdersPage() {
+function OrdersContent() {
   const searchParams = useSearchParams();
   const orders = useDemoState((state) => state.orders);
   const [query, setQuery] = useState("");
@@ -79,6 +79,10 @@ export default function OrdersPage() {
     {!filtered.length && <div className="surface p-10 text-center"><p className="font-display text-2xl font-bold">Nenhum pedido encontrado</p><p className="mt-2 text-sm text-black/50">Altere os filtros para visualizar outros pedidos.</p></div>}
     <OrderDetailPanel orderId={selectedId} onClose={() => setSelectedId(null)}/>
   </>;
+}
+
+export default function OrdersPage() {
+  return <Suspense fallback={<div className="surface p-8 text-center"><p className="font-display text-xl font-bold">Carregando pedidos…</p><p className="mt-2 text-sm text-black/50">Preparando filtros e comandas.</p></div>}><OrdersContent/></Suspense>;
 }
 
 function Kanban({ orders, onOpen }: { orders: Order[]; onOpen: (order: Order) => void }) {

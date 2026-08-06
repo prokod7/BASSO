@@ -1,5 +1,5 @@
 "use client";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Banknote, CreditCard, Gift, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/internal/PageHeader";
@@ -11,7 +11,7 @@ import { currency, isDemoMode, uid } from "@/lib/utils";
 import type { Address, CartItem, Flavor, Order, OrderChannel, PaymentMethod } from "@/types";
 
 const blankAddress:Address={cep:"",street:"",number:"",district:"",city:"Rio Grande da Serra",state:"SP"};
-export default function PdvPage(){
+function PdvContent(){
  const searchParams=useSearchParams();const appendTo=searchParams.get("appendTo");const appendNumber=searchParams.get("number");
  const orders=useDemoState(s=>s.orders);const tables=useDemoState(s=>s.tables);const [items,setItems]=useState<CartItem[]>([]);const [query,setQuery]=useState("");const [customer,setCustomer]=useState("Cliente balcão");const [phone,setPhone]=useState("");const [channel,setChannel]=useState<OrderChannel>("counter");const [payment,setPayment]=useState<PaymentMethod>("cash");const [paid,setPaid]=useState(true);const [message,setMessage]=useState("");const [selectedFlavor,setSelectedFlavor]=useState<Flavor|null>(null);const [rewardAuth,setRewardAuth]=useState<RewardAuthorizationData|null>(null);const [rewardOpen,setRewardOpen]=useState(false);const [address,setAddress]=useState<Address>(blankAddress);const [tableNumber,setTableNumber]=useState(1);const [tabId,setTabId]=useState("");const [newTabName,setNewTabName]=useState("");const [discount,setDiscount]=useState("");const [discountReason,setDiscountReason]=useState("");const [submitting,setSubmitting]=useState(false);
  useEffect(()=>{try{if(!window.location.search.includes("reward=1"))return;const parsed=JSON.parse(sessionStorage.getItem("lfb-reward-authorization")||"null") as RewardAuthorizationData|null;if(!parsed)return;setRewardAuth(parsed);setCustomer(parsed.customerName);setPhone(parsed.customerPhone);setChannel("own_delivery");setPaid(false);setRewardOpen(true)}catch{}},[]);
@@ -42,4 +42,8 @@ export default function PdvPage(){
  <div className="grid grid-cols-2 gap-2"><Pay active={payment==="cash"} onClick={()=>setPayment("cash")} icon={<Banknote size={16}/>} label="Dinheiro"/><Pay active={payment==="pix"} onClick={()=>setPayment("pix")} icon={<Banknote size={16}/>} label="Pix"/><Pay active={payment==="debit"} onClick={()=>setPayment("debit")} icon={<CreditCard size={16}/>} label="Débito"/><Pay active={payment==="credit"} onClick={()=>setPayment("credit")} icon={<CreditCard size={16}/>} label="Crédito"/></div><label className="mt-3 flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={paid} onChange={e=>setPaid(e.target.checked)}/>Pagamento já confirmado</label>{rewardAuth&&!items.some(item=>item.kind==="reward")&&<button className="btn-secondary mt-3 w-full" onClick={()=>setRewardOpen(true)}><Gift size={17}/>Configurar recompensa autorizada</button>}<button disabled={submitting} className="btn-primary mt-4 w-full" onClick={finish}>{submitting?"Registrando...":appendTo?"Adicionar à comanda":"Finalizar e imprimir"}</button>{message&&<p className={`mt-3 rounded-xl p-3 text-xs font-semibold ${message.includes("registrada")?"bg-emerald-50 text-emerald-800":"bg-amber-50 text-amber-900"}`}>{message}</p>}</div></div></aside></div>
  <PizzaBuilder flavor={selectedFlavor} open={Boolean(selectedFlavor)} onClose={()=>setSelectedFlavor(null)} onAdd={addItem}/><RewardBuilder authorization={rewardAuth} open={rewardOpen} onClose={()=>setRewardOpen(false)} onAdd={addItem}/></>;
 }
+export default function PdvPage(){
+ return <Suspense fallback={<div className="surface p-8 text-center"><p className="font-display text-xl font-bold">Carregando PDV…</p><p className="mt-2 text-sm text-black/50">Preparando a venda e os parâmetros da comanda.</p></div>}><PdvContent/></Suspense>;
+}
+
 function Pay({active,onClick,icon,label}:{active:boolean;onClick:()=>void;icon:React.ReactNode;label:string}){return <button onClick={onClick} className={`flex min-h-10 items-center justify-center gap-2 rounded-xl border text-xs font-bold ${active?"border-basso-wine bg-basso-wine text-white":"border-black/10"}`}>{icon}{label}</button>}
