@@ -1,0 +1,16 @@
+ATUALIZAÇÃO 01 — COMO APLICAR
+
+1. Extraia este ZIP.
+2. Copie todo o conteúdo para a raiz do repositório, mantendo as pastas.
+3. Aceite substituir os arquivos existentes.
+4. Se ainda existir um arquivo chamado vercel.json, renomeie-o para vercel.pro.json ou remova-o temporariamente no plano Hobby.
+5. No painel da Vercel, adicione temporariamente:
+   INITIAL_USER_PASSWORD=uma-senha-forte-com-12-ou-mais-caracteres
+6. Faça commit/push e aguarde o novo deploy.
+7. Acesse /login com:
+   gestor@laforneriabasso.com.br
+   e a senha configurada em INITIAL_USER_PASSWORD.
+8. O primeiro login cria automaticamente as sete contas se elas ainda não existirem.
+9. Depois do acesso bem-sucedido, remova INITIAL_USER_PASSWORD da Vercel e faça outro redeploy.
+
+Não existe SQL novo nesta atualização. Mantenha as migrações 001 a 012 já executadas.

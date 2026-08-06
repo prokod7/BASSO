@@ -47,9 +47,9 @@ Acesse:
 1. Crie o projeto Supabase e execute, em ordem, todas as migrações de `supabase/migrations`.
 2. Configure as variáveis de `.env.example` na Vercel.
 3. Defina `NEXT_PUBLIC_DEMO_MODE=false`.
-4. Crie as sete contas iniciais com `npm run seed:users`.
+4. Cadastre temporariamente `INITIAL_USER_PASSWORD` (mínimo de 12 caracteres). No primeiro login, o sistema cria e sincroniza automaticamente as sete contas. Como alternativa, execute `npm run seed:users`.
 5. Cadastre bairros, taxas, pedido mínimo, equipamentos, credenciais e terminais nos parâmetros de implantação.
-6. Faça deploy na Vercel e configure o domínio.
+6. Faça deploy na Vercel e configure o domínio. No plano Hobby, mantenha `vercel.pro.json`; restaure o nome `vercel.json` apenas quando utilizar um plano/cadência compatível com o cron.
 7. Instale o bridge de impressão no computador da pizzaria.
 8. Homologue cada integração externa no ambiente liberado pelo fornecedor.
 

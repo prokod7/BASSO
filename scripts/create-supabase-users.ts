@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { INITIAL_OPERATIONAL_USERS } from "../src/lib/initial-users";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -13,15 +14,7 @@ if (password.length < 12) {
 }
 
 const client = createClient(url, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
-const users = [
-  { email: "gestor@laforneriabasso.com.br", displayName: "Gestor", role: "manager" },
-  { email: "atendente1@laforneriabasso.com.br", displayName: "Atendente 1", role: "counter" },
-  { email: "atendente2@laforneriabasso.com.br", displayName: "Atendente 2", role: "counter" },
-  { email: "atendente3@laforneriabasso.com.br", displayName: "Atendente 3", role: "counter" },
-  { email: "garcom1@laforneriabasso.com.br", displayName: "Garçom 1", role: "waiter" },
-  { email: "garcom2@laforneriabasso.com.br", displayName: "Garçom 2", role: "waiter" },
-  { email: "garcom3@laforneriabasso.com.br", displayName: "Garçom 3", role: "waiter" }
-] as const;
+const users = INITIAL_OPERATIONAL_USERS;
 
 async function findUser(email: string) {
   let page = 1;

@@ -92,7 +92,8 @@ const manifest = JSON.parse(read("public/manifest.webmanifest"));
 check("PWA com ícones 192 e 512", manifest.icons?.some(x => x.sizes === "192x192") && manifest.icons?.some(x => x.sizes === "512x512"));
 check("Service worker presente", exists("public/sw.js"));
 check("Bridge de impressão presente", exists("bridge/print-bridge.mjs") && exists("bridge/config.example.json"));
-check("Cron de filas presente", exists("vercel.json") && /process-queues/.test(read("vercel.json")));
+const cronFile = exists("vercel.json") ? "vercel.json" : exists("vercel.pro.json") ? "vercel.pro.json" : null;
+check("Cron de filas preservado", Boolean(cronFile) && /process-queues/.test(read(cronFile)));
 
 const secretsPattern = /(sk_live_|service_role\s*[=:]\s*[A-Za-z0-9_-]{20,}|-----BEGIN PRIVATE KEY-----)/;
 check("Nenhum segredo evidente versionado", !secretsPattern.test(sourceText + read(".env.example")));
