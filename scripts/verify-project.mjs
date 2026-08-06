@@ -62,7 +62,7 @@ check("Validação explícita contra bordas", /Bordas não existem neste sistema
 
 const sqlFiles = fs.readdirSync(path.join(root,"supabase/migrations")).filter(x => x.endsWith(".sql")).sort();
 const sql = sqlFiles.map(x => read(`supabase/migrations/${x}`)).join("\n");
-check("Migrações SQL 001–011 presentes", sqlFiles.length >= 11 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("011")), sqlFiles.join(", "));
+check("Migrações SQL 001–013 presentes", sqlFiles.length >= 13 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("013")), sqlFiles.join(", "));
 check("RLS habilitado", /enable row level security/i.test(sql));
 check("Auditoria imutável", /audit_no_update/i.test(sql));
 check("Chaves de idempotência", /idempotency_keys/i.test(sql));
@@ -87,6 +87,28 @@ check("Recompensa bloqueada no checkout público", /Recompensas são lançadas e
 check("APIs de gestão financeira e CRM presentes", ["src/app/api/crm/route.ts","src/app/api/financial/route.ts","src/app/api/reports/route.ts","src/app/api/campaigns/route.ts","src/app/api/settings/route.ts"].every(exists));
 check("Saúde e retentativa de integrações presentes", exists("src/app/api/integrations/health/route.ts") && exists("src/app/api/integrations/events/[id]/retry/route.ts"));
 check("Fluxos transacionais de salão presentes", ["src/app/api/tables/[number]/tabs/route.ts","src/app/api/tabs/[id]/payments/route.ts","src/app/api/tables/groups/route.ts"].every(exists));
+
+const megaFiles = [
+  "src/components/internal/OrderDetailPanel.tsx",
+  "src/app/api/orders/[id]/items/route.ts",
+  "src/app/api/orders/[id]/payments/route.ts",
+  "src/app/api/orders/[id]/communications/route.ts",
+  "src/app/api/orders/[id]/print/route.ts",
+  "src/app/api/store-status/route.ts",
+  "src/app/api/print/jobs/route.ts",
+  "supabase/migrations/013_admin_control_center.sql",
+  "scripts/audit-buttons.mjs"
+];
+check("Mega Update administrativo presente", megaFiles.every(exists), megaFiles.filter(file => !exists(file)).join(", "));
+check("Central da comanda com seis áreas", /resumo.*itens.*pagamento.*comunicacao.*ocorrencias.*historico/s.test(read("src/components/internal/OrderDetailPanel.tsx")));
+check("Pedido administrável com notas e ocorrências", /order_internal_notes/.test(sql) && /order_incidents/.test(sql));
+check("Comunicação manual auditável", /order_communication_logs/.test(sql) && /manual_whatsapp/.test(sql));
+check("Pagamento manual transacional", /record_order_payment_transaction/.test(sql));
+check("Status controlado exige pagamento e motivo", /change_order_status_controlled/.test(sql) && /Confirme o recebimento integral/.test(sql) && /Motivo obrigatório/.test(sql));
+check("Estado operacional da loja administrável", /store_runtime_status/.test(sql) && /operational_status/.test(sql));
+check("Permissões específicas no backend", /permissions\[permission\] === false/.test(read("src/lib/authz.ts")));
+check("Cardápio editável sem acessar banco", /Salvar e versionar alteração/.test(read("src/app/painel/cardapio/page.tsx")));
+check("Delivery operável sem mapa", /A operação continua funcional por endereço textual/.test(read("src/app/painel/delivery/page.tsx")));
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 check("PWA com ícones 192 e 512", manifest.icons?.some(x => x.sizes === "192x192") && manifest.icons?.some(x => x.sizes === "512x512"));

@@ -145,6 +145,12 @@ export const demoActions = {
   addOrderLocal(order: Order, actor = "Operação") { const s=load(); const tables=order.tabId?s.tables.map(table=>({...table,tabs:table.tabs.map(tab=>tab.id===order.tabId?{...tab,items:[...tab.items,...order.items],totalCents:tab.totalCents+order.total}:tab)})):s.tables; save({ ...s, tables, orders:[order,...s.orders], audit:[{id:uid("audit"),actor,action:"ORDER_CREATED",entity:"order",entityId:order.id,createdAt:new Date().toISOString()},...s.audit] }); },
   replaceSnapshot(snapshot: Partial<DemoState>) { save({ ...initialState(), ...load(), ...snapshot }); },
   createOrder(order: Order, endpoint = "/api/orders", metadata?: Record<string, unknown>) { const s = load(); const tables=order.tabId?s.tables.map(table=>({...table,tabs:table.tabs.map(tab=>tab.id===order.tabId?{...tab,items:[...tab.items,...order.items],totalCents:tab.totalCents+order.total}:tab)})):s.tables; save({ ...s, tables, orders: [order, ...s.orders], audit: [{ id: uid("audit"), actor: endpoint.includes("internal") ? "Operação" : "Cliente", action: "ORDER_CREATED", entity: "order", entityId: order.id, createdAt: new Date().toISOString() }, ...s.audit] }); fire(endpoint, { method: "POST", headers: { "Idempotency-Key": order.sourceIdempotencyKey }, body: JSON.stringify({ ...order, ...(metadata || {}) }) }); },
+  patchOrder(id: string, patch: Partial<Order>, actor = "Operação") {
+    const s = load();
+    const now = new Date().toISOString();
+    save({ ...s, orders: s.orders.map(order => order.id === id ? { ...order, ...patch, updatedAt: now } : order), audit: [{ id: uid("audit"), actor, action: "ORDER_UPDATED", entity: "order", entityId: id, createdAt: now, details: "Comanda alterada pela operação" }, ...s.audit] });
+  },
+  patchDriver(id: string, patch: Partial<Driver>) { const s=load(); save({ ...s, drivers: s.drivers.map(driver => driver.id===id ? { ...driver, ...patch } : driver) }); },
   updateOrderStatus(id: string, status: OrderStatus, actor = "Operação") {
     const s = load();
     const now = new Date().toISOString();

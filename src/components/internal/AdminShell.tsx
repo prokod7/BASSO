@@ -6,6 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
+  CirclePause,
+  CirclePlay,
+  LockKeyhole,
+  Search,
   BarChart3,
   Bike,
   BookOpen,
@@ -43,6 +47,8 @@ import {
   type OperationalStatusDetail,
 } from "@/components/internal/OperationalHydrator";
 import { createClient } from "@/lib/supabase/client";
+import { useDemoState } from "@/lib/demo-store";
+import type { StoreRuntimeStatus } from "@/types";
 
 const sections: Array<{ label: string; items: Array<[string, string, LucideIcon]> }> = [
   {
@@ -95,7 +101,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mobile, setMobile] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const activeOrders = useDemoState((state) => state.orders.filter((order) => !["completed", "cancelled"].includes(order.status)).length);
   const [userName, setUserName] = useState(isDemoMode() ? "Gestor Demo" : "Gestor");
+  const [userRole, setUserRole] = useState("Gestor");
+  const [storePanel, setStorePanel] = useState(false);
+  const [pauseReason, setPauseReason] = useState("");
+  const [storeWorking, setStoreWorking] = useState(false);
+  const [storeMessage, setStoreMessage] = useState("");
+  const [storeStatus, setStoreStatus] = useState<StoreRuntimeStatus>({ operationalStatus: "closed", acceptingOrders: false, manualOverride: false, updatedAt: new Date().toISOString() });
   const [status, setStatus] = useState<OperationalStatusDetail>({
     status: "loading",
     message: "Carregando operação",
@@ -111,14 +124,38 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
     if (!isDemoMode()) {
       const client = createClient();
-      client?.auth.getUser().then(({ data }) => {
+      client?.auth.getUser().then(async ({ data }) => {
         const displayName = data.user?.user_metadata?.display_name;
         if (typeof displayName === "string" && displayName.trim()) setUserName(displayName);
+        if (data.user) {
+          const { data: profile } = await client.from("profiles").select("display_name,role").eq("id", data.user.id).maybeSingle();
+          if (profile?.display_name) setUserName(profile.display_name);
+          const roleLabels: Record<string,string> = { manager:"Gestor",counter:"Atendente",waiter:"Garçom",kitchen:"Cozinha",bar:"Bar",driver:"Motoboy",finance:"Financeiro",viewer:"Consulta" };
+          if (profile?.role) setUserRole(roleLabels[profile.role] || profile.role);
+        }
       });
+      fetch("/api/store-status", { cache: "no-store" }).then(async (response) => { const body = await response.json(); if (response.ok) setStoreStatus(body); }).catch(() => undefined);
     }
 
     return () => window.removeEventListener("lfb:operational-status", listener);
   }, []);
+
+  async function updateStore(next: "open" | "paused" | "closed") {
+    setStoreWorking(true);
+    setStoreMessage("");
+    try {
+      const payload = { operationalStatus: next, acceptingOrders: next === "open", pauseReason: next === "paused" ? (pauseReason.trim() || "Operação pausada temporariamente") : null, manualOverride: true };
+      if (!isDemoMode()) {
+        const response = await fetch("/api/store-status", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || "Falha ao alterar a loja.");
+      }
+      setStoreStatus({ ...payload, pauseReason: payload.pauseReason || undefined, updatedAt: new Date().toISOString() });
+      setStoreMessage(next === "open" ? "Loja aberta para pedidos." : next === "paused" ? "Pedidos temporariamente pausados." : "Loja fechada manualmente.");
+      window.dispatchEvent(new CustomEvent("lfb:store-status", { detail: payload }));
+    } catch (error) { setStoreMessage(error instanceof Error ? error.message : "Falha ao alterar a loja."); }
+    finally { setStoreWorking(false); }
+  }
 
   async function logout() {
     setLeaving(true);
@@ -162,7 +199,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <div className="min-w-0">
               <p className="truncate font-display text-lg font-bold">La Forneria Basso</p>
               <p className="text-[10px] uppercase tracking-[.18em] text-basso-goldLight">
-                PedidoPro 3.1
+                PedidoPro 3.2
               </p>
             </div>
           )}
@@ -262,7 +299,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <Menu size={20} />
           </button>
 
-          <div className="ml-auto flex items-center gap-3">
+          <Link href="/painel/pedidos" className="ml-2 hidden min-h-10 items-center gap-2 rounded-xl border border-black/5 bg-black/[.025] px-3 text-xs font-bold text-black/55 transition hover:bg-black/5 md:flex"><Search size={15}/>{activeOrders} pedido(s) ativo(s)</Link>
+
+          <div className="relative ml-auto flex items-center gap-3">
+            <button type="button" onClick={() => setStorePanel((value) => !value)} className={`hidden min-h-9 items-center gap-2 rounded-full px-3 text-xs font-black sm:flex ${storeStatus.operationalStatus === "open" ? "bg-emerald-50 text-emerald-700" : storeStatus.operationalStatus === "paused" ? "bg-amber-50 text-amber-800" : "bg-stone-100 text-stone-600"}`}>{storeStatus.operationalStatus === "open" ? <CirclePlay size={14}/> : storeStatus.operationalStatus === "paused" ? <CirclePause size={14}/> : <LockKeyhole size={14}/>}Loja {storeStatus.operationalStatus === "open" ? "aberta" : storeStatus.operationalStatus === "paused" ? "pausada" : "fechada"}</button>
+            {storePanel && <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-black/10 bg-white p-4 shadow-2xl"><div className="flex items-center justify-between"><div><p className="font-display text-lg font-bold">Controle da loja</p><p className="text-xs text-black/45">Altera o recebimento de pedidos próprios.</p></div><button className="btn-ghost" onClick={() => setStorePanel(false)}><X size={17}/></button></div><label className="mt-4 block"><span className="label">Motivo da pausa</span><input className="input" value={pauseReason} onChange={(event) => setPauseReason(event.target.value)} placeholder="Ex.: alta demanda"/></label><div className="mt-3 grid grid-cols-3 gap-2"><button className="btn-secondary min-h-9 px-2 text-xs" disabled={storeWorking} onClick={() => updateStore("open")}>Abrir</button><button className="btn-secondary min-h-9 px-2 text-xs" disabled={storeWorking} onClick={() => updateStore("paused")}>Pausar</button><button className="btn-secondary min-h-9 px-2 text-xs" disabled={storeWorking} onClick={() => updateStore("closed")}>Fechar</button></div>{storeMessage && <p className="mt-3 rounded-xl bg-basso-paper p-2 text-xs font-semibold">{storeMessage}</p>}</div>}
             <span
               className={cn(
                 "hidden max-w-72 items-center gap-2 truncate rounded-full px-3 py-1 text-xs font-bold sm:flex",
@@ -289,7 +330,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="hidden sm:block">
               <p className="text-xs font-bold">{userName}</p>
-              <p className="text-[10px] text-black/40">Acesso administrativo</p>
+              <p className="text-[10px] text-black/40">{userRole}</p>
             </div>
           </div>
         </header>

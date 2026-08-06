@@ -8,12 +8,13 @@ const channel=z.enum(["own_delivery","pickup","counter","dine_in","ifood","99foo
 const schema=z.object({
   entity:z.enum(["flavor","product","addon"]),id:z.string().min(1).max(120),active:z.boolean(),
   priceGrande:z.number().int().nonnegative().optional(),priceBroto:z.number().int().nonnegative().optional(),price:z.number().int().nonnegative().optional(),
-  channels:z.array(channel).min(1).optional(),schedule:z.record(z.any()).optional()
+  channels:z.array(channel).min(1).optional(),schedule:z.record(z.any()).optional(),
+  name:z.string().trim().min(2).max(180).optional(),description:z.string().max(1000).optional(),ingredients:z.array(z.string().min(1).max(120)).max(40).optional(),featured:z.boolean().optional(),allergens:z.array(z.string().min(1).max(120)).max(30).optional(),variant:z.string().max(160).nullable().optional(),imageUrl:z.string().max(500).nullable().optional(),maxQuantity:z.number().int().min(1).max(2).optional()
 });
 
 export async function GET(){
   try{
-    await requireOperationalRole(["manager","counter"]);
+    await requireOperationalRole(["manager","counter"], "menu.manage");
     const db=createAdminClient();
     if(!db)return NextResponse.json({error:"Supabase não configurado."},{status:503});
     const menu=await loadRuntimeMenu(db);
@@ -23,7 +24,7 @@ export async function GET(){
 
 export async function PATCH(request:NextRequest){
   try{
-    const auth=await requireOperationalRole(["manager","counter"]);
+    const auth=await requireOperationalRole(["manager","counter"], "menu.manage");
     const body=schema.parse(await request.json());
     const db=createAdminClient();
     if(!db)return NextResponse.json({error:"Supabase não configurado."},{status:503});
@@ -32,6 +33,12 @@ export async function PATCH(request:NextRequest){
       p_channels:body.channels??null,p_schedule:body.schedule??null,p_actor_id:auth.userId==="demo"?null:auth.userId
     });
     if(error)throw error;
+    const extra:Record<string,unknown>={updated_at:new Date().toISOString()};
+    if(body.name!==undefined)extra.name=body.name;if(body.description!==undefined)extra.description=body.description;if(body.allergens!==undefined)extra.allergens=body.allergens;
+    if(body.entity==="flavor"){if(body.ingredients!==undefined)extra.ingredients=body.ingredients;if(body.featured!==undefined)extra.featured=body.featured;}
+    if(body.entity==="product"){if(body.variant!==undefined)extra.variant=body.variant;if(body.imageUrl!==undefined)extra.image_url=body.imageUrl;}
+    if(body.entity==="addon"&&body.maxQuantity!==undefined)extra.max_quantity=body.maxQuantity;
+    if(Object.keys(extra).length>1){const table=body.entity==="flavor"?"pizza_flavors":body.entity==="product"?"products":"addons";const {error:extraError}=await db.from(table).update(extra).eq("id",body.id);if(extraError)throw extraError;await db.from("audit_logs").insert({actor_id:auth.userId==="demo"?null:auth.userId,actor_label:auth.displayName,action:"MENU_CONTENT_UPDATED",entity_type:body.entity,entity_id:body.id,after_data:extra});}
     return NextResponse.json({saved:true,...body});
   }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Falha ao atualizar cardápio."},{status:400})}
 }

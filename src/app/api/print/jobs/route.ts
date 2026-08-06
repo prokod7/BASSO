@@ -1,0 +1,4 @@
+import { NextResponse } from "next/server";
+import { requireOperationalRole } from "@/lib/authz";
+import { createAdminClient } from "@/lib/supabase/admin";
+export async function GET(){try{await requireOperationalRole(["manager","counter","kitchen","bar"], "kds.manage");const db=createAdminClient();if(!db)return NextResponse.json({error:"Supabase não configurado."},{status:503});const {data,error}=await db.from("print_jobs").select("id,order_id,tab_id,sector,printer_key,status,attempts,is_reprint,last_error,created_at,processed_at").order("created_at",{ascending:false}).limit(200);if(error)throw error;return NextResponse.json({jobs:data||[],bridgeConfigured:Boolean(process.env.PRINT_BRIDGE_KEY)},{headers:{"Cache-Control":"no-store"}})}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Falha ao carregar impressão."},{status:400})}}

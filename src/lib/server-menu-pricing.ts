@@ -14,6 +14,9 @@ interface RuntimeProduct {
   availableSchedule: unknown;
   stockAvailable: boolean;
   config?: Record<string, unknown>;
+  image?: string;
+  variant?: string;
+  allergens?: string[];
 }
 
 export interface RuntimeMenu {
@@ -51,9 +54,9 @@ export function scheduleAllows(schedule: unknown, date = new Date()): boolean {
 
 export async function loadRuntimeMenu(db: any): Promise<RuntimeMenu> {
   const [flavorsResult, addonsResult, productsResult, inventoryResult] = await Promise.all([
-    db.from("pizza_flavors").select("id,name,category,price_grande_cents,price_broto_cents,ingredients,description,featured,active,available_channels,available_schedule"),
+    db.from("pizza_flavors").select("id,name,category,price_grande_cents,price_broto_cents,ingredients,description,featured,active,available_channels,available_schedule,allergens"),
     db.from("addons").select("id,name,price_cents,max_quantity,active"),
-    db.from("products").select("id,name,category,description,price_cents,stock_tracked,active,available_channels,available_schedule,config"),
+    db.from("products").select("id,name,category,description,variant,price_cents,image_url,allergens,stock_tracked,active,available_channels,available_schedule,config"),
     db.from("inventory_items").select("product_id,quantity,allow_negative")
   ]);
   const failed = [flavorsResult, addonsResult, productsResult, inventoryResult].find(result => result.error);
@@ -71,13 +74,14 @@ export async function loadRuntimeMenu(db: any): Promise<RuntimeMenu> {
       featured: Boolean(row.featured),
       active: Boolean(row.active),
       availableChannels: row.available_channels || [],
-      availableSchedule: row.available_schedule || {}
+      availableSchedule: row.available_schedule || {},
+      allergens: row.allergens || []
     })) as Array<Flavor & { availableChannels: OrderChannel[]; availableSchedule: unknown }>,
     addons: (addonsResult.data || []).map((row: any) => ({ id: row.id, name: row.name, price: Number(row.price_cents), maxQuantity: Number(row.max_quantity || 2), active: Boolean(row.active) })),
     products: (productsResult.data || []).map((row: any) => {
       const stock = inventory.get(row.id) as any;
       const stockAvailable = !row.stock_tracked || !stock || Boolean(stock.allow_negative) || Number(stock.quantity) > 0;
-      return { id: row.id, name: row.name, description: row.description || "", category: row.category, price: Number(row.price_cents), active: Boolean(row.active), stockTracked: Boolean(row.stock_tracked), availableChannels: row.available_channels || [], availableSchedule: row.available_schedule || {}, stockAvailable, config: row.config || {} };
+      return { id: row.id, name: row.name, description: row.description || "", variant: row.variant || undefined, image: row.image_url || undefined, allergens: row.allergens || [], category: row.category, price: Number(row.price_cents), active: Boolean(row.active), stockTracked: Boolean(row.stock_tracked), availableChannels: row.available_channels || [], availableSchedule: row.available_schedule || {}, stockAvailable, config: row.config || {} };
     })
   };
 }

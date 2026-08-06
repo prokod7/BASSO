@@ -13,6 +13,14 @@ export function PublicHeader() {
   const [homeHref, setHomeHref] = useState("/");
   useEffect(() => {
     setStatus(storeStatus());
+    fetch("/api/store-status", { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) return;
+        const open = Boolean(body.acceptingOrders && body.operationalStatus === "open");
+        setStatus({ open, label: open ? "Aberto para pedidos" : body.operationalStatus === "paused" ? (body.pauseReason || "Pedidos pausados") : "Fechado" });
+      })
+      .catch(() => undefined);
     const table = Number(new URLSearchParams(window.location.search).get("mesa"));
     if (Number.isInteger(table) && table >= 1 && table <= 15) setHomeHref(`/?mesa=${table}`);
   }, []);
@@ -23,7 +31,7 @@ export function PublicHeader() {
           <Image src="/assets/brand/logo.png" alt="La Forneria Basso" width={44} height={44} className="h-11 w-11 rounded-full object-cover" priority/>
           <div className="min-w-0"><p className="truncate font-display text-lg font-bold leading-none">La Forneria Basso</p><div className="mt-1 flex items-center gap-1.5 text-[11px]"><span className={`h-2 w-2 rounded-full ${status.open ? "bg-emerald-500" : "bg-red-500"}`}/><span className="font-semibold text-black/55">{status.label}</span></div></div>
         </Link>
-        <div className="hidden items-center gap-1 md:flex"><Link className="btn-ghost" href="/meus-pedidos"><ShoppingBag size={18}/> Pedidos</Link><Link className="btn-ghost" href="/conta"><UserRound size={18}/> Minha conta</Link><button className="btn-ghost" aria-label="Notificações"><Bell size={18}/></button></div>
+        <div className="hidden items-center gap-1 md:flex"><Link className="btn-ghost" href="/meus-pedidos"><ShoppingBag size={18}/> Pedidos</Link><Link className="btn-ghost" href="/conta"><UserRound size={18}/> Minha conta</Link><button className="btn-ghost" aria-label="Ativar notificações" onClick={async()=>{if("Notification" in window&&Notification.permission==="default")await Notification.requestPermission()}} title="Ativar notificações do navegador"><Bell size={18}/></button></div>
         <button className="relative flex h-11 items-center gap-2 rounded-xl bg-basso-wine px-3 text-white" onClick={() => cart.setOpen(true)} aria-label="Abrir carrinho">
           <ShoppingBag size={18}/><span className="hidden text-sm font-bold sm:block">{currency(cart.subtotal)}</span>{cart.count > 0 && <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-basso-gold px-1 text-xs font-black text-basso-black">{cart.count}</span>}
         </button>

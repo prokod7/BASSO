@@ -10,7 +10,7 @@ function csvEscape(value: unknown) { return `"${String(value ?? "").replaceAll('
 
 export async function GET(request: NextRequest) {
   try {
-    await requireOperationalRole(["manager", "finance", "viewer"]);
+    await requireOperationalRole(["manager", "finance", "viewer"], "reports.view");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const now = new Date();

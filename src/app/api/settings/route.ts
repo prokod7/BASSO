@@ -21,7 +21,7 @@ const schema = z.object({
 
 export async function GET() {
   try {
-    await requireOperationalRole(["manager", "counter", "finance"]);
+    await requireOperationalRole(["manager", "counter", "finance"], "settings.manage");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const [settingsResult, zonesResult] = await Promise.all([
@@ -38,7 +38,7 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const auth = await requireOperationalRole(["manager"]);
+    const auth = await requireOperationalRole(["manager"], "settings.manage");
     const body = schema.parse(await request.json());
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });

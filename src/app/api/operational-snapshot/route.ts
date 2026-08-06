@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET() {
   try {
-    await requireOperationalRole(["manager","counter","waiter","kitchen","bar","driver","finance","viewer"]);
+    await requireOperationalRole(["manager","counter","waiter","kitchen","bar","driver","finance","viewer"], "orders.view");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const [ordersR, itemsR, tablesR, tabsR, driversR, inventoryR, productsR, couponsR, eventsR, auditR, cashR, financialR, campaignsR] = await Promise.all([
@@ -27,7 +27,7 @@ export async function GET() {
     const productMap = new Map((productsR.data || []).map((p: any) => [p.id,p]));
     const itemsByOrder = new Map<string, any[]>();
     for (const i of itemsR.data || []) { const arr = itemsByOrder.get(i.order_id) || []; arr.push({ id:i.id, kind:i.kind, name:i.name_snapshot, quantity:i.quantity, unitPrice:i.unit_price_cents, productId:i.product_id || undefined, selection:i.selection || undefined }); itemsByOrder.set(i.order_id,arr); }
-    const orders = (ordersR.data || []).map((o: any) => ({ id:o.id,number:Number(o.number),channel:o.channel,status:o.status,paymentStatus:o.payment_status,customerName:o.customer_name,customerPhone:o.customer_phone,customerId:o.customer_id||undefined,address:o.address||undefined,tableNumber:o.table_number||undefined,tabId:o.tab_id||undefined,items:itemsByOrder.get(o.id)||[],subtotal:o.subtotal_cents,discount:o.discount_cents,deliveryFee:o.delivery_fee_cents,total:o.total_cents,paymentMethod:o.payment_method,changeFor:o.change_for_cents||undefined,notes:o.notes||undefined,couponCode:o.coupon_code||undefined,createdAt:o.created_at,updatedAt:o.updated_at,driverId:o.driver_id||undefined,sourceIdempotencyKey:o.source_idempotency_key }));
+    const orders = (ordersR.data || []).map((o: any) => ({ id:o.id,number:Number(o.number),channel:o.channel,status:o.status,paymentStatus:o.payment_status,customerName:o.customer_name,customerPhone:o.customer_phone,customerId:o.customer_id||undefined,address:o.address||undefined,tableNumber:o.table_number||undefined,tabId:o.tab_id||undefined,items:itemsByOrder.get(o.id)||[],subtotal:o.subtotal_cents,discount:o.discount_cents,deliveryFee:o.delivery_fee_cents,total:o.total_cents,paymentMethod:o.payment_method,changeFor:o.change_for_cents||undefined,notes:o.notes||undefined,couponCode:o.coupon_code||undefined,createdAt:o.created_at,updatedAt:o.updated_at,driverId:o.driver_id||undefined,sourceIdempotencyKey:o.source_idempotency_key,priority:o.priority||"normal",estimatedReadyAt:o.estimated_ready_at||undefined,viewedAt:o.viewed_at||undefined,assignedTo:o.assigned_to||undefined,internalSummary:o.internal_summary||undefined,version:Number(o.version||1) }));
     const tabsByTable = new Map<number, any[]>();
     for (const t of tabsR.data || []) {
       const tabOrders=orders.filter((order:any)=>order.tabId===t.id&&order.status!=="cancelled");

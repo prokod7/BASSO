@@ -3,6 +3,8 @@ export type OrderChannel = "own_delivery" | "pickup" | "counter" | "dine_in" | "
 export type OrderStatus = "received" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "completed" | "cancelled";
 export type PaymentStatus = "pending" | "partial" | "paid" | "refunded" | "cancelled";
 export type PaymentMethod = "pix" | "cash" | "debit" | "credit" | "meal_voucher" | "food_voucher";
+export type OrderPriority = "normal" | "high" | "urgent";
+export type ProductionStatus = "queued" | "preparing" | "ready" | "cancelled";
 
 export interface Flavor {
   id: string;
@@ -76,6 +78,14 @@ export interface Order {
   driverId?: string;
   sourceIdempotencyKey: string;
   rewardAuthorizationToken?: string;
+  priority?: OrderPriority;
+  estimatedReadyAt?: string;
+  viewedAt?: string;
+  assignedTo?: string;
+  internalSummary?: string;
+  version?: number;
+  paidAmount?: number;
+  balanceDue?: number;
 }
 export interface DemoTable { number: number; capacity: number; status: "free" | "occupied" | "cleaning" | "partial"; people?: number; openedAt?: string; groupId?: string; tabs: DemoTab[]; }
 export interface DemoTab { id: string; name: string; items: CartItem[]; paidCents: number; totalCents: number; waiter: string; status: "open" | "partial" | "closed" | "cancelled"; }
@@ -88,3 +98,101 @@ export interface FinancialEntry { id: string; kind: "income" | "expense"; status
 export interface CampaignRecord { id: string; name: string; channel: "push" | "email"; segment: { type: "all" | "new" | "active" | "frequent" | "inactive" | "birthday" | "minimum_spend"; minimumSpend?: number }; template: { title: string; message: string; url?: string }; status: "draft" | "scheduled" | "running" | "completed" | "cancelled"; scheduledAt?: string; createdAt: string; metrics: { recipients: number; sent: number; opened: number; converted: number }; }
 export interface CrmCustomer { id: string; name: string; phone: string; email?: string; birthDate?: string; notes?: string; validOrders: number; totalSpent: number; averageTicket: number; lastOrderAt?: string; segment: "new" | "active" | "frequent" | "inactive"; consents: { email: boolean; push: boolean; whatsapp: boolean }; }
 export interface LoyaltyAccountView { customerId: string; name: string; phone: string; balance: number; lifetimePoints: number; rewardsRedeemed: number; updatedAt: string; pendingAuthorization?: { id: string; flavor_id: string; expires_at: string }; }
+
+
+export interface ManagedOrderItem extends CartItem {
+  sector: "kitchen" | "bar" | "counter";
+  productionStatus: ProductionStatus;
+  cancelledReason?: string;
+  updatedAt?: string;
+}
+
+export interface OrderTimelineEntry {
+  id: string;
+  fromStatus?: OrderStatus;
+  toStatus: OrderStatus;
+  reason?: string;
+  actor?: string;
+  source: string;
+  createdAt: string;
+}
+
+export interface OrderPaymentRecord {
+  id: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  amount: number;
+  provider?: string;
+  terminalId?: string;
+  authorizationCode?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+export interface OrderInternalNote {
+  id: string;
+  body: string;
+  pinned: boolean;
+  actor: string;
+  createdAt: string;
+}
+
+export interface OrderIncident {
+  id: string;
+  category: "customer" | "address" | "payment" | "production" | "delivery" | "quality" | "other";
+  severity: "low" | "medium" | "high" | "critical";
+  title: string;
+  description: string;
+  status: "open" | "resolved" | "cancelled";
+  resolution?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface OrderCommunicationLog {
+  id: string;
+  channel: "manual_whatsapp" | "phone" | "push" | "email" | "internal";
+  templateKey?: string;
+  recipient?: string;
+  message: string;
+  status: "opened" | "sent" | "failed" | "cancelled";
+  actor: string;
+  createdAt: string;
+}
+
+export interface OrderPrintJob {
+  id: string;
+  sector: string;
+  printerKey: string;
+  status: "queued" | "processing" | "done" | "failed" | "cancelled";
+  attempts: number;
+  isReprint: boolean;
+  lastError?: string;
+  createdAt: string;
+}
+
+export interface OrderDetail extends Omit<Order, "items"> {
+  items: ManagedOrderItem[];
+  timeline: OrderTimelineEntry[];
+  payments: OrderPaymentRecord[];
+  internalNotes: OrderInternalNote[];
+  incidents: OrderIncident[];
+  communications: OrderCommunicationLog[];
+  printJobs: OrderPrintJob[];
+}
+
+export interface CommunicationTemplate {
+  key: string;
+  name: string;
+  body: string;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface StoreRuntimeStatus {
+  operationalStatus: "open" | "paused" | "closed";
+  acceptingOrders: boolean;
+  pauseReason?: string;
+  manualOverride: boolean;
+  updatedAt: string;
+}

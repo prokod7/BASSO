@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-03T21:53:32.343Z",
-  "passed": 51,
+  "generatedAt": "2026-08-06T04:50:58.662Z",
+  "passed": 61,
   "failed": 0,
-  "sha256": "2cde432281fe611ac4374436a0cadb75a8320938fc597165fa9a0b6cefcf6192",
+  "sha256": "da4af78454bea906962dff8577a326af320c2179dff9b0279157a2294bba74e0",
   "results": [
     {
       "name": "42 pizzas tradicionais",
@@ -125,9 +125,9 @@
       "detail": ""
     },
     {
-      "name": "Migrações SQL 001–011 presentes",
+      "name": "Migrações SQL 001–013 presentes",
       "ok": true,
-      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql"
+      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql"
     },
     {
       "name": "RLS habilitado",
@@ -235,6 +235,56 @@
       "detail": ""
     },
     {
+      "name": "Mega Update administrativo presente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Central da comanda com seis áreas",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Pedido administrável com notas e ocorrências",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Comunicação manual auditável",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Pagamento manual transacional",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Status controlado exige pagamento e motivo",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Estado operacional da loja administrável",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Permissões específicas no backend",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Cardápio editável sem acessar banco",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Delivery operável sem mapa",
+      "ok": true,
+      "detail": ""
+    },
+    {
       "name": "PWA com ícones 192 e 512",
       "ok": true,
       "detail": ""
@@ -250,7 +300,7 @@
       "detail": ""
     },
     {
-      "name": "Cron de filas presente",
+      "name": "Cron de filas preservado",
       "ok": true,
       "detail": ""
     },

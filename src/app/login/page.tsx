@@ -145,7 +145,7 @@ export default function LoginPage() {
           </p>
         )}
 
-        <button className="btn-primary mt-5 w-full" disabled={submitting}>
+        <button type="submit" className="btn-primary mt-5 w-full" disabled={submitting}>
           {submitting ? <Loader2 size={18} className="animate-spin" /> : <LogIn size={18} />}
           {submitting ? "Validando acesso..." : "Entrar"}
         </button>

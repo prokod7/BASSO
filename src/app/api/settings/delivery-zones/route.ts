@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const schema = z.object({ name: z.string().min(2).max(100), districts: z.array(z.string().min(2).max(100)).min(1), fee: z.number().int().nonnegative(), minimumOrder: z.number().int().nonnegative(), maxDistanceKm: z.number().positive().nullable().optional(), active: z.boolean().default(true) });
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireOperationalRole(["manager"]);
+    const auth = await requireOperationalRole(["manager"], "settings.manage");
     const body = schema.parse(await request.json());
     const db = createAdminClient(); if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const payload = { name: body.name, districts: body.districts.map(value => value.trim()), fee_cents: body.fee, minimum_order_cents: body.minimumOrder, max_distance_km: body.maxDistanceKm || null, active: body.active };

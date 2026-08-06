@@ -19,6 +19,12 @@ export async function POST(request: NextRequest) {
     if (!db) return NextResponse.json({ error: "Supabase não configurado no servidor." }, { status: 503 });
     const { data: existing } = await db.from("idempotency_keys").select("response_body,status_code").eq("key", key).maybeSingle();
     if (existing) return NextResponse.json(existing.response_body, { status: existing.status_code || 200 });
+    const { data: runtime, error: runtimeError } = await db.from("store_runtime_status").select("operational_status,accepting_orders,pause_reason").eq("id", true).maybeSingle();
+    if (runtimeError) throw runtimeError;
+    if (runtime && !runtime.accepting_orders) {
+      const detail = runtime.operational_status === "paused" ? (runtime.pause_reason || "Pedidos temporariamente pausados.") : "A loja está fechada no momento.";
+      return NextResponse.json({ error: detail, operationalStatus: runtime.operational_status }, { status: 409 });
+    }
     const quote = await quoteCommercialTerms({ items: supplied.items, channel: supplied.channel, couponCode: supplied.couponCode, district: supplied.address?.district });
     const order = parseIncomingOrder({ ...supplied, items: quote.items, subtotal: quote.subtotal, discount: quote.discount, deliveryFee: quote.deliveryFee, total: quote.total, couponCode: quote.couponCode });
     const { error } = await db.rpc("create_order_transaction", { p_order: order });
@@ -39,7 +45,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "finance", "viewer"]);
+    await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "finance", "viewer"], "orders.view");
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Não autorizado." }, { status: 401 });
   }

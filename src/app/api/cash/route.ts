@@ -11,7 +11,7 @@ const actionSchema = z.discriminatedUnion("action", [
 
 export async function GET() {
   try {
-    await requireOperationalRole(["manager", "counter", "finance"]);
+    await requireOperationalRole(["manager", "counter", "finance"], "cash.manage");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const { data: session, error } = await db.from("cash_sessions").select("*").eq("status", "open").order("opened_at", { ascending: false }).limit(1).maybeSingle();
@@ -28,7 +28,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireOperationalRole(["manager", "counter", "finance"]);
+    const auth = await requireOperationalRole(["manager", "counter", "finance"], "cash.manage");
     const body = actionSchema.parse(await request.json());
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });

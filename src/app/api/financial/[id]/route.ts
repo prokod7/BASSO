@@ -11,7 +11,7 @@ const schema = z.discriminatedUnion("action", [
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireOperationalRole(["manager", "finance"]);
+    const auth = await requireOperationalRole(["manager", "finance"], "finance.view");
     const { id } = await params;
     const body = schema.parse(await request.json());
     const db = createAdminClient();

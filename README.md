@@ -83,3 +83,15 @@ public/assets/           somente imagens oficiais aprovadas
 ## Ativação externa
 
 Credenciais, tokens, webhooks, URLs definitivas, modelos de terminal, bairros, taxas e nomes reais dos usuários não constavam como valores finais na documentação. Toda a estrutura existe para recebê-los, mas iFood, 99Food, Rede, OneSignal, e-mail e impressoras só ficam operacionais após configuração e homologação do respectivo fornecedor. Consulte [`docs/INTEGRATION_ACTIVATION.md`](docs/INTEGRATION_ACTIVATION.md).
+
+## Mega Update 02 — Centro de Controle
+
+O pacote inclui a central administrativa de pedidos, pagamentos, comunicação manual, ocorrências, impressão, delivery sem dependência do mapa, cardápio administrável, controle da loja e matriz de permissões.
+
+Depois das migrações `001` a `012`, execute:
+
+```text
+supabase/migrations/013_admin_control_center.sql
+```
+
+Leia [MEGA_UPDATE_02.md](./MEGA_UPDATE_02.md) antes do deploy.

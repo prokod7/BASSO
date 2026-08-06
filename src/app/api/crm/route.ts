@@ -9,7 +9,7 @@ function csvEscape(value: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireOperationalRole(["manager", "counter"]);
+    await requireOperationalRole(["manager", "counter"], "customers.manage");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const query = (request.nextUrl.searchParams.get("q") || "").trim();

@@ -1,6 +1,6 @@
 {
   "name": "la-forneria-basso-pedidopro",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "private": true,
   "engines": {
     "node": ">=22.0.0"
@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "verify": "npm run verify:static && npm run typecheck && npm run test && npm run build",
     "seed:users": "tsx scripts/create-supabase-users.ts",
-    "verify:static": "node scripts/verify-project.mjs"
+    "verify:static": "node scripts/verify-project.mjs",
+    "audit:buttons": "node scripts/audit-buttons.mjs src"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

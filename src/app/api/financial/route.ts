@@ -17,7 +17,7 @@ const createSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    await requireOperationalRole(["manager", "finance"]);
+    await requireOperationalRole(["manager", "finance"], "finance.view");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const start = request.nextUrl.searchParams.get("start");
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireOperationalRole(["manager", "finance"]);
+    const auth = await requireOperationalRole(["manager", "finance"], "finance.view");
     const body = createSchema.parse(await request.json());
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });

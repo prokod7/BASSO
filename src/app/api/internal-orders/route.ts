@@ -10,7 +10,7 @@ const metadataSchema = z.object({ discountReason: z.string().max(500).optional()
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireOperationalRole(["manager", "counter", "waiter"]);
+    const auth = await requireOperationalRole(["manager", "counter", "waiter"], "orders.edit");
     const key = request.headers.get("idempotency-key");
     if (!key) throw new Error("Cabeçalho Idempotency-Key obrigatório.");
     const raw = await request.json();

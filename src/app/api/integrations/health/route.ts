@@ -53,7 +53,7 @@ async function liveHealth(key: ProviderKey): Promise<{ ok: boolean; detail: stri
 
 export async function GET(request: NextRequest) {
   try {
-    await requireOperationalRole(["manager"]);
+    await requireOperationalRole(["manager"], "settings.manage");
     const providers = configuredProviders();
     const shouldCheckLive = request.nextUrl.searchParams.get("live") === "true";
     const selected = request.nextUrl.searchParams.get("provider") as ProviderKey | null;
