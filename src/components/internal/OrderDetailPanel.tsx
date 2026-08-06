@@ -41,6 +41,7 @@ import type {
   Order,
   OrderDetail,
   OrderIncident,
+  OrderInternalNote,
   OrderCommunicationLog,
   OrderPaymentRecord,
   OrderStatus,
@@ -434,7 +435,23 @@ function IncidentsTab({ order, working, mutate, setOrder }: { order: OrderDetail
   const [incident, setIncident] = useState({ category: "other", severity: "medium", title: "", description: "" });
   async function addNote() {
     if (note.trim().length < 1) throw new Error("Escreva uma nota.");
-    if (isDemoMode()) { setOrder((current) => current ? { ...current, internalNotes: [{ id: uid("note"), body: note.trim(), pinned, createdBy: "Gestor", createdAt: new Date().toISOString() }, ...current.internalNotes] } : current); setNote(""); return; }
+    if (isDemoMode()) {
+      const internalNote: OrderInternalNote = {
+        id: uid("note"),
+        body: note.trim(),
+        pinned,
+        actor: "Gestor",
+        createdAt: new Date().toISOString(),
+      };
+
+      setOrder((current) =>
+        current
+          ? { ...current, internalNotes: [internalNote, ...current.internalNotes] }
+          : current,
+      );
+      setNote("");
+      return;
+    }
     const response = await fetch(`/api/orders/${order.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add_note", body: note.trim(), pinned }) });
     const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao adicionar nota."); setNote("");
   }
@@ -447,7 +464,26 @@ function IncidentsTab({ order, working, mutate, setOrder }: { order: OrderDetail
   async function resolve(entry: OrderIncident) {
     const resolution = window.prompt("Descreva como a ocorrência foi resolvida:");
     if (!resolution || resolution.trim().length < 2) return;
-    if (isDemoMode()) { setOrder((current) => current ? { ...current, incidents: current.incidents.map((item) => item.id === entry.id ? { ...item, status: "resolved", resolution, resolvedAt: new Date().toISOString() } : item) } : current); return; }
+    if (isDemoMode()) {
+      setOrder((current) =>
+        current
+          ? {
+              ...current,
+              incidents: current.incidents.map<OrderIncident>((item) =>
+                item.id === entry.id
+                  ? {
+                      ...item,
+                      status: "resolved",
+                      resolution,
+                      resolvedAt: new Date().toISOString(),
+                    }
+                  : item,
+              ),
+            }
+          : current,
+      );
+      return;
+    }
     const response = await fetch(`/api/orders/${order.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "resolve_incident", incidentId: entry.id, resolution }) });
     const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao resolver ocorrência.");
   }
