@@ -258,7 +258,7 @@ function SummaryTab({ order, drivers, working, mutate, setOrder }: { order: Orde
     if (isDemoMode()) {
       const updated: Order = { ...order, customerName: form.customerName, customerPhone: form.customerPhone, notes: form.notes, internalSummary: form.internalSummary, priority: form.priority as Order["priority"], estimatedReadyAt: patch.estimatedReadyAt || undefined, discount: patch.discount, deliveryFee: patch.deliveryFee, total: Math.max(0, order.subtotal - patch.discount + patch.deliveryFee), updatedAt: new Date().toISOString() };
       demoActions.patchOrder(order.id, updated, "Gestor");
-      setOrder((current) => current ? { ...current, ...updated } : current);
+      setOrder((current) => current ? { ...current, ...updated, items: current.items } : current);
       setEditing(false);
       return;
     }
