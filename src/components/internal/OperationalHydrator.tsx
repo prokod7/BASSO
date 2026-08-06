@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { demoActions } from "@/lib/demo-store";
+import { demoActions, type DemoState } from "@/lib/demo-store";
 import { createClient } from "@/lib/supabase/client";
 import { isDemoMode } from "@/lib/utils";
 import { flushOfflineOperations } from "@/lib/offline-queue";
@@ -33,7 +33,7 @@ export function OperationalHydrator() {
       try {
         const response = await fetch("/api/operational-snapshot", { cache: "no-store" });
         const body = (await response.json().catch(() => null)) as
-          | ({ error?: string } & Record<string, unknown>)
+          | (Partial<DemoState> & { error?: string })
           | null;
 
         if (!response.ok) {
