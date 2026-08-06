@@ -41,6 +41,7 @@ import type {
   Order,
   OrderDetail,
   OrderIncident,
+  OrderCommunicationLog,
   OrderPaymentRecord,
   OrderStatus,
   PaymentMethod,
@@ -402,7 +403,22 @@ function CommunicationTab({ order, templates, working, mutate, setOrder }: { ord
       const response = await fetch(`/api/orders/${order.id}/communications`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ templateKey, message: generated, recipient: phone, status: "opened" }) });
       const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao registrar comunicação.");
     } else {
-      setOrder((current) => current ? { ...current, communications: [{ id: uid("communication"), channel: "manual_whatsapp", templateKey, recipient: phone, message: generated, status: "opened", createdBy: "Gestor", createdAt: new Date().toISOString() }, ...current.communications] } : current);
+      const communication: OrderCommunicationLog = {
+        id: uid("communication"),
+        channel: "manual_whatsapp",
+        templateKey,
+        recipient: phone,
+        message: generated,
+        status: "opened",
+        actor: "Gestor",
+        createdAt: new Date().toISOString(),
+      };
+
+      setOrder((current) =>
+        current
+          ? { ...current, communications: [communication, ...current.communications] }
+          : current,
+      );
     }
     window.open(`https://wa.me/${phone.startsWith("55") ? phone : `55${phone}`}?text=${encodeURIComponent(generated)}`, "_blank", "noopener,noreferrer");
   }
