@@ -6,7 +6,7 @@ import {
   isIfoodKeepalive,
   verifyIfoodWebhookSignature,
 } from "@/lib/integrations/ifood";
-import { integrationErrorMessage } from "@/lib/workers/marketplace";
+import { integrationErrorMessage, reconcileMarketplaceTotals } from "@/lib/workers/marketplace";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -16,6 +16,15 @@ describe("integração oficial do iFood", () => {
   it("preserva detalhes de erros retornados pelo Supabase", () => {
     expect(integrationErrorMessage({ message: "Falha no banco", details: "Detalhe SQL", code: "P0001" }))
       .toContain("Falha no banco • Detalhe SQL • P0001");
+  });
+
+  it("reconcilia taxas adicionais sem violar a matemática do pedido", () => {
+    expect(reconcileMarketplaceTotals(2100, 500, 0, 2700)).toEqual({
+      subtotal: 2100,
+      deliveryFee: 600,
+      discount: 0,
+      total: 2700,
+    });
   });
   it("valida X-IFood-Signature com HMAC SHA-256 sobre o corpo bruto", () => {
     const raw = JSON.stringify({ id: "event-1", code: "KEEPALIVE" });
@@ -45,18 +54,21 @@ describe("integração oficial do iFood", () => {
         productId: "pizza-1",
         name: "Pizza Grande",
         quantity: 1,
-        unitPrice: 7000,
-        options: [{ id: "extra-1", name: "Bacon", quantity: 1, unitPrice: 500 }],
+        unitPrice: 70,
+        options: [{ id: "extra-1", name: "Bacon", quantity: 1, unitPrice: 5 }],
         observations: "Sem cebola",
       }],
-      total: { subTotal: 7500, deliveryFee: 500, benefits: 1000, orderAmount: 7000 },
+      total: { subTotal: 75, deliveryFee: 5, additionalFees: 1, benefits: 10, orderAmount: 71 },
       payments: { prepaid: true, methods: [{ method: "PIX", type: "ONLINE" }] },
     });
     expect(order.externalId).toBe("order-1");
     expect(order.displayId).toBe("1234");
     expect(order.items[0].options[0].priceCents).toBe(500);
     expect(order.paymentMethod).toBe("pix");
-    expect(order.totalCents).toBe(7000);
+    expect(order.subtotalCents).toBe(7500);
+    expect(order.deliveryFeeCents).toBe(600);
+    expect(order.discountCents).toBe(1000);
+    expect(order.totalCents).toBe(7100);
     expect(order.paid).toBe(true);
     expect(order.deliveredBy).toBe("MERCHANT");
     expect(order.deliveryAddress).toMatchObject({ street: "Rua A", number: "10" });

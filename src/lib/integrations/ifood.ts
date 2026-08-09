@@ -57,10 +57,12 @@ export function ifoodOrderId(event: IfoodWebhookEvent): string | null {
 
 function money(value: unknown): number {
   if (Array.isArray(value)) return value.reduce((sum, item) => sum + money(item), 0);
-  if (typeof value === "number") return Number.isFinite(value) ? Math.round(value) : 0;
+  // A API de pedidos do iFood envia valores em reais (ex.: 27 = R$ 27,00).
+  // O PedidoPro armazena todos os valores como centavos inteiros.
+  if (typeof value === "number") return Number.isFinite(value) ? Math.round(value * 100) : 0;
   if (typeof value === "string") {
     const parsed = Number(value.replace(",", "."));
-    return Number.isFinite(parsed) ? Math.round(parsed) : 0;
+    return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
   }
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
@@ -211,7 +213,9 @@ export class IfoodAdapter implements MarketplaceAdapter {
       notes: order.additionalInfo || order.observations || undefined,
       items,
       subtotalCents: money(order.total?.subTotal ?? order.subtotal),
-      deliveryFeeCents: money(order.total?.deliveryFee ?? order.deliveryFee),
+      deliveryFeeCents:
+        money(order.total?.deliveryFee ?? order.deliveryFee) +
+        money(order.total?.additionalFees ?? order.additionalFees),
       discountCents: money(order.total?.benefits ?? order.benefits ?? order.discount),
       totalCents: money(order.total?.orderAmount ?? order.totalAmount),
       paymentMethod: mapPayment(method.method || method.name),

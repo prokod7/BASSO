@@ -50,6 +50,27 @@ function cents(value: number): number {
   return Math.max(0, Math.round(value));
 }
 
+export function reconcileMarketplaceTotals(
+  subtotalInput: number,
+  deliveryFeeInput: number,
+  discountInput: number,
+  totalInput: number,
+): { subtotal: number; deliveryFee: number; discount: number; total: number } {
+  const subtotal = cents(subtotalInput);
+  let deliveryFee = cents(deliveryFeeInput);
+  let discount = Math.min(subtotal + deliveryFee, cents(discountInput));
+  const calculated = Math.max(0, subtotal - discount + deliveryFee);
+  const total = cents(totalInput) || calculated;
+  const difference = total - calculated;
+
+  // O iFood pode incluir taxas adicionais. O schema local possui um campo único
+  // de taxas, então diferenças positivas são agregadas à taxa de entrega.
+  if (difference > 0) deliveryFee += difference;
+  if (difference < 0) discount += Math.abs(difference);
+
+  return { subtotal, deliveryFee, discount, total };
+}
+
 function stableId(provider: string, externalId: string): string {
   return `${provider}_${createHash("sha256").update(externalId).digest("hex").slice(0, 24)}`;
 }
@@ -133,12 +154,12 @@ export async function persistMarketplaceOrder(order: ExternalOrder): Promise<{ i
     };
   });
 
-  const subtotal = cents(order.subtotalCents || items.reduce((sum, item) => sum + item.unit_price_cents * item.quantity, 0));
-  const deliveryFee = cents(order.deliveryFeeCents);
-  const discount = Math.min(subtotal + deliveryFee, cents(order.discountCents));
-  const calculatedTotal = Math.max(0, subtotal - discount + deliveryFee);
-  const total = cents(order.totalCents) || calculatedTotal;
-  const normalizedDiscount = Math.max(0, subtotal + deliveryFee - total);
+  const totals = reconcileMarketplaceTotals(
+    order.subtotalCents || items.reduce((sum, item) => sum + item.unit_price_cents * item.quantity, 0),
+    order.deliveryFeeCents,
+    order.discountCents,
+    order.totalCents,
+  );
 
   const orderRow = {
     id,
@@ -149,10 +170,10 @@ export async function persistMarketplaceOrder(order: ExternalOrder): Promise<{ i
     customer_name: order.customerDisplayName,
     customer_phone: order.customerPhone || "",
     address: order.deliveryAddress || null,
-    subtotal_cents: subtotal,
-    discount_cents: normalizedDiscount,
-    delivery_fee_cents: deliveryFee,
-    total_cents: total,
+    subtotal_cents: totals.subtotal,
+    discount_cents: totals.discount,
+    delivery_fee_cents: totals.deliveryFee,
+    total_cents: totals.total,
     payment_method: order.paymentMethod,
     notes: order.notes || null,
     source_idempotency_key: sourceKey,
