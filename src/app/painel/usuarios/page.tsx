@@ -27,6 +27,10 @@ type UserRow = {
   permissions?: Record<string, boolean>;
   email: string;
   lastSignInAt?: string;
+  last_seen_at?: string;
+  must_change_password?: boolean;
+  password_changed_at?: string;
+  last_device_label?: string;
 };
 
 type PermissionKey =
@@ -288,7 +292,8 @@ export default function UsersPage() {
             </div>
             <p className="mt-1 truncate text-xs text-black/45">{user.email}</p>
             <p className="mt-1 text-xs text-black/45">{roleScope[user.role]} • até {user.device_limit} dispositivo(s)</p>
-            <p className="mt-1 text-xs text-black/35">Último acesso: {user.lastSignInAt ? shortDateTime(user.lastSignInAt) : "ainda não registrado"}</p>
+            <p className="mt-1 text-xs text-black/35">Último acesso: {user.last_seen_at ? shortDateTime(user.last_seen_at) : user.lastSignInAt ? shortDateTime(user.lastSignInAt) : "ainda não registrado"}</p>
+            <p className="mt-1 text-xs text-black/35">Senha: {user.must_change_password ? "troca obrigatória pendente" : user.password_changed_at ? `alterada ${shortDateTime(user.password_changed_at)}` : "sem troca registrada"}</p>
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">

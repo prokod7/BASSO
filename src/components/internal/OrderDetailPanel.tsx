@@ -41,12 +41,11 @@ import type {
   Order,
   OrderDetail,
   OrderIncident,
-  OrderInternalNote,
-  OrderCommunicationLog,
   OrderPaymentRecord,
   OrderStatus,
   PaymentMethod,
   Driver,
+  OrderEditLock,
 } from "@/types";
 
 const tabs = ["resumo", "itens", "pagamento", "comunicacao", "ocorrencias", "historico"] as const;
@@ -112,6 +111,8 @@ export function OrderDetailPanel({ orderId, onClose }: { orderId: string | null;
   const [working, setWorking] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [templates, setTemplates] = useState<CommunicationTemplate[]>(fallbackTemplates);
+  const [editLock, setEditLock] = useState<OrderEditLock | null>(null);
+  const [lockNotice, setLockNotice] = useState("");
 
   const load = useCallback(async () => {
     if (!orderId) return;
@@ -149,6 +150,29 @@ export function OrderDetailPanel({ orderId, onClose }: { orderId: string | null;
   }, [load, orderId]);
 
   useEffect(() => {
+    if (!orderId || isDemoMode()) { setEditLock(orderId ? { acquired: true, holderId: "demo", holderLabel: "Gestor Demo" } : null); return; }
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const acquire = async () => {
+      try {
+        const response = await fetch(`/api/orders/${orderId}/lock`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ttlSeconds: 180 }) });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || "Falha ao reservar edição.");
+        if (!cancelled) { setEditLock(body); setLockNotice(body.acquired ? "" : `${body.holderLabel || "Outro usuário"} está editando esta comanda.`); }
+      } catch (cause) {
+        if (!cancelled) { setEditLock(null); setLockNotice(cause instanceof Error ? `Controle de concorrência indisponível: ${cause.message}` : "Controle de concorrência indisponível."); }
+      }
+    };
+    void acquire();
+    timer = setInterval(() => void acquire(), 90_000);
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+      fetch(`/api/orders/${orderId}/lock`, { method: "DELETE", keepalive: true }).catch(() => undefined);
+    };
+  }, [orderId]);
+
+  useEffect(() => {
     if (!orderId) return;
     const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
     document.addEventListener("keydown", close);
@@ -157,6 +181,10 @@ export function OrderDetailPanel({ orderId, onClose }: { orderId: string | null;
   }, [onClose, orderId]);
 
   async function mutate(key: string, task: () => Promise<void>, success: string) {
+    if (editLock && !editLock.acquired) {
+      setFeedback({ type: "error", message: `${editLock.holderLabel || "Outro usuário"} está editando este pedido. Atualize depois que a edição for liberada.` });
+      return;
+    }
     setWorking(key);
     setFeedback(null);
     try {
@@ -190,6 +218,7 @@ export function OrderDetailPanel({ orderId, onClose }: { orderId: string | null;
         </div>
 
         {feedback && <div className={`mx-4 mt-3 rounded-xl border px-4 py-3 text-sm font-semibold sm:mx-6 ${feedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}>{feedback.message}</div>}
+        {lockNotice && <div className={`mx-4 mt-3 rounded-xl border px-4 py-3 text-sm font-semibold sm:mx-6 ${editLock && !editLock.acquired ? "border-amber-200 bg-amber-50 text-amber-800" : "border-blue-200 bg-blue-50 text-blue-800"}`}>{lockNotice}</div>}
 
         <div className="scrollbar-none flex gap-1 overflow-x-auto border-b border-black/5 bg-white px-4 pt-2 sm:px-6">
           {tabs.map((item) => <button key={item} className={`whitespace-nowrap rounded-t-xl px-4 py-3 text-sm font-bold transition ${tab === item ? "bg-basso-wine text-white" : "text-black/50 hover:bg-black/5 hover:text-black"}`} onClick={() => setTab(item)}>{tabLabels[item]}{item === "ocorrencias" && order?.incidents.some((incident) => incident.status === "open") && <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">{order.incidents.filter((incident) => incident.status === "open").length}</span>}</button>)}
@@ -239,7 +268,7 @@ function SummaryTab({ order, drivers, working, mutate, setOrder }: { order: Orde
       setOrder((current) => current ? { ...current, status, updatedAt: new Date().toISOString(), timeline: [{ id: uid("timeline"), fromStatus: current.status, toStatus: status, reason: statusReason || undefined, actor: "Gestor", source: "operation", createdAt: new Date().toISOString() }, ...current.timeline] } : current);
       return;
     }
-    const response = await fetch(`/api/orders/${order.id}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, reason: statusReason || undefined }) });
+    const response = await fetch(`/api/orders/${order.id}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, reason: statusReason || undefined, expectedVersion: order.version || undefined }) });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error || "Falha ao alterar status.");
   }
@@ -404,22 +433,7 @@ function CommunicationTab({ order, templates, working, mutate, setOrder }: { ord
       const response = await fetch(`/api/orders/${order.id}/communications`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ templateKey, message: generated, recipient: phone, status: "opened" }) });
       const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao registrar comunicação.");
     } else {
-      const communication: OrderCommunicationLog = {
-        id: uid("communication"),
-        channel: "manual_whatsapp",
-        templateKey,
-        recipient: phone,
-        message: generated,
-        status: "opened",
-        actor: "Gestor",
-        createdAt: new Date().toISOString(),
-      };
-
-      setOrder((current) =>
-        current
-          ? { ...current, communications: [communication, ...current.communications] }
-          : current,
-      );
+      setOrder((current) => current ? { ...current, communications: [{ id: uid("communication"), channel: "manual_whatsapp", templateKey, recipient: phone, message: generated, status: "opened", createdBy: "Gestor", createdAt: new Date().toISOString() }, ...current.communications] } : current);
     }
     window.open(`https://wa.me/${phone.startsWith("55") ? phone : `55${phone}`}?text=${encodeURIComponent(generated)}`, "_blank", "noopener,noreferrer");
   }
@@ -435,23 +449,7 @@ function IncidentsTab({ order, working, mutate, setOrder }: { order: OrderDetail
   const [incident, setIncident] = useState({ category: "other", severity: "medium", title: "", description: "" });
   async function addNote() {
     if (note.trim().length < 1) throw new Error("Escreva uma nota.");
-    if (isDemoMode()) {
-      const internalNote: OrderInternalNote = {
-        id: uid("note"),
-        body: note.trim(),
-        pinned,
-        actor: "Gestor",
-        createdAt: new Date().toISOString(),
-      };
-
-      setOrder((current) =>
-        current
-          ? { ...current, internalNotes: [internalNote, ...current.internalNotes] }
-          : current,
-      );
-      setNote("");
-      return;
-    }
+    if (isDemoMode()) { setOrder((current) => current ? { ...current, internalNotes: [{ id: uid("note"), body: note.trim(), pinned, createdBy: "Gestor", createdAt: new Date().toISOString() }, ...current.internalNotes] } : current); setNote(""); return; }
     const response = await fetch(`/api/orders/${order.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add_note", body: note.trim(), pinned }) });
     const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao adicionar nota."); setNote("");
   }
@@ -464,26 +462,7 @@ function IncidentsTab({ order, working, mutate, setOrder }: { order: OrderDetail
   async function resolve(entry: OrderIncident) {
     const resolution = window.prompt("Descreva como a ocorrência foi resolvida:");
     if (!resolution || resolution.trim().length < 2) return;
-    if (isDemoMode()) {
-      setOrder((current) =>
-        current
-          ? {
-              ...current,
-              incidents: current.incidents.map<OrderIncident>((item) =>
-                item.id === entry.id
-                  ? {
-                      ...item,
-                      status: "resolved",
-                      resolution,
-                      resolvedAt: new Date().toISOString(),
-                    }
-                  : item,
-              ),
-            }
-          : current,
-      );
-      return;
-    }
+    if (isDemoMode()) { setOrder((current) => current ? { ...current, incidents: current.incidents.map((item) => item.id === entry.id ? { ...item, status: "resolved", resolution, resolvedAt: new Date().toISOString() } : item) } : current); return; }
     const response = await fetch(`/api/orders/${order.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "resolve_incident", incidentId: entry.id, resolution }) });
     const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao resolver ocorrência.");
   }

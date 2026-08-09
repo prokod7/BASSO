@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { KeyRound, Loader2, LockKeyhole, LogIn } from "lucide-react";
+import { Eye, EyeOff, Loader2, LockKeyhole, LogIn } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function signIn() {
     const client = createClient();
@@ -27,7 +28,7 @@ export default function LoginPage() {
     const response = await fetch("/api/auth/bootstrap", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
     });
     const body = (await response.json().catch(() => ({}))) as {
       error?: string;
@@ -35,9 +36,6 @@ export default function LoginPage() {
       code?: string;
     };
     if (!response.ok) {
-      if (response.status === 409 && body.code === "ALREADY_CONFIGURED") {
-        throw new Error("E-mail ou senha inválidos.");
-      }
       throw new Error(body.error || "Não foi possível preparar o primeiro acesso.");
     }
     setMessage(body.message || "Acesso inicial criado. Entrando no painel...");
@@ -113,26 +111,20 @@ export default function LoginPage() {
 
         <label className="mt-4 block">
           <span className="label">Senha</span>
-          <input
-            className="input"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-            placeholder="Digite a senha cadastrada"
-          />
-        </label>
-
-        {!isDemoMode() && (
-          <div className="mt-4 rounded-2xl border border-basso-gold/25 bg-basso-gold/10 p-4">
-            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-basso-wine">
-              <KeyRound size={15} /> Primeiro acesso
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-black/55">
-              Caso os usuários ainda não existam, o sistema prepara automaticamente as sete contas usando a senha definida em <strong>INITIAL_USER_PASSWORD</strong> na Vercel.
-            </p>
+          <div className="relative">
+            <input
+              className="input pr-11"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              placeholder="Digite sua senha"
+            />
+            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-black/40" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
-        )}
+        </label>
 
         {message && (
           <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">

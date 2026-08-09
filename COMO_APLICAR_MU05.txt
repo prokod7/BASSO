@@ -1,0 +1,13 @@
+PEDIDOPRO — LA FORNERIA BASSO — MEGA UPDATE 05
+
+1. Faça backup/commit do repositório atual.
+2. Extraia este ZIP sobre a raiz do projeto e aceite substituir os arquivos.
+3. No Supabase SQL Editor, execute APENAS:
+   supabase/migrations/015_operational_maturity_and_reliability.sql
+4. Faça commit e push.
+5. Aguarde o GitHub Actions/Vercel concluir o build.
+6. Entre como gestor e abra /painel/sistema. A migration instalada deve aparecer como 015.
+7. Valide /painel/atencao, /painel/inventario, /painel/ajuda e o lock de pedidos em dois navegadores.
+
+Nenhuma ENV nova é obrigatória para o Mega Update 05.
+Integrações externas continuam desativadas até configuração/homologação real.

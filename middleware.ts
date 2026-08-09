@@ -59,7 +59,12 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/painel/:path*",
+    "/trocar-senha",
     "/api/operational-snapshot",
+    "/api/attention",
+    "/api/feature-flags",
+    "/api/system/:path*",
+    "/api/auth/change-password",
     "/api/orders/:path*/status",
     "/api/inventory/:path*",
     "/api/coupons/:path*",

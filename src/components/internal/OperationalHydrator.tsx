@@ -71,7 +71,6 @@ export function OperationalHydrator() {
         else refresh();
       });
     window.addEventListener("online", onOnline);
-    window.addEventListener("lfb:refresh-operation", debounceRefresh);
 
     const client = createClient();
     const channel = client
@@ -83,19 +82,6 @@ export function OperationalHydrator() {
         debounceRefresh,
       )
       .on("postgres_changes", { event: "*", schema: "public", table: "drivers" }, debounceRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, debounceRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, debounceRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tabs" }, debounceRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "operation_tasks" }, debounceRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "print_jobs" }, debounceRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "internal_notifications" }, () => {
-        window.dispatchEvent(new CustomEvent("lfb:notifications-changed"));
-        debounceRefresh();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "store_runtime_status" }, () => {
-        window.dispatchEvent(new CustomEvent("lfb:store-status-changed"));
-        debounceRefresh();
-      })
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "inventory_items" },
@@ -107,7 +93,6 @@ export function OperationalHydrator() {
       cancelled = true;
       clearTimeout(timer);
       window.removeEventListener("online", onOnline);
-      window.removeEventListener("lfb:refresh-operation", debounceRefresh);
       if (client && channel) client.removeChannel(channel);
     };
   }, [router]);

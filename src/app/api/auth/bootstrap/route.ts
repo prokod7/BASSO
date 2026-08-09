@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { INITIAL_OPERATIONAL_USERS } from "@/lib/initial-users";
+import { findInitialOperationalUser } from "@/lib/initial-users";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ async function findAuthUserByEmail(
     const { data, error } = await client.auth.admin.listUsers({ page, perPage: 100 });
     if (error) throw error;
     const found = data.users.find(
-      (user) => user.email?.toLocaleLowerCase("pt-BR") === email.toLocaleLowerCase("pt-BR"),
+      (user) => user.email?.toLowerCase() === email.toLowerCase(),
     );
     if (found || data.users.length < 100) return found;
   }
@@ -36,105 +36,97 @@ export async function POST(request: Request) {
       );
     }
 
-    const { count, error: managerError } = await client
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "manager")
-      .eq("active", true);
-    if (managerError) throw managerError;
+    const body = (await request.json().catch(() => null)) as
+      | { email?: string; password?: string }
+      | null;
 
-    if ((count || 0) > 0) {
-      return NextResponse.json(
-        {
-          error: "O administrador inicial já foi criado. Entre com o e-mail e a senha cadastrados.",
-          code: "ALREADY_CONFIGURED",
-        },
-        { status: 409 },
-      );
+    const email = body?.email?.trim().toLowerCase() || "";
+    const password = body?.password || "";
+    const account = findInitialOperationalUser(email);
+
+    if (!account || !password) {
+      return NextResponse.json({ error: "E-mail ou senha inválidos." }, { status: 401 });
     }
 
-    const configuredPassword = process.env.INITIAL_USER_PASSWORD;
+    const configuredPassword = process.env[account.passwordEnv];
     if (!configuredPassword) {
       return NextResponse.json(
         {
-          error:
-            "Cadastre INITIAL_USER_PASSWORD na Vercel, faça um redeploy e tente novamente. A senha precisa ter pelo menos 12 caracteres.",
+          error: `A senha inicial desta conta ainda não foi configurada na Vercel (${account.passwordEnv}).`,
           code: "INITIAL_PASSWORD_MISSING",
         },
         { status: 503 },
       );
     }
-    if (configuredPassword.length < 12) {
+
+    if (configuredPassword.length < 10) {
       return NextResponse.json(
         {
-          error: "INITIAL_USER_PASSWORD precisa ter pelo menos 12 caracteres.",
+          error: `${account.passwordEnv} precisa ter pelo menos 10 caracteres.`,
           code: "INITIAL_PASSWORD_WEAK",
         },
         { status: 503 },
       );
     }
 
-    const body = (await request.json().catch(() => null)) as { password?: string } | null;
-    if (!body?.password || body.password !== configuredPassword) {
-      return NextResponse.json(
-        { error: "A senha informada não corresponde à INITIAL_USER_PASSWORD configurada." },
-        { status: 401 },
-      );
+    if (password !== configuredPassword) {
+      return NextResponse.json({ error: "E-mail ou senha inválidos." }, { status: 401 });
     }
 
-    const synchronized: string[] = [];
-    for (const account of INITIAL_OPERATIONAL_USERS) {
-      let authUser = await findAuthUserByEmail(client, account.email);
+    let authUser = await findAuthUserByEmail(client, account.email);
 
-      if (!authUser) {
-        const { data, error } = await client.auth.admin.createUser({
-          email: account.email,
-          password: configuredPassword,
-          email_confirm: true,
-          user_metadata: {
-            display_name: account.displayName,
-            role: account.role,
-            must_change_password: true,
-          },
-        });
-        if (error) throw error;
-        authUser = data.user;
-      } else {
-        const { data, error } = await client.auth.admin.updateUserById(authUser.id, {
-          password: configuredPassword,
-          email_confirm: true,
-          user_metadata: {
-            ...authUser.user_metadata,
-            display_name: account.displayName,
-            role: account.role,
-            must_change_password: true,
-          },
-        });
-        if (error) throw error;
-        authUser = data.user;
-      }
-
-      const { error: profileError } = await client.from("profiles").upsert(
-        {
-          id: authUser.id,
+    if (!authUser) {
+      const { data, error } = await client.auth.admin.createUser({
+        email: account.email,
+        password: configuredPassword,
+        email_confirm: true,
+        user_metadata: {
           display_name: account.displayName,
           role: account.role,
-          active: true,
+          must_change_password: true,
         },
-        { onConflict: "id" },
-      );
-      if (profileError) throw profileError;
-      synchronized.push(account.email);
+      });
+      if (error) throw error;
+      authUser = data.user;
+    } else {
+      const { data, error } = await client.auth.admin.updateUserById(authUser.id, {
+        password: configuredPassword,
+        email_confirm: true,
+        user_metadata: {
+          ...authUser.user_metadata,
+          display_name: account.displayName,
+          role: account.role,
+          must_change_password: true,
+        },
+      });
+      if (error) throw error;
+      authUser = data.user;
     }
+
+    if (!authUser) {
+      return NextResponse.json({ error: "Não foi possível preparar o usuário." }, { status: 500 });
+    }
+
+    const { error: profileError } = await client.from("profiles").upsert(
+      {
+        id: authUser.id,
+        display_name: account.displayName,
+        role: account.role,
+        active: true,
+        must_change_password: true,
+      },
+      { onConflict: "id" },
+    );
+    if (profileError) throw profileError;
 
     return NextResponse.json({
       ok: true,
-      message: "Acesso inicial criado com sucesso.",
-      users: synchronized,
+      message: "Acesso preparado com sucesso. Entrando no painel...",
+      user: account.email,
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Falha ao criar o acesso inicial." },
+      { error: error instanceof Error ? error.message : "Falha ao preparar o acesso." },
       { status: 500 },
     );
   }

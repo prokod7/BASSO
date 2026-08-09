@@ -118,6 +118,7 @@ export default function DashboardPage() {
               <section className="surface overflow-hidden">
                 <div className="flex items-center justify-between border-b border-black/5 p-5"><div><h2 className="font-display text-2xl font-bold">Ações rápidas</h2><p className="text-sm text-black/45">Entre diretamente no fluxo operacional correto.</p></div><span className="text-[10px] font-bold text-black/35">Atualizado {shortDateTime(snapshot.generatedAt)}</span></div>
                 <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <QuickAction href="/painel/atencao" icon={AlertTriangle} title="Ver o que precisa de atenção" detail="Atrasos, pagamentos, estoque, delivery e falhas" />
                   <QuickAction href="/painel/pedidos" icon={ClipboardList} title="Gerir pedidos" detail="Status, comanda, pagamento e comunicação" />
                   <QuickAction href="/painel/pdv" icon={Receipt} title="Nova venda" detail="Balcão, retirada, delivery ou salão" />
                   <QuickAction href="/painel/salao" icon={Table2} title="Abrir mesa" detail="Comandas, consumo e divisão de conta" />

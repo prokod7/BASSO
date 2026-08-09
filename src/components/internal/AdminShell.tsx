@@ -8,6 +8,7 @@ import {
   AlertCircle,
   BarChart3,
   Bell,
+  BellRing,
   Bike,
   BookOpen,
   Boxes,
@@ -23,6 +24,7 @@ import {
   Contact,
   Gift,
   HeartPulse,
+  HelpCircle,
   LayoutDashboard,
   ListChecks,
   Loader2,
@@ -35,6 +37,7 @@ import {
   Printer,
   Receipt,
   Search,
+  ServerCog,
   Settings,
   ShieldCheck,
   ShieldQuestion,
@@ -72,6 +75,7 @@ const sections: NavSection[] = [
     label: "Operação",
     items: [
       { href: "/painel", label: "Centro de comando", icon: LayoutDashboard, roles: operationRoles },
+      { href: "/painel/atencao", label: "Precisa de atenção", icon: BellRing, roles: operationRoles },
       { href: "/painel/pedidos", label: "Pedidos", icon: ClipboardList, roles: ["manager", "counter", "waiter", "kitchen", "bar", "finance", "viewer"], badge: "orders" },
       { href: "/painel/pdv", label: "PDV / Balcão", icon: ShoppingCart, roles: ["manager", "counter", "waiter"] },
       { href: "/painel/salao", label: "Salão e mesas", icon: Table2, roles: ["manager", "counter", "waiter", "viewer"] },
@@ -106,6 +110,7 @@ const sections: NavSection[] = [
     items: [
       { href: "/painel/cardapio", label: "Cardápio", icon: BookOpen, roles: ["manager", "counter", "viewer"] },
       { href: "/painel/estoque", label: "Estoque restrito", icon: Boxes, roles: ["manager", "counter", "finance", "viewer"] },
+      { href: "/painel/inventario", label: "Inventário rápido", icon: ClipboardCheck, roles: ["manager", "counter", "finance", "viewer"] },
       { href: "/painel/compras", label: "Compras e fornecedores", icon: ShoppingBasket, roles: ["manager", "counter", "finance", "viewer"] },
       { href: "/painel/caixa", label: "Caixa", icon: Receipt, roles: ["manager", "counter", "finance"] },
       { href: "/painel/financeiro", label: "Financeiro", icon: CircleDollarSign, roles: ["manager", "finance", "viewer"] },
@@ -121,6 +126,8 @@ const sections: NavSection[] = [
       { href: "/painel/configuracoes", label: "Configurações", icon: Settings, roles: ["manager", "viewer"] },
       { href: "/painel/auditoria", label: "Auditoria", icon: ShieldCheck, roles: ["manager", "viewer"] },
       { href: "/painel/diagnostico", label: "Sistema e diagnóstico", icon: HeartPulse, roles: ["manager", "viewer"] },
+      { href: "/painel/sistema", label: "Sobre esta instalação", icon: ServerCog, roles: ["manager", "viewer"] },
+      { href: "/painel/ajuda", label: "Ajuda rápida", icon: HelpCircle, roles: operationRoles },
       { href: "/painel/continuidade", label: "Offline e contingência", icon: WifiOff, roles: ["manager", "counter", "viewer"] },
     ],
   },
@@ -156,11 +163,22 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const listener = (event: Event) => setStatus((event as CustomEvent<OperationalStatusDetail>).detail);
+    let navigationPrefixAt = 0;
     const keyHandler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT" || target?.isContentEditable;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         openSearch();
+        return;
       }
+      if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key === "g") { navigationPrefixAt = Date.now(); return; }
+      if (Date.now() - navigationPrefixAt > 1500) return;
+      const destinations: Record<string, string> = { p: "/painel/pedidos", d: "/painel/pdv", s: "/painel/salao", k: "/painel/kds", a: "/painel/atencao" };
+      const destination = destinations[key];
+      if (destination) { event.preventDefault(); navigationPrefixAt = 0; router.push(destination); }
     };
     window.addEventListener("lfb:operational-status", listener);
     window.addEventListener("keydown", keyHandler);
@@ -174,9 +192,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           const metadataName = currentUser?.user_metadata?.display_name;
           if (typeof metadataName === "string" && metadataName.trim()) setUserName(metadataName);
           if (!currentUser) return;
-          const { data: profile } = await client.from("profiles").select("display_name,role").eq("id", currentUser.id).maybeSingle();
+          const { data: profile } = await client.from("profiles").select("display_name,role,must_change_password,last_seen_at").eq("id", currentUser.id).maybeSingle();
           if (profile?.display_name) setUserName(profile.display_name);
           if (profile?.role && profile.role in roleLabels) setRole(profile.role as RoleKey);
+          if (profile?.must_change_password) { router.replace("/trocar-senha"); return; }
         })().catch(() => setStatus({ status: "error", message: "Não foi possível carregar o perfil do usuário." }));
       }
       const refreshStoreStatus = () => fetch("/api/store-status", { cache: "no-store" }).then(async (response) => {
@@ -225,7 +244,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <aside className={cn("fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/10 bg-basso-black text-white transition-all", collapsed ? "w-20" : "w-72", mobile ? "translate-x-0" : "-translate-x-full lg:translate-x-0")}>
         <div className="flex h-20 items-center gap-3 border-b border-white/10 px-4">
           <Image src="/assets/brand/logo.png" alt="La Forneria Basso" width={46} height={46} className="rounded-full ring-1 ring-basso-gold/40" />
-          {!collapsed && <div className="min-w-0"><p className="truncate font-display text-lg font-bold">La Forneria Basso</p><p className="text-[10px] uppercase tracking-[.18em] text-basso-goldLight">PedidoPro 4.0</p></div>}
+          {!collapsed && <div className="min-w-0"><p className="truncate font-display text-lg font-bold">La Forneria Basso</p><p className="text-[10px] uppercase tracking-[.18em] text-basso-goldLight">PedidoPro 5.0</p></div>}
           <button className="ml-auto p-2 lg:hidden" onClick={() => setMobile(false)} aria-label="Fechar menu"><X size={20} /></button>
         </div>
 

@@ -398,3 +398,87 @@ export interface PurchaseOrderRecord {
   receivedAt?: string;
   items: PurchaseOrderItemRecord[];
 }
+
+export type AttentionSeverity = "info" | "warning" | "danger";
+export type AttentionKind = "order" | "payment" | "delivery" | "salon" | "stock" | "print" | "cash" | "approval" | "incident" | "system";
+
+export interface AttentionItem {
+  id: string;
+  kind: AttentionKind;
+  severity: AttentionSeverity;
+  title: string;
+  detail: string;
+  href: string;
+  createdAt?: string;
+  ageMinutes?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AttentionSnapshot {
+  generatedAt: string;
+  totals: {
+    all: number;
+    danger: number;
+    warning: number;
+    info: number;
+  };
+  groups: Record<AttentionKind, number>;
+  items: AttentionItem[];
+}
+
+export interface FeatureFlagRecord {
+  key: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+  requiresIntegration: boolean;
+  config: Record<string, unknown>;
+  updatedAt: string;
+}
+
+export interface OrderEditLock {
+  acquired: boolean;
+  holderId?: string;
+  holderLabel?: string;
+  expiresAt?: string;
+}
+
+export interface SystemAbout {
+  appName: string;
+  clientName: string;
+  version: string;
+  environment: string;
+  databaseVersion: number | null;
+  databaseMigrationName?: string;
+  supabaseConfigured: boolean;
+  demoMode: boolean;
+  generatedAt: string;
+}
+
+export interface ConfigurationSnapshotRecord {
+  id: string;
+  name: string;
+  scope: string;
+  createdBy?: string;
+  createdAt: string;
+  restoredAt?: string;
+}
+
+export interface InventoryCountItemRecord {
+  id: string;
+  inventoryItemId: string;
+  productId: string;
+  name: string;
+  systemQuantity: number;
+  countedQuantity?: number;
+  difference: number;
+  unit: string;
+}
+
+export interface InventoryCountRecord {
+  id: string;
+  status: "open" | "completed" | "cancelled";
+  startedAt: string;
+  completedAt?: string;
+  items: InventoryCountItemRecord[];
+}

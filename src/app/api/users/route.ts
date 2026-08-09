@@ -8,7 +8,7 @@ const createSchema = z.object({
   email: z.string().email(),
   displayName: z.string().min(2).max(100),
   role: z.enum(["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance", "viewer"]),
-  password: z.string().min(12).max(128).optional(),
+  password: z.string().min(10).max(128).optional(),
   active: z.boolean().default(true)
 });
 
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const [{ data: profiles, error }, authResult] = await Promise.all([
-      db.from("profiles").select("id,display_name,role,active,device_limit,permissions,created_at,updated_at").order("created_at"),
+      db.from("profiles").select("id,display_name,role,active,device_limit,permissions,created_at,updated_at,last_seen_at,must_change_password,password_changed_at,last_device_label").order("created_at"),
       db.auth.admin.listUsers({ page: 1, perPage: 1000 })
     ]);
     if (error) throw error;
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const generatedPassword = body.password || `${randomBytes(9).toString("base64url")}Aa1!`;
     const { data, error } = await db.auth.admin.createUser({ email: body.email.toLowerCase(), password: generatedPassword, email_confirm: true, user_metadata: { display_name: body.displayName, role: body.role } });
     if (error) throw error;
-    const { error: profileError } = await db.from("profiles").insert({ id: data.user.id, display_name: body.displayName, role: body.role, active: body.active });
+    const { error: profileError } = await db.from("profiles").insert({ id: data.user.id, display_name: body.displayName, role: body.role, active: body.active, must_change_password: true });
     if (profileError) {
       await db.auth.admin.deleteUser(data.user.id);
       throw profileError;

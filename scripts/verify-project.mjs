@@ -52,6 +52,7 @@ const requiredRoutes = [
   "src/app/painel/rotinas/page.tsx","src/app/painel/tarefas/page.tsx","src/app/painel/aprovacoes/page.tsx",
   "src/app/painel/notificacoes/page.tsx","src/app/painel/expedicao/page.tsx","src/app/painel/diagnostico/page.tsx",
   "src/app/painel/compras/page.tsx","src/app/painel/comunicacao/page.tsx",
+  "src/app/painel/atencao/page.tsx","src/app/painel/inventario/page.tsx","src/app/painel/sistema/page.tsx","src/app/painel/ajuda/page.tsx",
   "src/app/mesa/[number]/page.tsx","src/app/avaliar/[id]/page.tsx","src/app/meus-pedidos/page.tsx"
 ];
 check("Telas públicas e operacionais presentes", requiredRoutes.every(exists), requiredRoutes.filter(x => !exists(x)).join(", "));
@@ -65,7 +66,7 @@ check("Validação explícita contra bordas", /Bordas não existem neste sistema
 
 const sqlFiles = fs.readdirSync(path.join(root,"supabase/migrations")).filter(x => x.endsWith(".sql")).sort();
 const sql = sqlFiles.map(x => read(`supabase/migrations/${x}`)).join("\n");
-check("Migrações SQL 001–014 presentes", sqlFiles.length >= 14 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("014")), sqlFiles.join(", "));
+check("Migrações SQL 001–015 presentes", sqlFiles.length >= 15 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("015")), sqlFiles.join(", "));
 check("RLS habilitado", /enable row level security/i.test(sql));
 check("Auditoria imutável", /audit_no_update/i.test(sql));
 check("Chaves de idempotência", /idempotency_keys/i.test(sql));
@@ -139,6 +140,30 @@ check("Compras atualizam estoque transacionalmente", /purchase_orders/.test(sql)
 check("Exportação operacional protegida", /OPERATIONAL_EXPORT_GENERATED/.test(read("src/app/api/system/export/route.ts")) && /requireOperationalRole\(\["manager"\]/.test(read("src/app/api/system/export/route.ts")));
 check("Gate de qualidade no GitHub", /npm run typecheck/.test(read(".github/workflows/quality.yml")) && /npm run build/.test(read(".github/workflows/quality.yml")));
 check("Modelos de comunicação administráveis", exists("src/app/painel/comunicacao/page.tsx") && exists("src/app/api/communication-templates/[key]/route.ts"));
+
+
+const maturityFiles = [
+  "supabase/migrations/015_operational_maturity_and_reliability.sql",
+  "src/app/painel/atencao/page.tsx",
+  "src/app/painel/inventario/page.tsx",
+  "src/app/painel/sistema/page.tsx",
+  "src/app/painel/ajuda/page.tsx",
+  "src/app/trocar-senha/page.tsx",
+  "src/app/api/attention/route.ts",
+  "src/app/api/feature-flags/route.ts",
+  "src/app/api/orders/[id]/lock/route.ts",
+  "src/app/api/inventory/counts/route.ts",
+  "src/app/api/auth/change-password/route.ts",
+  "src/app/api/system/snapshots/route.ts",
+  "src/lib/operational-state.ts"
+];
+check("Mega Update 05 de maturidade presente", maturityFiles.every(exists), maturityFiles.filter(file => !exists(file)).join(", "));
+check("Controle de concorrência de pedidos", /order_edit_locks/.test(sql) && /acquire_order_edit_lock/.test(sql) && /ORDER_VERSION_CONFLICT/.test(read("src/app/api/orders/[id]/status/route.ts")));
+check("Central de atenção operacional", /api\/attention/.test(read("src/app/painel/atencao/page.tsx")) && /waitingDriver|sem motoboy/.test(read("src/app/api/attention/route.ts")));
+check("Feature flags persistentes", /feature_flags/.test(sql) && /FEATURE_FLAG_UPDATED/.test(read("src/app/api/feature-flags/route.ts")));
+check("Inventário assistido e auditado", /inventory_counts/.test(sql) && /complete_inventory_count/.test(sql) && /Inventário rápido/.test(read("src/app/painel/inventario/page.tsx")));
+check("Troca obrigatória de senha", /must_change_password/.test(sql) && /trocar-senha/.test(read("src/components/internal/AdminShell.tsx")) && /PASSWORD_CHANGED/.test(read("src/app/api/auth/change-password/route.ts")));
+check("Snapshots de configuração", /configuration_snapshots/.test(sql) && /CONFIGURATION_SNAPSHOT_RESTORED/.test(read("src/app/api/system/snapshots/route.ts")));
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 check("PWA com ícones 192 e 512", manifest.icons?.some(x => x.sizes === "192x192") && manifest.icons?.some(x => x.sizes === "512x512"));

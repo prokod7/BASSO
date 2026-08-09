@@ -1,3 +1,7 @@
+# PedidoPro — La Forneria Basso
+
+**Versão atual: 5.0.0 — Mega Update 05 (maturidade operacional e autonomia).**
+
 # La Forneria Basso — PedidoPro 4.0
 
 Sistema omnichannel da La Forneria Basso construído a partir do Documento Mestre Final 3.1 e do cardápio oficial. O projeto reúne cardápio digital, configurador de pizzas, checkout, pedidos, PDV, salão, comandas, garçom, KDS, expedição, delivery, motoboy, CRM, fidelidade interna, estoque restrito, compras, caixa, financeiro, relatórios, comunicação, impressão, diagnóstico, contingência e administração em uma única aplicação.

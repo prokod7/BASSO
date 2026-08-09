@@ -3,7 +3,9 @@ import path from "node:path";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 let ts;
-try { ts = require("typescript"); } catch { ts = require("/usr/local/lib/node_modules/typescript"); }
+try { ts = require("typescript"); } catch {
+  try { ts = require("/opt/nvm/versions/node/v22.16.0/lib/node_modules/typescript"); } catch { ts = require("/usr/local/lib/node_modules/typescript"); }
+}
 
 const root = path.resolve(process.argv[2] || "src");
 const findings = [];
