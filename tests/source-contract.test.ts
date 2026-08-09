@@ -28,6 +28,13 @@ describe("contrato técnico", () => {
     expect(sql).toContain("claim_integration_events");
     expect(sql).toContain("claim_print_jobs");
   });
+  it("usa webhook oficial de pedidos do iFood sem exigir ID em cabeçalho", () => {
+    const route = read("src/app/api/integrations/ifood/webhook/route.ts");
+    expect(route).toContain("x-ifood-signature");
+    expect(route).toContain("IFOOD_CLIENT_SECRET");
+    expect(route).toContain("isIfoodKeepalive");
+    expect(route).not.toContain("x-event-id");
+  });
   it("abre ou reutiliza a comanda do QR dentro da transação", () => {
     const sql = read("supabase/migrations/011_public_table_qr_and_order_hardening.sql");
     expect(sql).toContain("v_channel='table_qr'");

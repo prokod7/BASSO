@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-06T06:40:57.198Z",
-  "passed": 70,
+  "generatedAt": "2026-08-09T05:07:38.572Z",
+  "passed": 77,
   "failed": 0,
-  "sha256": "dd48dc0bf0f2b8e8d2d2bac37bc7c6ed82dc4b378bb35316c9b83eb78b1f0518",
+  "sha256": "9cab97f1897ed4804ec5d5190b1e6647ba8c092cdbb12d8752206676e7c16a23",
   "results": [
     {
       "name": "42 pizzas tradicionais",
@@ -125,9 +125,9 @@
       "detail": ""
     },
     {
-      "name": "Migrações SQL 001–014 presentes",
+      "name": "Migrações SQL 001–015 presentes",
       "ok": true,
-      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql"
+      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql"
     },
     {
       "name": "RLS habilitado",
@@ -326,6 +326,41 @@
     },
     {
       "name": "Modelos de comunicação administráveis",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mega Update 05 de maturidade presente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Controle de concorrência de pedidos",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Central de atenção operacional",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Feature flags persistentes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Inventário assistido e auditado",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Troca obrigatória de senha",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Snapshots de configuração",
       "ok": true,
       "detail": ""
     },

@@ -3,11 +3,13 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireOperationalRole } from "@/lib/authz";
 import { assertOrderTransition } from "@/lib/operational-state";
+import { IfoodAdapter } from "@/lib/integrations/ifood";
 import type { OrderChannel, OrderStatus } from "@/types";
 
 const schema = z.object({
   status: z.enum(["received", "confirmed", "preparing", "ready", "out_for_delivery", "completed", "cancelled"]),
   reason: z.string().max(500).optional(),
+  cancellationCode: z.string().max(80).optional(),
   expectedVersion: z.number().int().positive().optional(),
 });
 
@@ -21,7 +23,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const { data: order, error: readError } = await db
       .from("orders")
-      .select("id,channel,status,external_id,version,payment_status")
+      .select("id,channel,status,external_id,external_payload,version,payment_status")
       .eq("id", id)
       .is("deleted_at", null)
       .single();
@@ -51,6 +53,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       throw new Error("Confirme o recebimento integral antes de concluir o pedido.");
     }
 
+    if (order.channel === "ifood" && order.external_id) {
+      const ifood = new IfoodAdapter();
+      if (body.status === "cancelled") {
+        if (!body.cancellationCode) throw new Error("Selecione um motivo de cancelamento fornecido pelo iFood.");
+        await ifood.cancelOrder(order.external_id, body.reason || "Cancelado pela operação", body.cancellationCode);
+      } else {
+        await ifood.updateStatus(order.external_id, body.status as OrderStatus);
+      }
+    }
+
     const { error } = await db.rpc("change_order_status_controlled", {
       p_order_id: id,
       p_status: body.status,
@@ -59,13 +71,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     });
     if (error) throw error;
 
-    if (["ifood", "99food"].includes(order.channel) && order.external_id) {
+    if (order.channel === "99food" && order.external_id) {
       await db.from("integration_events").insert({
         provider: order.channel,
         event_id: `${id}:${body.status}:${Date.now()}`,
         event_type: body.status === "cancelled" ? "ORDER_CANCELLED" : "ORDER_STATUS_UPDATE",
         direction: "outgoing",
-        payload: { externalId: order.external_id, status: body.status, reason: body.reason || null },
+        payload: { externalId: order.external_id, status: body.status, reason: body.reason || null, cancellationCode: body.cancellationCode || null },
         status: "pending",
       });
     }

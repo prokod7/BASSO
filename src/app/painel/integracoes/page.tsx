@@ -6,7 +6,7 @@ import { useDemoState } from "@/lib/demo-store";
 import { isDemoMode, shortDateTime } from "@/lib/utils";
 
 type ProviderState={configured:boolean;ok?:boolean;detail?:string;checkedAt?:string};
-const providers=[{id:"ifood",name:"iFood",cap:"Pedidos, status, cancelamentos, cardápio e conciliação"},{id:"99food",name:"99Food",cap:"Pedidos, status, cancelamentos, cardápio e conciliação"},{id:"rede",name:"Rede",cap:"Aprovação, recusa, cancelamento, estorno e terminal"},{id:"onesignal",name:"OneSignal",cap:"Push segmentado e histórico de falhas"},{id:"printer",name:"Impressoras",cap:"Epson e impressora chinesa por setor"}] as const;
+const providers=[{id:"ifood",name:"iFood",cap:"Recebimento, confirmação, preparo, pronto, despacho e cancelamento"},{id:"99food",name:"99Food",cap:"Pedidos, status e cancelamentos"},{id:"rede",name:"Rede",cap:"Aprovação, recusa, cancelamento, estorno e terminal"},{id:"onesignal",name:"OneSignal",cap:"Push segmentado e histórico de falhas"},{id:"printer",name:"Impressoras",cap:"Epson e impressora chinesa por setor"}] as const;
 export default function IntegrationsPage(){
   const storedEvents=useDemoState(s=>s.integrationEvents);const [events,setEvents]=useState(storedEvents);const [health,setHealth]=useState<Record<string,ProviderState>>({});const [testing,setTesting]=useState<string|null>(null);const [message,setMessage]=useState("");const [logsProvider,setLogsProvider]=useState<string|null>(null);
   useEffect(()=>setEvents(storedEvents),[storedEvents]);

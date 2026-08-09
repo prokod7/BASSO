@@ -16,6 +16,34 @@ function publishStatus(detail: OperationalStatusDetail) {
   window.dispatchEvent(new CustomEvent<OperationalStatusDetail>("lfb:operational-status", { detail }));
 }
 
+function playNewIfoodOrderAlert() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const play = () => {
+      [0, 0.18, 0.36].forEach((delay, index) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.value = index === 2 ? 880 : 720;
+        gain.gain.setValueAtTime(0.0001, context.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.22, context.currentTime + delay + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + delay + 0.12);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(context.currentTime + delay);
+        oscillator.stop(context.currentTime + delay + 0.13);
+      });
+      window.setTimeout(() => void context.close(), 900);
+    };
+    if (context.state === "suspended") void context.resume().then(play).catch(() => undefined);
+    else play();
+  } catch {
+    // Alguns navegadores bloqueiam áudio antes da primeira interação do usuário.
+  }
+}
+
 export function OperationalHydrator() {
   const router = useRouter();
 
@@ -72,10 +100,18 @@ export function OperationalHydrator() {
       });
     window.addEventListener("online", onOnline);
 
+    const onOrderChange = (payload: { eventType?: string; new?: Record<string, unknown> }) => {
+      if (payload.eventType === "INSERT" && payload.new?.channel === "ifood") {
+        playNewIfoodOrderAlert();
+        window.dispatchEvent(new Event("lfb:notifications-refresh"));
+      }
+      debounceRefresh();
+    };
+
     const client = createClient();
     const channel = client
       ?.channel("operational-ui")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, debounceRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, onOrderChange)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "restaurant_tables" },

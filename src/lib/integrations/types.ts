@@ -17,6 +17,10 @@ export interface ExternalOrder {
   customerDisplayName: string;
   customerPhone?: string;
   deliveryAddress?: Record<string, unknown>;
+  orderType?: string;
+  deliveredBy?: string;
+  scheduled?: boolean;
+  notes?: string;
   items: ExternalOrderItem[];
   subtotalCents: number;
   deliveryFeeCents: number;
@@ -32,9 +36,9 @@ export interface MarketplaceAdapter {
   verifyWebhook(rawBody: string, headers: Headers): Promise<boolean> | boolean;
   normalizeOrder(payload: unknown): ExternalOrder;
   acceptOrder(externalId: string): Promise<void>;
-  rejectOrder(externalId: string, reason: string): Promise<void>;
+  rejectOrder(externalId: string, reason: string, cancellationCode?: string): Promise<void>;
   updateStatus(externalId: string, status: OrderStatus): Promise<void>;
-  cancelOrder(externalId: string, reason: string): Promise<void>;
+  cancelOrder(externalId: string, reason: string, cancellationCode?: string): Promise<void>;
   health(): Promise<{ ok: boolean; detail: string }>;
 }
 export interface CardTransactionRequest { amountCents: number; method: Extract<PaymentMethod,"debit"|"credit"|"meal_voucher"|"food_voucher">; installments?: number; reference: string; terminalId: string; }

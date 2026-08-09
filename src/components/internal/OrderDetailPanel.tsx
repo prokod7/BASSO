@@ -52,6 +52,7 @@ import type {
 
 const tabs = ["resumo", "itens", "pagamento", "comunicacao", "ocorrencias", "historico"] as const;
 type Tab = (typeof tabs)[number];
+type IfoodCancellationReason = { code: string; description: string };
 
 const tabLabels: Record<Tab, string> = {
   resumo: "Resumo",
@@ -247,6 +248,10 @@ type Mutate = (key: string, task: () => Promise<void>, success: string) => Promi
 function SummaryTab({ order, drivers, working, mutate, setOrder }: { order: OrderDetail; drivers: Driver[]; working: string | null; mutate: Mutate; setOrder: React.Dispatch<React.SetStateAction<OrderDetail | null>> }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
   const [statusReason, setStatusReason] = useState("");
+  const [cancellationCode, setCancellationCode] = useState("");
+  const [cancellationReasons, setCancellationReasons] = useState<IfoodCancellationReason[]>([]);
+  const [loadingCancellationReasons, setLoadingCancellationReasons] = useState(false);
+  const [cancellationError, setCancellationError] = useState("");
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     customerName: order.customerName,
@@ -262,15 +267,46 @@ function SummaryTab({ order, drivers, working, mutate, setOrder }: { order: Orde
 
   useEffect(() => { setStatus(order.status); }, [order.status]);
 
+  useEffect(() => {
+    if (order.channel !== "ifood" || status !== "cancelled" || isDemoMode()) {
+      setCancellationReasons([]);
+      setCancellationCode("");
+      setLoadingCancellationReasons(false);
+      setCancellationError("");
+      return;
+    }
+    let cancelled = false;
+    setLoadingCancellationReasons(true);
+    fetch(`/api/integrations/ifood/orders/${order.id}/cancellation-reasons`, { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || "Falha ao consultar motivos do iFood.");
+        if (!cancelled) {
+          setCancellationReasons(body.reasons || []);
+          setCancellationError("");
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setCancellationReasons([]);
+          setCancellationCode("");
+          setCancellationError(error instanceof Error ? error.message : "Falha ao consultar motivos do iFood.");
+        }
+      })
+      .finally(() => { if (!cancelled) setLoadingCancellationReasons(false); });
+    return () => { cancelled = true; };
+  }, [order.channel, order.id, status]);
+
   async function changeStatus() {
     if (status === order.status) return;
     if (["cancelled", "completed"].includes(status) && statusReason.trim().length < 2) throw new Error("Informe o motivo para concluir ou cancelar manualmente.");
+    if (order.channel === "ifood" && status === "cancelled" && !cancellationCode) throw new Error("Selecione o motivo de cancelamento fornecido pelo iFood.");
     if (isDemoMode()) {
       demoActions.updateOrderStatus(order.id, status, "Gestor");
       setOrder((current) => current ? { ...current, status, updatedAt: new Date().toISOString(), timeline: [{ id: uid("timeline"), fromStatus: current.status, toStatus: status, reason: statusReason || undefined, actor: "Gestor", source: "operation", createdAt: new Date().toISOString() }, ...current.timeline] } : current);
       return;
     }
-    const response = await fetch(`/api/orders/${order.id}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, reason: statusReason || undefined, expectedVersion: order.version || undefined }) });
+    const response = await fetch(`/api/orders/${order.id}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, reason: statusReason || undefined, cancellationCode: cancellationCode || undefined, expectedVersion: order.version || undefined }) });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error || "Falha ao alterar status.");
   }
@@ -313,8 +349,9 @@ function SummaryTab({ order, drivers, working, mutate, setOrder }: { order: Orde
     <section className="surface overflow-hidden">
       <div className="flex flex-col gap-4 border-b border-black/5 p-5 lg:flex-row lg:items-end">
         <div className="flex-1"><label className="label">Etapa atual</label><select className="input" value={status} onChange={(event) => setStatus(event.target.value as OrderStatus)}>{allowedStatuses(order.channel).map((value) => <option key={value} value={value}>{statusLabel[value]}</option>)}<option value="cancelled">Cancelado</option></select></div>
+        {order.channel === "ifood" && status === "cancelled" && <div className="flex-1"><label className="label">Motivo oficial do iFood</label><select className="input" value={cancellationCode} onChange={(event) => setCancellationCode(event.target.value)} disabled={loadingCancellationReasons || Boolean(cancellationError)}><option value="">{loadingCancellationReasons ? "Carregando motivos..." : "Selecione"}</option>{cancellationReasons.map((reason) => <option key={reason.code} value={reason.code}>{reason.description}</option>)}</select>{cancellationError && <p className="mt-1 text-xs font-semibold text-red-700">{cancellationError}</p>}</div>}
         <div className="flex-[1.5]"><label className="label">Motivo / observação da mudança</label><input className="input" value={statusReason} onChange={(event) => setStatusReason(event.target.value)} placeholder="Obrigatório em cancelamento, conclusão manual ou retorno de etapa" /></div>
-        <button className="btn-primary" disabled={working === "status" || status === order.status} onClick={() => mutate("status", changeStatus, `Pedido movido para ${statusLabel[status]}.`)}>{working === "status" ? <Loader2 size={17} className="animate-spin"/> : <ChevronRight size={17}/>}Atualizar etapa</button>
+        <button className="btn-primary" disabled={working === "status" || status === order.status || loadingCancellationReasons} onClick={() => mutate("status", changeStatus, `Pedido movido para ${statusLabel[status]}.`)}>{working === "status" ? <Loader2 size={17} className="animate-spin"/> : <ChevronRight size={17}/>}Atualizar etapa</button>
       </div>
       <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
         <Info icon={<Clock3/>} label="Entrada" value={shortDateTime(order.createdAt)} />

@@ -15,8 +15,8 @@ function configuredProviders(): Record<ProviderKey, ProviderHealth> {
       detail: "URL e chave de serviço"
     },
     ifood: {
-      configured: Boolean(process.env.IFOOD_CLIENT_ID && process.env.IFOOD_CLIENT_SECRET && process.env.IFOOD_WEBHOOK_SECRET),
-      detail: "OAuth e segredo do webhook"
+      configured: Boolean(process.env.IFOOD_CLIENT_ID && process.env.IFOOD_CLIENT_SECRET && process.env.IFOOD_MERCHANT_ID),
+      detail: "OAuth, loja autorizada e assinatura HMAC"
     },
     "99food": {
       configured: Boolean(process.env.FOOD99_CLIENT_ID && process.env.FOOD99_CLIENT_SECRET && process.env.FOOD99_BASE_URL && process.env.FOOD99_WEBHOOK_SECRET),

@@ -1,6 +1,6 @@
 # PedidoPro — La Forneria Basso
 
-**Versão atual: 5.0.0 — Mega Update 05 (maturidade operacional e autonomia).**
+**Versão atual: 5.1.0 — integração oficial de pedidos iFood.**
 
 # La Forneria Basso — PedidoPro 4.0
 
@@ -15,7 +15,8 @@ Sistema omnichannel da La Forneria Basso construído a partir do Documento Mestr
 - Leaflet + OpenStreetMap para mapa e rastreamento simples
 - OneSignal e Resend preparados para push/e-mail
 - Bridge local Node.js para impressão setorizada
-- Adaptadores de iFood, 99Food e Rede preparados para credenciais e homologação
+- Pedidos do iFood com webhook assinado, deduplicação, aceite, preparo, pronto, despacho, cancelamento e retentativa
+- Adaptadores de 99Food e Rede preparados para credenciais e homologação
 
 ## Regras centrais
 
@@ -73,13 +74,13 @@ Acesse:
 ## Produção
 
 1. Crie o projeto Supabase.
-2. Em instalação nova, execute as migrations `001` a `014` em ordem.
-3. Em banco já atualizado até `013`, execute somente `014_autonomy_operations_and_control.sql`.
+2. Em instalação nova, execute as migrations `001` a `015` em ordem.
+3. Em banco já atualizado, execute somente as migrations posteriores à última aplicada.
 4. Configure as variáveis de `.env.example` na Vercel.
 5. Defina `NEXT_PUBLIC_DEMO_MODE=false`.
 6. Crie os usuários iniciais com `npm run seed:users` ou pelo bootstrap controlado.
 7. Faça deploy com Node.js 22.
-8. Acesse `/painel/diagnostico` e confirme migration 014 e saúde do banco.
+8. Acesse `/painel/diagnostico` e confirme as migrations e a saúde do banco.
 9. Configure operação, usuários, bairros, estoque inicial e impressão.
 10. Homologue separadamente cada integração externa.
 
@@ -123,4 +124,4 @@ public/assets/           imagens oficiais aprovadas
 
 ## Ativação externa
 
-Credenciais, tokens, webhooks, URLs definitivas, modelos de terminal, bairros, taxas e nomes reais não são inventados no código. iFood, 99Food, Rede, Pix automático, OneSignal, Resend, Print Bridge e rastreamento só ficam operacionais após configuração e homologação. Consulte [`docs/INTEGRATION_ACTIVATION.md`](docs/INTEGRATION_ACTIVATION.md).
+As credenciais do iFood ficam exclusivamente nas variáveis protegidas da Vercel. A ativação de teste e produção está detalhada em [`docs/IFOOD_SETUP.md`](docs/IFOOD_SETUP.md). As demais integrações continuam descritas em [`docs/INTEGRATION_ACTIVATION.md`](docs/INTEGRATION_ACTIVATION.md).

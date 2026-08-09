@@ -1,8 +1,14 @@
 import { createHash } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { IfoodAdapter } from "@/lib/integrations/ifood";
+import {
+  IfoodAdapter,
+  ifoodEventCode,
+  ifoodOrderId,
+  type IfoodWebhookEvent,
+} from "@/lib/integrations/ifood";
 import { Food99Adapter } from "@/lib/integrations/food99";
 import type { ExternalOrder, MarketplaceAdapter } from "@/lib/integrations/types";
+import type { OrderStatus } from "@/types";
 
 export interface IntegrationEventRow {
   id: string;
@@ -41,9 +47,42 @@ async function loadMappings(provider: string, externalIds: string[]) {
   return new Map((data || []).map((row: any) => [row.external_id, row]));
 }
 
+async function notifyNewMarketplaceOrder(order: ExternalOrder, internalId: string): Promise<void> {
+  const db = createAdminClient();
+  if (!db) return;
+  await db.from("internal_notifications").insert({
+    category: "order",
+    priority: "high",
+    title: `Novo pedido iFood #${order.displayId}`,
+    body: `${order.customerDisplayName} • R$ ${(order.totalCents / 100).toFixed(2).replace(".", ",")} • aguardando confirmação`,
+    href: "/painel/pedidos",
+    metadata: { orderId: internalId, externalId: order.externalId, provider: order.provider },
+  });
+}
+
+async function notifyIfoodCancellationRequest(externalId: string, payload: unknown): Promise<void> {
+  const db = createAdminClient();
+  if (!db) return;
+  const { data: order } = await db.from("orders")
+    .select("id,number")
+    .eq("channel", "ifood")
+    .eq("external_id", externalId)
+    .maybeSingle();
+  await db.from("internal_notifications").insert({
+    category: "order",
+    priority: "urgent",
+    title: order ? `Cancelamento solicitado no pedido #${order.number}` : "Cancelamento solicitado no iFood",
+    body: "Abra o pedido e confira a solicitação de cancelamento recebida do iFood.",
+    href: "/painel/pedidos",
+    metadata: { orderId: order?.id || null, externalId, provider: "ifood", payload },
+  });
+}
+
 export async function persistMarketplaceOrder(order: ExternalOrder): Promise<{ id: string; duplicate: boolean }> {
   const db = createAdminClient();
   if (!db) throw new Error("Supabase não configurado.");
+  if (!order.externalId) throw new Error("Pedido de marketplace sem identificador externo.");
+  if (!order.items.length) throw new Error("Pedido de marketplace sem itens.");
   const sourceKey = `${order.provider}:${order.externalId}`;
   const { data: existing, error: existingError } = await db.from("orders").select("id").eq("source_idempotency_key", sourceKey).maybeSingle();
   if (existingError) throw existingError;
@@ -69,9 +108,9 @@ export async function persistMarketplaceOrder(order: ExternalOrder): Promise<{ i
         externalProductId: item.externalProductId,
         options: item.options,
         notes: item.notes,
-        marketplace: order.provider
+        marketplace: order.provider,
       },
-      sector
+      sector,
     };
   });
 
@@ -80,7 +119,6 @@ export async function persistMarketplaceOrder(order: ExternalOrder): Promise<{ i
   const discount = Math.min(subtotal + deliveryFee, cents(order.discountCents));
   const calculatedTotal = Math.max(0, subtotal - discount + deliveryFee);
   const total = cents(order.totalCents) || calculatedTotal;
-  // Preserve provider total while satisfying the database arithmetic constraint.
   const normalizedDiscount = Math.max(0, subtotal + deliveryFee - total);
 
   const orderRow = {
@@ -97,16 +135,114 @@ export async function persistMarketplaceOrder(order: ExternalOrder): Promise<{ i
     delivery_fee_cents: deliveryFee,
     total_cents: total,
     payment_method: order.paymentMethod,
+    notes: order.notes || null,
     source_idempotency_key: sourceKey,
     external_id: order.externalId,
     external_payload: order.raw,
     created_at: order.createdAt,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   };
 
   const { data: result, error: transactionError } = await db.rpc("create_marketplace_order_transaction", { p_order: orderRow, p_items: items });
   if (transactionError) throw transactionError;
-  return { id: result?.id || id, duplicate: Boolean(result?.duplicate) };
+  const persisted = { id: result?.id || id, duplicate: Boolean(result?.duplicate) };
+  if (!persisted.duplicate) {
+    if (order.notes) await db.from("orders").update({ notes: order.notes }).eq("id", persisted.id);
+    await notifyNewMarketplaceOrder(order, persisted.id);
+  }
+  return persisted;
+}
+
+async function syncIfoodOrderStatus(externalId: string, status: OrderStatus, source: string, reason?: string): Promise<void> {
+  const db = createAdminClient();
+  if (!db) throw new Error("Supabase não configurado.");
+  const { data: order, error: readError } = await db.from("orders")
+    .select("id,status,payment_status,version")
+    .eq("channel", "ifood")
+    .eq("external_id", externalId)
+    .maybeSingle();
+  if (readError) throw readError;
+  if (!order || order.status === status) return;
+
+  const patch: Record<string, unknown> = {
+    status,
+    version: Number(order.version || 1) + 1,
+    updated_at: new Date().toISOString(),
+  };
+  if (status === "cancelled") patch.payment_status = order.payment_status === "paid" ? "refunded" : "cancelled";
+  if (status === "completed" && order.payment_status === "pending") patch.payment_status = "paid";
+  const { error } = await db.from("orders").update(patch).eq("id", order.id);
+  if (error) throw error;
+  await db.from("order_status_history").insert({
+    order_id: order.id,
+    from_status: order.status,
+    to_status: status,
+    reason: reason || null,
+    source,
+  });
+  await db.from("audit_logs").insert({
+    actor_label: "iFood",
+    action: "IFOOD_ORDER_STATUS_SYNCED",
+    entity_type: "order",
+    entity_id: order.id,
+    origin: "ifood_webhook",
+    before_data: { status: order.status },
+    after_data: { status },
+    reason: reason || null,
+  });
+}
+
+function matches(code: string, ...candidates: string[]): boolean {
+  const normalized = code.replace(/^ORDER_/, "");
+  return candidates.some(candidate => normalized === candidate || code === candidate);
+}
+
+async function ensureIfoodOrder(ifood: IfoodAdapter, externalId: string): Promise<{ id: string; duplicate: boolean }> {
+  const details = await ifood.getOrder(externalId);
+  return persistMarketplaceOrder(ifood.normalizeOrder(details));
+}
+
+async function processIfoodIncoming(event: IntegrationEventRow): Promise<void> {
+  const payload = (event.payload || {}) as IfoodWebhookEvent;
+  const code = ifoodEventCode(payload);
+  if (code === "KEEPALIVE") return;
+  const externalId = ifoodOrderId(payload);
+  if (!externalId) return;
+  const ifood = new IfoodAdapter();
+
+  if (matches(code, "PLACED", "PLC", "CONFIRMED", "CFM")) {
+    await ensureIfoodOrder(ifood, externalId);
+    if (matches(code, "CONFIRMED", "CFM")) {
+      await syncIfoodOrderStatus(externalId, "confirmed", "ifood_webhook");
+    } else if (process.env.MARKETPLACE_AUTO_ACCEPT === "true") {
+      await ifood.acceptOrder(externalId);
+    }
+    return;
+  }
+
+  if (matches(code, "PREPARATION_STARTED", "PRS")) {
+    await syncIfoodOrderStatus(externalId, "preparing", "ifood_webhook");
+    return;
+  }
+  if (matches(code, "PREPARATION_ENDED", "READY_TO_PICKUP", "RTP")) {
+    await syncIfoodOrderStatus(externalId, "ready", "ifood_webhook");
+    return;
+  }
+  if (matches(code, "DISPATCHED", "DSP")) {
+    await syncIfoodOrderStatus(externalId, "out_for_delivery", "ifood_webhook");
+    return;
+  }
+  if (matches(code, "CONCLUDED", "CON")) {
+    await syncIfoodOrderStatus(externalId, "completed", "ifood_webhook");
+    return;
+  }
+  if (matches(code, "CANCELLED", "CAN")) {
+    await syncIfoodOrderStatus(externalId, "cancelled", "ifood_webhook", "Cancelado no iFood");
+    return;
+  }
+  if (matches(code, "CANCELLATION_REQUESTED")) {
+    await notifyIfoodCancellationRequest(externalId, payload);
+  }
 }
 
 async function processRedeWebhook(payload: any): Promise<void> {
@@ -133,13 +269,18 @@ export async function processIntegrationEvent(event: IntegrationEventRow): Promi
   try {
     if (event.provider === "rede") {
       await processRedeWebhook(event.payload);
+    } else if (event.provider === "ifood" && event.direction === "incoming") {
+      await processIfoodIncoming(event);
     } else {
       const providerAdapter = adapter(event.provider);
       if (event.direction === "outgoing") {
         const externalId = String(event.payload?.externalId || "");
         if (!externalId) throw new Error("Evento de saída sem pedido externo.");
-        if (event.event_type === "ORDER_CANCELLED") await providerAdapter.cancelOrder(externalId, String(event.payload?.reason || "Cancelado pela operação"));
-        else await providerAdapter.updateStatus(externalId, event.payload?.status);
+        if (event.event_type === "ORDER_CANCELLED") {
+          await providerAdapter.cancelOrder(externalId, String(event.payload?.reason || "Cancelado pela operação"), event.payload?.cancellationCode);
+        } else {
+          await providerAdapter.updateStatus(externalId, event.payload?.status);
+        }
       } else {
         const normalized = providerAdapter.normalizeOrder(event.payload);
         await persistMarketplaceOrder(normalized);
@@ -151,4 +292,21 @@ export async function processIntegrationEvent(event: IntegrationEventRow): Promi
     await db.rpc("finish_integration_event", { p_id: event.id, p_success: false, p_error: error instanceof Error ? error.message : "Falha desconhecida" });
     throw error;
   }
+}
+
+export async function drainIntegrationQueue(limit = 10): Promise<{ claimed: number; completed: number; failed: number }> {
+  const db = createAdminClient();
+  if (!db) throw new Error("Supabase não configurado.");
+  const { data: events, error } = await db.rpc("claim_integration_events", { p_limit: Math.max(1, Math.min(limit, 50)) });
+  if (error) throw error;
+  const result = { claimed: events?.length || 0, completed: 0, failed: 0 };
+  for (const event of events || []) {
+    try {
+      await processIntegrationEvent(event as IntegrationEventRow);
+      result.completed += 1;
+    } catch {
+      result.failed += 1;
+    }
+  }
+  return result;
 }

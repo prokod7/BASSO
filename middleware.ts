@@ -11,6 +11,10 @@ type CookieToSet = {
 };
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname === "/api/integrations/ifood/webhook") {
+    return NextResponse.next();
+  }
+
   if (process.env.NEXT_PUBLIC_DEMO_MODE !== "false") {
     return NextResponse.next();
   }

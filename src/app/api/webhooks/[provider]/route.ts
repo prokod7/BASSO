@@ -9,7 +9,6 @@ function safeEqual(a: string, b: string) {
 }
 
 function providerSecret(provider: string): string | undefined {
-  if (provider === "ifood") return process.env.IFOOD_WEBHOOK_SECRET;
   if (provider === "99food") return process.env.FOOD99_WEBHOOK_SECRET;
   if (provider === "rede") return process.env.REDE_WEBHOOK_SECRET;
   return undefined;
@@ -18,10 +17,13 @@ function providerSecret(provider: string): string | undefined {
 export async function POST(request: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
   if (!["ifood", "99food", "rede"].includes(provider)) return NextResponse.json({ error: "Provedor inválido." }, { status: 404 });
+  if (provider === "ifood") {
+    return NextResponse.json({ error: "Use o endpoint oficial /api/integrations/ifood/webhook." }, { status: 410 });
+  }
   const raw = await request.text();
   const secret = providerSecret(provider);
   if (!secret && process.env.NODE_ENV === "production") return NextResponse.json({ error: "Segredo do webhook não configurado." }, { status: 503 });
-  const signature = request.headers.get("x-ifood-signature") || request.headers.get("x-99-signature") || request.headers.get("x-rede-signature") || request.headers.get("x-signature");
+  const signature = request.headers.get("x-99-signature") || request.headers.get("x-rede-signature") || request.headers.get("x-signature");
   if (secret) {
     const expected = createHmac("sha256", secret).update(raw).digest("hex");
     if (!signature || !safeEqual(expected, signature)) return NextResponse.json({ error: "Assinatura inválida." }, { status: 401 });

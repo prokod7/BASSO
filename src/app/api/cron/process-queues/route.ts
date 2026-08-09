@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { processIntegrationEvent } from "@/lib/workers/marketplace";
+import { drainIntegrationQueue } from "@/lib/workers/marketplace";
 import { processNotificationJob } from "@/lib/workers/notifications";
 import { queueCampaignById } from "@/lib/campaigns";
 
@@ -34,13 +34,8 @@ export async function GET(request: NextRequest) {
   const { data: expired } = await db.rpc("expire_loyalty_reward_authorizations", { p_limit: 100 });
   report.loyalty.expired = Number(expired || 0);
 
-  const { data: events, error: eventClaimError } = await db.rpc("claim_integration_events", { p_limit: 10 });
-  if (eventClaimError) return NextResponse.json({ error: eventClaimError.message }, { status: 500 });
-  report.integration.claimed = events?.length || 0;
-  for (const event of events || []) {
-    try { await processIntegrationEvent(event); report.integration.completed += 1; }
-    catch { report.integration.failed += 1; }
-  }
+  const integration = await drainIntegrationQueue(10);
+  report.integration = integration;
 
   const { data: jobs, error: notificationClaimError } = await db.rpc("claim_notification_jobs", { p_limit: 30 });
   if (notificationClaimError) return NextResponse.json({ ...report, error: notificationClaimError.message }, { status: 500 });
