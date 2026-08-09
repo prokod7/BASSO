@@ -20,6 +20,25 @@ export interface IntegrationEventRow {
   attempts: number;
 }
 
+export function integrationErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const parts = [record.message, record.details, record.hint, record.code]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .map(value => value.trim());
+    if (parts.length) return [...new Set(parts)].join(" • ");
+    try {
+      const serialized = JSON.stringify(error);
+      if (serialized && serialized !== "{}") return serialized.slice(0, 1800);
+    } catch {
+      // Continua para a mensagem segura abaixo.
+    }
+  }
+  if (typeof error === "string" && error.trim()) return error.trim();
+  return "Falha desconhecida sem detalhes do fornecedor.";
+}
+
 function adapter(provider: string): MarketplaceAdapter {
   if (provider === "ifood") return new IfoodAdapter();
   if (provider === "99food") return new Food99Adapter();
@@ -198,8 +217,17 @@ function matches(code: string, ...candidates: string[]): boolean {
 }
 
 async function ensureIfoodOrder(ifood: IfoodAdapter, externalId: string): Promise<{ id: string; duplicate: boolean }> {
-  const details = await ifood.getOrder(externalId);
-  return persistMarketplaceOrder(ifood.normalizeOrder(details));
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      const details = await ifood.getOrder(externalId);
+      return persistMarketplaceOrder(ifood.normalizeOrder(details));
+    } catch (error) {
+      lastError = error;
+      if (attempt < 4) await new Promise(resolve => setTimeout(resolve, attempt * 750));
+    }
+  }
+  throw new Error(`Não foi possível importar o pedido ${externalId}: ${integrationErrorMessage(lastError)}`);
 }
 
 async function processIfoodIncoming(event: IntegrationEventRow): Promise<void> {
@@ -289,8 +317,9 @@ export async function processIntegrationEvent(event: IntegrationEventRow): Promi
     }
     await db.rpc("finish_integration_event", { p_id: event.id, p_success: true, p_error: null });
   } catch (error) {
-    await db.rpc("finish_integration_event", { p_id: event.id, p_success: false, p_error: error instanceof Error ? error.message : "Falha desconhecida" });
-    throw error;
+    const message = integrationErrorMessage(error);
+    await db.rpc("finish_integration_event", { p_id: event.id, p_success: false, p_error: message });
+    throw new Error(message);
   }
 }
 

@@ -19,7 +19,7 @@ export interface DemoState {
   cashMovements: CashMovement[];
   financialEntries: FinancialEntry[];
   campaigns: CampaignRecord[];
-  integrationEvents: Array<{ id: string; provider: string; type: string; status: "ok" | "error" | "pending"; createdAt: string; attempts: number }>;
+  integrationEvents: Array<{ id: string; provider: string; type: string; status: "ok" | "error" | "pending"; createdAt: string; attempts: number; lastError?: string }>;
   audit: Array<{ id: string; actor: string; action: string; entity: string; entityId: string; createdAt: string; details?: string }>;
 }
 

@@ -6,12 +6,17 @@ import {
   isIfoodKeepalive,
   verifyIfoodWebhookSignature,
 } from "@/lib/integrations/ifood";
+import { integrationErrorMessage } from "@/lib/workers/marketplace";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("integração oficial do iFood", () => {
+  it("preserva detalhes de erros retornados pelo Supabase", () => {
+    expect(integrationErrorMessage({ message: "Falha no banco", details: "Detalhe SQL", code: "P0001" }))
+      .toContain("Falha no banco • Detalhe SQL • P0001");
+  });
   it("valida X-IFood-Signature com HMAC SHA-256 sobre o corpo bruto", () => {
     const raw = JSON.stringify({ id: "event-1", code: "KEEPALIVE" });
     const secret = "test-secret";

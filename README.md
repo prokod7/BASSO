@@ -1,6 +1,6 @@
 # PedidoPro — La Forneria Basso
 
-**Versão atual: 5.1.0 — integração oficial de pedidos iFood.**
+**Versão atual: 5.1.1 — integração oficial de pedidos iFood com retentativa e diagnóstico detalhado.**
 
 # La Forneria Basso — PedidoPro 4.0
 
