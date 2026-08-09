@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/internal/PageHeader";
 import { isDemoMode, shortDateTime } from "@/lib/utils";
-import type { ExpeditionStatus } from "@/types";
+import type { Address, ExpeditionStatus } from "@/types";
 
 type ExpeditionItem = {
   id: string;
@@ -39,7 +39,7 @@ type ExpeditionOrder = {
   payment_status: string;
   customer_name: string;
   customer_phone: string;
-  address?: Record<string, unknown>;
+  address?: Partial<Address>;
   total_cents: number;
   payment_method: string;
   change_for_cents?: number;
