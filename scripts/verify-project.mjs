@@ -49,6 +49,9 @@ const requiredRoutes = [
   "src/app/painel/financeiro/page.tsx","src/app/painel/relatorios/page.tsx","src/app/painel/integracoes/page.tsx","src/app/painel/impressao/page.tsx",
   "src/app/painel/usuarios/page.tsx","src/app/painel/auditoria/page.tsx","src/app/painel/continuidade/page.tsx",
   "src/app/painel/configuracoes/page.tsx","src/app/painel/campanhas/page.tsx","src/app/painel/cardapio/page.tsx",
+  "src/app/painel/rotinas/page.tsx","src/app/painel/tarefas/page.tsx","src/app/painel/aprovacoes/page.tsx",
+  "src/app/painel/notificacoes/page.tsx","src/app/painel/expedicao/page.tsx","src/app/painel/diagnostico/page.tsx",
+  "src/app/painel/compras/page.tsx","src/app/painel/comunicacao/page.tsx",
   "src/app/mesa/[number]/page.tsx","src/app/avaliar/[id]/page.tsx","src/app/meus-pedidos/page.tsx"
 ];
 check("Telas públicas e operacionais presentes", requiredRoutes.every(exists), requiredRoutes.filter(x => !exists(x)).join(", "));
@@ -62,7 +65,7 @@ check("Validação explícita contra bordas", /Bordas não existem neste sistema
 
 const sqlFiles = fs.readdirSync(path.join(root,"supabase/migrations")).filter(x => x.endsWith(".sql")).sort();
 const sql = sqlFiles.map(x => read(`supabase/migrations/${x}`)).join("\n");
-check("Migrações SQL 001–013 presentes", sqlFiles.length >= 13 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("013")), sqlFiles.join(", "));
+check("Migrações SQL 001–014 presentes", sqlFiles.length >= 14 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("014")), sqlFiles.join(", "));
 check("RLS habilitado", /enable row level security/i.test(sql));
 check("Auditoria imutável", /audit_no_update/i.test(sql));
 check("Chaves de idempotência", /idempotency_keys/i.test(sql));
@@ -109,6 +112,33 @@ check("Estado operacional da loja administrável", /store_runtime_status/.test(s
 check("Permissões específicas no backend", /permissions\[permission\] === false/.test(read("src/lib/authz.ts")));
 check("Cardápio editável sem acessar banco", /Salvar e versionar alteração/.test(read("src/app/painel/cardapio/page.tsx")));
 check("Delivery operável sem mapa", /A operação continua funcional por endereço textual/.test(read("src/app/painel/delivery/page.tsx")));
+
+const autonomyFiles = [
+  "supabase/migrations/014_autonomy_operations_and_control.sql",
+  "src/app/api/control-center/route.ts",
+  "src/app/api/operations/checklists/route.ts",
+  "src/app/api/tasks/route.ts",
+  "src/app/api/approvals/route.ts",
+  "src/app/api/notifications/route.ts",
+  "src/app/api/expedition/route.ts",
+  "src/app/api/system/diagnostics/route.ts",
+  "src/app/api/system/export/route.ts",
+  "src/app/api/purchases/route.ts",
+  "src/app/api/communication-templates/route.ts",
+  "src/components/internal/GlobalSearchDialog.tsx",
+  "src/components/internal/StoreControlPanel.tsx",
+  ".github/workflows/quality.yml",
+  "scripts/check-migrations.mjs"
+];
+check("Mega Update 04 de autonomia presente", autonomyFiles.every(exists), autonomyFiles.filter(file => !exists(file)).join(", "));
+check("Rotinas guiadas de abertura e fechamento", /operational_checklist_templates/.test(sql) && /start_operational_checklist/.test(sql) && /complete_operational_checklist/.test(sql));
+check("Tarefas e aprovações persistentes", /operation_tasks/.test(sql) && /approval_requests/.test(sql) && /resolve_approval_request/.test(sql));
+check("Expedição auditável", /expedition_status/.test(sql) && /set_order_expedition_status/.test(sql));
+check("Perfis de impressão administráveis", /print_profiles/.test(sql) && /paper_columns/.test(sql));
+check("Compras atualizam estoque transacionalmente", /purchase_orders/.test(sql) && /receive_purchase_order/.test(sql) && /PURCHASE_ORDER_RECEIVED/.test(sql));
+check("Exportação operacional protegida", /OPERATIONAL_EXPORT_GENERATED/.test(read("src/app/api/system/export/route.ts")) && /requireOperationalRole\(\["manager"\]/.test(read("src/app/api/system/export/route.ts")));
+check("Gate de qualidade no GitHub", /npm run typecheck/.test(read(".github/workflows/quality.yml")) && /npm run build/.test(read(".github/workflows/quality.yml")));
+check("Modelos de comunicação administráveis", exists("src/app/painel/comunicacao/page.tsx") && exists("src/app/api/communication-templates/[key]/route.ts"));
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 check("PWA com ícones 192 e 512", manifest.icons?.some(x => x.sizes === "192x192") && manifest.icons?.some(x => x.sizes === "512x512"));

@@ -12,8 +12,17 @@ const createSchema = z.object({
   active: z.boolean().default(true)
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const optionsOnly = request.nextUrl.searchParams.get("options") === "1";
+    if (optionsOnly) {
+      await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance", "viewer"]);
+      const db = createAdminClient();
+      if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
+      const { data, error } = await db.from("profiles").select("id,display_name,role").eq("active", true).order("display_name");
+      if (error) throw error;
+      return NextResponse.json({ users: data || [] }, { headers: { "Cache-Control": "no-store" } });
+    }
     await requireOperationalRole(["manager"], "users.manage");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });

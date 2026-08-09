@@ -1,8 +1,8 @@
 # Relatório de verificação estática
 
-Gerado em: 2026-08-06T04:50:58.662Z
+Gerado em: 2026-08-06T06:40:57.198Z
 
-Resultado: **61/61 verificações aprovadas**.
+Resultado: **70/70 verificações aprovadas**.
 
 | Verificação | Resultado | Detalhe |
 |---|---:|---|
@@ -30,7 +30,7 @@ Resultado: **61/61 verificações aprovadas**.
 | Telas públicas e operacionais presentes | APROVADO | — |
 | Nenhum componente de seleção de borda | APROVADO | — |
 | Validação explícita contra bordas | APROVADO | — |
-| Migrações SQL 001–013 presentes | APROVADO | 001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql |
+| Migrações SQL 001–014 presentes | APROVADO | 001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql |
 | RLS habilitado | APROVADO | — |
 | Auditoria imutável | APROVADO | — |
 | Chaves de idempotência | APROVADO | — |
@@ -62,6 +62,15 @@ Resultado: **61/61 verificações aprovadas**.
 | Permissões específicas no backend | APROVADO | — |
 | Cardápio editável sem acessar banco | APROVADO | — |
 | Delivery operável sem mapa | APROVADO | — |
+| Mega Update 04 de autonomia presente | APROVADO | — |
+| Rotinas guiadas de abertura e fechamento | APROVADO | — |
+| Tarefas e aprovações persistentes | APROVADO | — |
+| Expedição auditável | APROVADO | — |
+| Perfis de impressão administráveis | APROVADO | — |
+| Compras atualizam estoque transacionalmente | APROVADO | — |
+| Exportação operacional protegida | APROVADO | — |
+| Gate de qualidade no GitHub | APROVADO | — |
+| Modelos de comunicação administráveis | APROVADO | — |
 | PWA com ícones 192 e 512 | APROVADO | — |
 | Service worker presente | APROVADO | — |
 | Bridge de impressão presente | APROVADO | — |

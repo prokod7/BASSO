@@ -1,39 +1,63 @@
-# La Forneria Basso — PedidoPro 3.1
+# La Forneria Basso — PedidoPro 4.0
 
-Sistema omnichannel da La Forneria Basso construído a partir do Documento Mestre Final 3.1 e dos arquivos oficiais de cardápio, identidade e imagens. O projeto reúne cardápio digital, configurador de pizzas, checkout, PDV, salão, comandas, garçom, KDS, delivery, motoboy, CRM, fidelidade interna, estoque restrito, caixa, financeiro, relatórios, integrações, impressão e contingência em uma única aplicação.
+Sistema omnichannel da La Forneria Basso construído a partir do Documento Mestre Final 3.1 e do cardápio oficial. O projeto reúne cardápio digital, configurador de pizzas, checkout, pedidos, PDV, salão, comandas, garçom, KDS, expedição, delivery, motoboy, CRM, fidelidade interna, estoque restrito, compras, caixa, financeiro, relatórios, comunicação, impressão, diagnóstico, contingência e administração em uma única aplicação.
 
 ## Stack
 
-- Next.js 15 com App Router, React 19 e TypeScript estrito
+- Next.js 15, App Router, React 19 e TypeScript estrito
 - Tailwind CSS, mobile first e PWA
 - Supabase Auth, PostgreSQL, Realtime, RLS e funções transacionais
-- Vercel para aplicação e cron de filas
+- Vercel para aplicação e processamento agendado quando o plano suportar
 - Leaflet + OpenStreetMap para mapa e rastreamento simples
 - OneSignal e Resend preparados para push/e-mail
 - Bridge local Node.js para impressão setorizada
-- Adaptadores de iFood, 99Food e Rede com webhook, idempotência, filas, logs e retentativas
+- Adaptadores de iFood, 99Food e Rede preparados para credenciais e homologação
 
-## Regras centrais implementadas
+## Regras centrais
 
-- Não existe borda: não há componente público, payload aceito ou cobrança; o banco também rejeita campos de borda.
-- Broto aceita somente um sabor em interface, API e banco.
-- Grande meio a meio custa 50% de cada sabor, em centavos; nunca usa o sabor mais caro.
-- Premium não combina com Tradicional; doce e salgado podem combinar quando não violam a matriz.
+- Não existe borda em interface, API, impressão ou banco.
+- Broto aceita somente um sabor.
+- Grande meio a meio custa 50% de cada sabor; nunca usa o sabor mais caro.
+- Premium não combina com Tradicional.
 - Adicionais custam o valor integral, no máximo 2 do mesmo e 5 unidades por pizza.
 - Estoque rastreia somente bebidas e sobremesas.
-- Fidelidade é exclusivamente interna: delivery próprio, concluído e pago; 10 pontos por recompensa, saldo máximo 15, somente Grande de Mozzarella ou Calabresa Tradicional.
-- Clientes de iFood/99Food não criam perfil de CRM nem saldo de fidelidade.
-- 15 mesas: 10 com 5 lugares e 5 com 2 lugares.
-- WhatsApp é manual, usando links e mensagens preenchidas; não há chatbot ou disparo automático.
+- Fidelidade é interna: delivery próprio, concluído e pago; recompensa com 10 pontos e saldo máximo de 15.
+- Clientes de iFood/99Food não entram no CRM nem na fidelidade.
+- O salão possui 15 mesas: 10 com 5 lugares e 5 com 2 lugares.
+- WhatsApp é manual, com mensagem preenchida e ação consciente do funcionário.
+
+## Mega Update 04
+
+O pacote 4.0 acrescenta:
+
+- Centro de Comando em tempo real;
+- controle de loja, canais e prazos;
+- rotinas guiadas de abertura e fechamento;
+- tarefas, aprovações e notificações internas;
+- busca global com `Ctrl/Cmd + K`;
+- expedição auditável;
+- compras e fornecedores com entrada transacional no estoque;
+- modelos de comunicação administráveis;
+- perfis de impressão;
+- diagnóstico técnico e painel de migrations;
+- exportação operacional assistida;
+- Realtime ampliado e presença de usuários;
+- pipeline de qualidade no GitHub.
+
+Leia [`MEGA_UPDATE_04.md`](MEGA_UPDATE_04.md).
 
 ## Modo demonstração
-
-O projeto inicia sem backend quando `NEXT_PUBLIC_DEMO_MODE=true`. Pedidos, mesas, estoque, caixa, entregadores e auditoria usam armazenamento local sincronizado entre abas. Isso permite validar UX e fluxos sem credenciais.
 
 ```bash
 cp .env.example .env.local
 npm install
 npm run dev
+```
+
+Use:
+
+```env
+NEXT_PUBLIC_DEMO_MODE=true
 ```
 
 Acesse:
@@ -44,27 +68,39 @@ Acesse:
 
 ## Produção
 
-1. Crie o projeto Supabase e execute, em ordem, todas as migrações de `supabase/migrations`.
-2. Configure as variáveis de `.env.example` na Vercel.
-3. Defina `NEXT_PUBLIC_DEMO_MODE=false`.
-4. Cadastre temporariamente `INITIAL_USER_PASSWORD` (mínimo de 12 caracteres). No primeiro login, o sistema cria e sincroniza automaticamente as sete contas. Como alternativa, execute `npm run seed:users`.
-5. Cadastre bairros, taxas, pedido mínimo, equipamentos, credenciais e terminais nos parâmetros de implantação.
-6. Faça deploy na Vercel e configure o domínio. No plano Hobby, mantenha `vercel.pro.json`; restaure o nome `vercel.json` apenas quando utilizar um plano/cadência compatível com o cron.
-7. Instale o bridge de impressão no computador da pizzaria.
-8. Homologue cada integração externa no ambiente liberado pelo fornecedor.
+1. Crie o projeto Supabase.
+2. Em instalação nova, execute as migrations `001` a `014` em ordem.
+3. Em banco já atualizado até `013`, execute somente `014_autonomy_operations_and_control.sql`.
+4. Configure as variáveis de `.env.example` na Vercel.
+5. Defina `NEXT_PUBLIC_DEMO_MODE=false`.
+6. Crie os usuários iniciais com `npm run seed:users` ou pelo bootstrap controlado.
+7. Faça deploy com Node.js 22.
+8. Acesse `/painel/diagnostico` e confirme migration 014 e saúde do banco.
+9. Configure operação, usuários, bairros, estoque inicial e impressão.
+10. Homologue separadamente cada integração externa.
+
+No plano Hobby, mantenha `vercel.pro.json`. Restaure o nome `vercel.json` somente quando a cadência do cron for compatível com o plano utilizado.
 
 O roteiro completo está em [`docs/DEPLOYMENT_RUNBOOK.md`](docs/DEPLOYMENT_RUNBOOK.md).
 
-## Verificação
+## Verificação local
 
 ```bash
 npm run verify:static
+npm run check:migrations
+npm run audit:buttons
 npm run typecheck
-npm run test
+npm test
 npm run build
 ```
 
-`verify:static` não depende de rede e confere cardápio, quantidades, assets, telas, PWA, regras críticas, migrações, RLS, idempotência, filas, impressão e ausência de segredos evidentes. O relatório gerado fica em [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md).
+O comando completo é:
+
+```bash
+npm run verify
+```
+
+O pipeline `.github/workflows/quality.yml` repete as verificações principais em cada push e pull request.
 
 ## Estrutura principal
 
@@ -72,26 +108,15 @@ npm run build
 src/app/                 rotas públicas, painel e APIs
 src/components/          componentes públicos, operacionais e mapas
 src/data/catalog.json    cardápio oficial consolidado
-src/lib/                 regras, preços, Supabase, integrações e filas
+src/lib/                 regras, preços, Supabase, integrações e controle
 supabase/migrations/     banco, RLS, RPCs, seeds e workers
 bridge/                  serviço local de impressão
-scripts/                 verificação e criação de usuários
-docs/                    implantação, segurança e homologação
-public/assets/           somente imagens oficiais aprovadas
+scripts/                 verificação, migrations e criação de usuários
+tests/                   testes automatizados
+docs/                    implantação, segurança, aceite e validação
+public/assets/           imagens oficiais aprovadas
 ```
 
 ## Ativação externa
 
-Credenciais, tokens, webhooks, URLs definitivas, modelos de terminal, bairros, taxas e nomes reais dos usuários não constavam como valores finais na documentação. Toda a estrutura existe para recebê-los, mas iFood, 99Food, Rede, OneSignal, e-mail e impressoras só ficam operacionais após configuração e homologação do respectivo fornecedor. Consulte [`docs/INTEGRATION_ACTIVATION.md`](docs/INTEGRATION_ACTIVATION.md).
-
-## Mega Update 02 — Centro de Controle
-
-O pacote inclui a central administrativa de pedidos, pagamentos, comunicação manual, ocorrências, impressão, delivery sem dependência do mapa, cardápio administrável, controle da loja e matriz de permissões.
-
-Depois das migrações `001` a `012`, execute:
-
-```text
-supabase/migrations/013_admin_control_center.sql
-```
-
-Leia [MEGA_UPDATE_02.md](./MEGA_UPDATE_02.md) antes do deploy.
+Credenciais, tokens, webhooks, URLs definitivas, modelos de terminal, bairros, taxas e nomes reais não são inventados no código. iFood, 99Food, Rede, Pix automático, OneSignal, Resend, Print Bridge e rastreamento só ficam operacionais após configuração e homologação. Consulte [`docs/INTEGRATION_ACTIVATION.md`](docs/INTEGRATION_ACTIVATION.md).
