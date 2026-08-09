@@ -42,6 +42,8 @@ import type {
   OrderDetail,
   OrderIncident,
   OrderPaymentRecord,
+  OrderCommunicationLog,
+  OrderInternalNote,
   OrderStatus,
   PaymentMethod,
   Driver,
@@ -433,7 +435,19 @@ function CommunicationTab({ order, templates, working, mutate, setOrder }: { ord
       const response = await fetch(`/api/orders/${order.id}/communications`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ templateKey, message: generated, recipient: phone, status: "opened" }) });
       const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao registrar comunicação.");
     } else {
-      setOrder((current) => current ? { ...current, communications: [{ id: uid("communication"), channel: "manual_whatsapp", templateKey, recipient: phone, message: generated, status: "opened", createdBy: "Gestor", createdAt: new Date().toISOString() }, ...current.communications] } : current);
+      const communication: OrderCommunicationLog = {
+        id: uid("communication"),
+        channel: "manual_whatsapp",
+        templateKey,
+        recipient: phone,
+        message: generated,
+        status: "opened",
+        actor: "Gestor",
+        createdAt: new Date().toISOString(),
+      };
+      setOrder((current) => current
+        ? { ...current, communications: [communication, ...current.communications] }
+        : current);
     }
     window.open(`https://wa.me/${phone.startsWith("55") ? phone : `55${phone}`}?text=${encodeURIComponent(generated)}`, "_blank", "noopener,noreferrer");
   }
@@ -449,7 +463,20 @@ function IncidentsTab({ order, working, mutate, setOrder }: { order: OrderDetail
   const [incident, setIncident] = useState({ category: "other", severity: "medium", title: "", description: "" });
   async function addNote() {
     if (note.trim().length < 1) throw new Error("Escreva uma nota.");
-    if (isDemoMode()) { setOrder((current) => current ? { ...current, internalNotes: [{ id: uid("note"), body: note.trim(), pinned, createdBy: "Gestor", createdAt: new Date().toISOString() }, ...current.internalNotes] } : current); setNote(""); return; }
+    if (isDemoMode()) {
+      const internalNote: OrderInternalNote = {
+        id: uid("note"),
+        body: note.trim(),
+        pinned,
+        actor: "Gestor",
+        createdAt: new Date().toISOString(),
+      };
+      setOrder((current) => current
+        ? { ...current, internalNotes: [internalNote, ...current.internalNotes] }
+        : current);
+      setNote("");
+      return;
+    }
     const response = await fetch(`/api/orders/${order.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add_note", body: note.trim(), pinned }) });
     const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao adicionar nota."); setNote("");
   }
@@ -462,7 +489,17 @@ function IncidentsTab({ order, working, mutate, setOrder }: { order: OrderDetail
   async function resolve(entry: OrderIncident) {
     const resolution = window.prompt("Descreva como a ocorrência foi resolvida:");
     if (!resolution || resolution.trim().length < 2) return;
-    if (isDemoMode()) { setOrder((current) => current ? { ...current, incidents: current.incidents.map((item) => item.id === entry.id ? { ...item, status: "resolved", resolution, resolvedAt: new Date().toISOString() } : item) } : current); return; }
+    if (isDemoMode()) {
+      setOrder((current) => current
+        ? {
+            ...current,
+            incidents: current.incidents.map((item): OrderIncident => item.id === entry.id
+              ? { ...item, status: "resolved", resolution, resolvedAt: new Date().toISOString() }
+              : item),
+          }
+        : current);
+      return;
+    }
     const response = await fetch(`/api/orders/${order.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "resolve_incident", incidentId: entry.id, resolution }) });
     const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao resolver ocorrência.");
   }
