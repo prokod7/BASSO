@@ -1,4 +1,4 @@
-# Roteiro de implantação — PedidoPro 4.0
+# Roteiro de implantação — PedidoPro 6.0
 
 ## 1. Pré-requisitos
 
@@ -14,42 +14,27 @@
 
 ### Instalação nova
 
-No SQL Editor do Supabase, execute os 14 arquivos de `supabase/migrations`, um por vez e em ordem:
+No SQL Editor do Supabase, execute os 16 arquivos de `supabase/migrations`, um por vez e em ordem, de `001_core_schema.sql` até `016_integration_ready_99food_tracking_smartpos.sql`.
 
-1. `001_core_schema.sql`
-2. `002_official_catalog_seed.sql`
-3. `003_operational_functions.sql`
-4. `004_integrations_and_public_access.sql`
-5. `005_workers_and_queue_claims.sql`
-6. `006_reviews_and_customer_experience.sql`
-7. `007_management_finance_crm_and_settings.sql`
-8. `008_loyalty_reward_authorizations.sql`
-9. `009_internal_orders_and_tabs.sql`
-10. `010_salon_groups_and_cash_payments.sql`
-11. `011_public_table_qr_and_order_hardening.sql`
-12. `012_runtime_menu_management.sql`
-13. `013_admin_control_center.sql`
-14. `014_autonomy_operations_and_control.sql`
-
-### Banco já atualizado até 013
+### Banco já atualizado até 015
 
 Execute somente:
 
 ```text
-014_autonomy_operations_and_control.sql
+016_integration_ready_99food_tracking_smartpos.sql
 ```
 
 Não repita migrations já instaladas.
 
 ### Conferências
 
-- 42 sabores tradicionais, 11 premium e 11 doces;
-- 20 adicionais, 29 bebidas, combo e duas variações de sobremesa;
-- 15 mesas nas capacidades aprovadas;
-- inventário apenas para bebidas e sobremesas;
-- RLS e RPCs disponíveis;
-- tabela `system_migrations` com versão 14;
-- rotinas, tarefas, aprovações, notificações, expedição, compras e perfis de impressão criados.
+- tabela `system_migrations` com versão 16;
+- `integration_events` com correlação/identificador externo;
+- `driver_shifts` criado;
+- `driver_locations.order_id` opcional para rastreio interno durante o turno;
+- `tracking_tokens.customer_visible` criado;
+- `registered_devices` criado para SmartPOS;
+- RLS e RPCs da migration 016 disponíveis.
 
 ## 3. Variáveis de ambiente
 

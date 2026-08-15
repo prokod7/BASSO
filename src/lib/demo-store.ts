@@ -19,7 +19,7 @@ export interface DemoState {
   cashMovements: CashMovement[];
   financialEntries: FinancialEntry[];
   campaigns: CampaignRecord[];
-  integrationEvents: Array<{ id: string; provider: string; type: string; status: "ok" | "error" | "pending"; createdAt: string; attempts: number; lastError?: string }>;
+  integrationEvents: Array<{ id: string; provider: string; type: string; status: "ok" | "error" | "pending"; createdAt: string; attempts: number }>;
   audit: Array<{ id: string; actor: string; action: string; entity: string; entityId: string; createdAt: string; details?: string }>;
 }
 
@@ -167,11 +167,21 @@ export const demoActions = {
         .catch(() => undefined);
     }
   },
-  updateDriverLocation(driverId: string, latitude: number, longitude: number) {
+  startDriverShift(driverId: string) {
+    const s = load(); const now = new Date().toISOString();
+    save({ ...s, drivers: s.drivers.map(d => d.id === driverId ? { ...d, shiftActive: true, shiftStartedAt: now, shiftEndedAt: undefined } : d) });
+    fire(`/api/drivers/shifts/start`, { method: "POST", body: JSON.stringify({ driverId }) });
+  },
+  endDriverShift(driverId: string) {
+    const s = load(); const now = new Date().toISOString();
+    save({ ...s, drivers: s.drivers.map(d => d.id === driverId ? { ...d, shiftActive: false, shiftEndedAt: now } : d) });
+    fire(`/api/drivers/shifts/end`, { method: "POST", body: JSON.stringify({ driverId }) });
+  },
+  updateDriverLocation(driverId: string, latitude: number, longitude: number, telemetry?: { accuracy?: number | null; speed?: number | null; heading?: number | null }) {
     const s = load(); const now = new Date().toISOString();
     save({ ...s, drivers: s.drivers.map(d => d.id === driverId ? { ...d, latitude, longitude, lastLocationAt: now } : d) });
-    const orderId = s.drivers.find(d => d.id === driverId)?.activeOrderId;
-    if (orderId) fire(`/api/drivers/${driverId}/location`, { method: "POST", body: JSON.stringify({ orderId, latitude, longitude, capturedAt: now }) });
+    const orderId = s.drivers.find(d => d.id === driverId)?.activeOrderId || null;
+    fire(`/api/drivers/${driverId}/location`, { method: "POST", body: JSON.stringify({ orderId, latitude, longitude, accuracy: telemetry?.accuracy ?? null, speed: telemetry?.speed ?? null, heading: telemetry?.heading ?? null, capturedAt: now }) });
   },
   completeDelivery(orderId: string, driverId: string) {
     const s = load(); const now = new Date().toISOString();

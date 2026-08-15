@@ -3,10 +3,11 @@ import { requireOperationalRole } from "@/lib/authz";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { IfoodAdapter } from "@/lib/integrations/ifood";
 import { Food99Adapter } from "@/lib/integrations/food99";
+import { food99CredentialStatus } from "@/lib/integrations/food99/config";
 import { RedeAdapter } from "@/lib/integrations/rede";
 
-type ProviderKey = "ifood" | "99food" | "rede" | "onesignal" | "printer" | "supabase";
-type ProviderHealth = { configured: boolean; ok?: boolean; detail?: string; checkedAt?: string };
+type ProviderKey = "ifood" | "99food" | "rede" | "tracking" | "laranjinha" | "onesignal" | "printer" | "supabase";
+type ProviderHealth = { configured: boolean; ok?: boolean; detail?: string; checkedAt?: string; state?: "awaiting_credentials" | "configured" | "operational" | "failed" | "awaiting_official_contract" };
 
 function configuredProviders(): Record<ProviderKey, ProviderHealth> {
   return {
@@ -15,16 +16,33 @@ function configuredProviders(): Record<ProviderKey, ProviderHealth> {
       detail: "URL e chave de serviço"
     },
     ifood: {
-      configured: Boolean(process.env.IFOOD_CLIENT_ID && process.env.IFOOD_CLIENT_SECRET && process.env.IFOOD_MERCHANT_ID),
-      detail: "OAuth, loja autorizada e assinatura HMAC"
+      configured: Boolean(process.env.IFOOD_CLIENT_ID && process.env.IFOOD_CLIENT_SECRET && process.env.IFOOD_WEBHOOK_SECRET),
+      detail: "OAuth e segredo do webhook"
     },
-    "99food": {
-      configured: Boolean(process.env.FOOD99_CLIENT_ID && process.env.FOOD99_CLIENT_SECRET && process.env.FOOD99_BASE_URL && process.env.FOOD99_WEBHOOK_SECRET),
-      detail: "Credenciais, endpoint e segredo do webhook"
-    },
+    "99food": (() => {
+      const status = food99CredentialStatus();
+      return {
+        configured: status.configured,
+        state: status.configured ? "awaiting_official_contract" : "awaiting_credentials",
+        detail: status.configured
+          ? `Credenciais presentes • ${status.config.environment} • AppShopID ${status.config.appShopId} • contrato oficial ainda não aplicado`
+          : `Aguardando: ${status.missing.join(", ")}`,
+      };
+    })(),
     rede: {
-      configured: Boolean(process.env.REDE_BASE_URL && process.env.REDE_PV && process.env.REDE_TOKEN),
-      detail: "Endpoint, PV e token homologados"
+      configured: false,
+      state: "awaiting_official_contract",
+      detail: "Aguardando SDK/App2App e certificação da Laranjinha Smart Store; endpoints REST antigos foram desativados por segurança."
+    },
+    tracking: {
+      configured: true,
+      state: "configured",
+      detail: "Base interna pronta: turnos, GPS, histórico curto e rastreio público por token."
+    },
+    laranjinha: {
+      configured: false,
+      state: "awaiting_official_contract",
+      detail: "Core SmartPOS pronto; falta SDK/App2App e homologação oficial."
     },
     onesignal: {
       configured: Boolean((process.env.ONESIGNAL_APP_ID || process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID) && process.env.ONESIGNAL_REST_API_KEY),
@@ -40,7 +58,13 @@ function configuredProviders(): Record<ProviderKey, ProviderHealth> {
 async function liveHealth(key: ProviderKey): Promise<{ ok: boolean; detail: string }> {
   if (key === "ifood") return new IfoodAdapter().health();
   if (key === "99food") return new Food99Adapter().health();
-  if (key === "rede") return new RedeAdapter().health();
+  if (key === "rede" || key === "laranjinha") return new RedeAdapter().health();
+  if (key === "tracking") {
+    const db = createAdminClient();
+    if (!db) return { ok: false, detail: "Supabase não configurado." };
+    const { error } = await db.from("driver_shifts").select("id", { head: true, count: "exact" }).limit(1);
+    return error ? { ok: false, detail: "Migration 016 pendente ou estrutura de rastreio indisponível." } : { ok: true, detail: "Turnos e rastreamento interno disponíveis." };
+  }
   if (key === "supabase") {
     const db = createAdminClient();
     if (!db) return { ok: false, detail: "Supabase não configurado." };
@@ -68,7 +92,7 @@ export async function GET(request: NextRequest) {
           continue;
         }
         const result = await liveHealth(key);
-        providers[key] = { ...providers[key], ...result, checkedAt };
+        providers[key] = { ...providers[key], ...result, checkedAt, state: result.ok ? "operational" : (key === "99food" && providers[key].configured ? "awaiting_official_contract" : "failed") };
       }
     }
 

@@ -46,7 +46,7 @@ const requiredRoutes = [
   "src/app/painel/page.tsx","src/app/painel/pedidos/page.tsx","src/app/painel/pdv/page.tsx","src/app/painel/salao/page.tsx",
   "src/app/painel/garcom/page.tsx","src/app/painel/kds/page.tsx","src/app/painel/delivery/page.tsx","src/app/painel/motoboy/page.tsx",
   "src/app/painel/clientes/page.tsx","src/app/painel/fidelidade/page.tsx","src/app/painel/estoque/page.tsx","src/app/painel/caixa/page.tsx",
-  "src/app/painel/financeiro/page.tsx","src/app/painel/relatorios/page.tsx","src/app/painel/integracoes/page.tsx","src/app/painel/impressao/page.tsx",
+  "src/app/painel/financeiro/page.tsx","src/app/painel/relatorios/page.tsx","src/app/painel/integracoes/page.tsx","src/app/painel/integracoes/99food/page.tsx","src/app/painel/impressao/page.tsx",
   "src/app/painel/usuarios/page.tsx","src/app/painel/auditoria/page.tsx","src/app/painel/continuidade/page.tsx",
   "src/app/painel/configuracoes/page.tsx","src/app/painel/campanhas/page.tsx","src/app/painel/cardapio/page.tsx",
   "src/app/painel/rotinas/page.tsx","src/app/painel/tarefas/page.tsx","src/app/painel/aprovacoes/page.tsx",
@@ -66,7 +66,7 @@ check("Validação explícita contra bordas", /Bordas não existem neste sistema
 
 const sqlFiles = fs.readdirSync(path.join(root,"supabase/migrations")).filter(x => x.endsWith(".sql")).sort();
 const sql = sqlFiles.map(x => read(`supabase/migrations/${x}`)).join("\n");
-check("Migrações SQL 001–015 presentes", sqlFiles.length >= 15 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("015")), sqlFiles.join(", "));
+check("Migrações SQL 001–016 presentes", sqlFiles.length >= 16 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("016")), sqlFiles.join(", "));
 check("RLS habilitado", /enable row level security/i.test(sql));
 check("Auditoria imutável", /audit_no_update/i.test(sql));
 check("Chaves de idempotência", /idempotency_keys/i.test(sql));
@@ -164,6 +164,47 @@ check("Feature flags persistentes", /feature_flags/.test(sql) && /FEATURE_FLAG_U
 check("Inventário assistido e auditado", /inventory_counts/.test(sql) && /complete_inventory_count/.test(sql) && /Inventário rápido/.test(read("src/app/painel/inventario/page.tsx")));
 check("Troca obrigatória de senha", /must_change_password/.test(sql) && /trocar-senha/.test(read("src/components/internal/AdminShell.tsx")) && /PASSWORD_CHANGED/.test(read("src/app/api/auth/change-password/route.ts")));
 check("Snapshots de configuração", /configuration_snapshots/.test(sql) && /CONFIGURATION_SNAPSHOT_RESTORED/.test(read("src/app/api/system/snapshots/route.ts")));
+
+
+
+const integrationReadyFiles = [
+  "supabase/migrations/016_integration_ready_99food_tracking_smartpos.sql",
+  "src/lib/integrations/core/errors.ts",
+  "src/lib/integrations/core/events.ts",
+  "src/lib/integrations/core/safe-log.ts",
+  "src/lib/integrations/food99/config.ts",
+  "src/lib/integrations/food99/official-contract.ts",
+  "src/lib/integrations/food99/webhook.ts",
+  "src/lib/integrations/food99/orders.ts",
+  "src/app/api/integrations/99food/webhook/route.ts",
+  "src/app/api/integrations/99food/status/route.ts",
+  "src/app/api/integrations/99food/logs/route.ts",
+  "src/app/painel/integracoes/99food/page.tsx",
+  "src/app/api/drivers/shifts/start/route.ts",
+  "src/app/api/drivers/shifts/end/route.ts",
+  "src/app/api/devices/register/route.ts",
+  "src/lib/integrations/rede/official-contract.ts"
+];
+check("Mega Update 06 Integration Ready presente", integrationReadyFiles.every(exists), integrationReadyFiles.filter(file => !exists(file)).join(", "));
+const food99Source = [
+  "src/lib/integrations/food99.ts",
+  "src/lib/integrations/food99/config.ts",
+  "src/lib/integrations/food99/official-contract.ts",
+  "src/lib/integrations/food99/webhook.ts",
+  "src/lib/integrations/food99/orders.ts",
+  "src/lib/integrations/food99/status.ts",
+  "src/lib/integrations/food99/cancellation.ts",
+  "src/lib/integrations/food99/mapper.ts"
+].map(read).join("\n");
+check("99Food sem endpoints inventados", !/\/orders\/\$\{|x-99food-signature|x-99-signature|\/oauth\/token|\/order\/accept/i.test(food99Source));
+check("99Food bloqueia chamadas sem contrato oficial", /requireFood99OfficialContract/.test(food99Source) && /FOOD99_OFFICIAL_DOCS_REQUIRED/.test(food99Source));
+check("Webhook 99Food exato e público", /api\/integrations\/99food\/webhook/.test(read("middleware.ts")) && /validateFood99Webhook/.test(read("src/app/api/integrations/99food/webhook/route.ts")));
+check("99Food usa fila idempotente existente", /enqueueIntegrationEvent/.test(read("src/app/api/integrations/99food/webhook/route.ts")) && /onConflict: "provider,event_id"/.test(read("src/lib/integrations/core/events.ts")));
+check("Worker 99Food preparado para buscar pedido completo", /resolveFood99OrderFromEvent/.test(read("src/lib/workers/marketplace.ts")));
+check("Rastreamento interno separado do cliente", /driver_shifts/.test(sql) && /customer_visible/.test(sql) && /record_driver_location_v2/.test(sql) && /order_id drop not null/.test(sql));
+check("Cliente perde rastreio ao concluir e turno interno permanece independente", /sync_customer_tracking_visibility/.test(sql) && /customer_visible=false/.test(sql) && /end_driver_shift/.test(sql));
+check("SmartPOS preparado sem API Rede inventada", /registered_devices/.test(sql) && /waiter_smartpos/.test(sql) && /SDK\/App2App/.test(read("src/lib/integrations/rede.ts")));
+check("Garçom preparado para terminal SmartPOS", /waiter_smartpos/.test(read("src/app/painel/garcom/page.tsx")) && /api\/devices\/register/.test(read("src/app/painel/garcom/page.tsx")));
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 check("PWA com ícones 192 e 512", manifest.icons?.some(x => x.sizes === "192x192") && manifest.icons?.some(x => x.sizes === "512x512"));

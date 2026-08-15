@@ -1,8 +1,8 @@
 # Relatório de verificação estática
 
-Gerado em: 2026-08-09T05:51:31.378Z
+Gerado em: 2026-08-15T03:25:36.322Z
 
-Resultado: **77/77 verificações aprovadas**.
+Resultado: **87/87 verificações aprovadas**.
 
 | Verificação | Resultado | Detalhe |
 |---|---:|---|
@@ -30,7 +30,7 @@ Resultado: **77/77 verificações aprovadas**.
 | Telas públicas e operacionais presentes | APROVADO | — |
 | Nenhum componente de seleção de borda | APROVADO | — |
 | Validação explícita contra bordas | APROVADO | — |
-| Migrações SQL 001–015 presentes | APROVADO | 001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql |
+| Migrações SQL 001–016 presentes | APROVADO | 001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql, 016_integration_ready_99food_tracking_smartpos.sql |
 | RLS habilitado | APROVADO | — |
 | Auditoria imutável | APROVADO | — |
 | Chaves de idempotência | APROVADO | — |
@@ -78,6 +78,16 @@ Resultado: **77/77 verificações aprovadas**.
 | Inventário assistido e auditado | APROVADO | — |
 | Troca obrigatória de senha | APROVADO | — |
 | Snapshots de configuração | APROVADO | — |
+| Mega Update 06 Integration Ready presente | APROVADO | — |
+| 99Food sem endpoints inventados | APROVADO | — |
+| 99Food bloqueia chamadas sem contrato oficial | APROVADO | — |
+| Webhook 99Food exato e público | APROVADO | — |
+| 99Food usa fila idempotente existente | APROVADO | — |
+| Worker 99Food preparado para buscar pedido completo | APROVADO | — |
+| Rastreamento interno separado do cliente | APROVADO | — |
+| Cliente perde rastreio ao concluir e turno interno permanece independente | APROVADO | — |
+| SmartPOS preparado sem API Rede inventada | APROVADO | — |
+| Garçom preparado para terminal SmartPOS | APROVADO | — |
 | PWA com ícones 192 e 512 | APROVADO | — |
 | Service worker presente | APROVADO | — |
 | Bridge de impressão presente | APROVADO | — |

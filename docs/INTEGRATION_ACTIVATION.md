@@ -1,58 +1,82 @@
 # Ativação de integrações externas
 
-## iFood — somente pedidos
+## iFood
 
-A integração da La Forneria Basso usa apenas `Order`, `Events` e `Merchant`. Não sincroniza catálogo, estoque, promoções, financeiro ou conciliação.
+O adaptador existente foi preservado no Mega Update 06. Use as variáveis já adotadas pela instalação:
 
-Variáveis obrigatórias:
-
-- `IFOOD_CLIENT_ID`
-- `IFOOD_CLIENT_SECRET`
-- `IFOOD_MERCHANT_ID`
-- `IFOOD_BASE_URL=https://merchant-api.ifood.com.br`
-- `MARKETPLACE_AUTO_ACCEPT=false`
-
-Webhook oficial:
-
-```text
-https://SEU-DOMINIO/api/integrations/ifood/webhook
+```env
+IFOOD_CLIENT_ID=
+IFOOD_CLIENT_SECRET=
+IFOOD_BASE_URL=https://merchant-api.ifood.com.br
+IFOOD_WEBHOOK_SECRET=
 ```
 
-O endpoint valida `X-IFood-Signature` com HMAC SHA-256 usando o `clientSecret`, responde `KEEPALIVE`, deduplica eventos pelo ID e coloca o processamento em fila durável. O cron protegido é a contingência para falhas transitórias.
+Faça qualquer alteração futura somente a partir do contrato oficial/homologação do aplicativo já existente.
 
-Fluxo implementado:
+## 99Food — Sandbox Basso
 
-- recebe o evento e consulta `GET /orders/{id}`;
-- grava pedido e itens no Supabase sem criar cliente no CRM;
-- cria alerta interno, toca aviso no painel e gera trabalhos de impressão por setor;
-- confirma, inicia preparo, marca pronto e despacha entrega própria;
-- consulta os motivos oficiais antes de solicitar cancelamento;
-- sincroniza eventos de confirmado, preparo, pronto, despacho, conclusão e cancelamento;
-- mantém histórico, auditoria, deduplicação e retentativa.
+Contexto:
 
-Consulte [`IFOOD_SETUP.md`](IFOOD_SETUP.md) para ativar a loja de teste e depois a produção.
+- app: `PedidoPro 99Food Teste`;
+- ambiente: teste;
+- AppShopID: `basso_teste_001`;
+- webhook cadastrado: `https://basso-seven.vercel.app/api/integrations/99food/webhook`.
 
-## 99Food
+Variáveis preparadas:
 
-Variáveis: `FOOD99_CLIENT_ID`, `FOOD99_CLIENT_SECRET`, `FOOD99_BASE_URL`, `FOOD99_WEBHOOK_SECRET`.
+```env
+FOOD99_ENVIRONMENT=test
+FOOD99_APP_ID=
+FOOD99_APP_SECRET=
+FOOD99_SHOP_ID=
+FOOD99_SHOP_TOKEN=
+FOOD99_APP_SHOP_ID=basso_teste_001
+```
 
-O endpoint fica vazio por padrão para impedir chamadas a uma URL presumida. Preencha somente após o fornecedor fornecer ambiente, credenciais e contrato de payload.
+A rota existe, mas o processamento externo fica bloqueado até a aplicação literal da documentação oficial. Isso é proposital. Consulte `99FOOD_OFFICIAL_DOCS_NEEDED.md`.
 
-## Rede
+Depois do patch de ativação oficial, o fluxo de teste será:
 
-Variáveis: `REDE_PV`, `REDE_TOKEN`, `REDE_BASE_URL`, `REDE_WEBHOOK_SECRET`.
+1. adicionar ENV na Vercel;
+2. redeploy;
+3. abrir `/painel/integracoes/99food`;
+4. clicar **Testar conexão**;
+5. confirmar autenticação/loja/webhook;
+6. no Sandbox 99Food, clicar **Criar pedido**;
+7. confirmar um único pedido no painel/KDS;
+8. reenviar o mesmo evento e confirmar idempotência;
+9. testar finalização;
+10. testar cancelamento.
 
-- confirmar produto/API/SmartPOS contratado;
-- cadastrar terminais e vínculo com garçom/PDV;
-- homologar débito, crédito, refeição e alimentação;
-- testar aprovação, recusa, timeout, cancelamento e estorno.
+## Rastreio de motoboy
 
-## OneSignal e e-mail
+Não exige fornecedor externo na base. O PedidoPro usa GPS do navegador/PWA + Supabase + mapa OpenStreetMap/Leaflet.
 
-Variáveis: `NEXT_PUBLIC_ONESIGNAL_APP_ID`, `ONESIGNAL_REST_API_KEY`, `RESEND_API_KEY`, `CAMPAIGN_FROM_EMAIL`.
+O modelo é separado:
 
-Push/e-mail exigem consentimento. Clientes de marketplace não são elegíveis. WhatsApp permanece manual.
+- turno ativo: localização interna para a pizzaria;
+- entrega ativa: token adicional e temporário para o cliente;
+- pedido entregue: cliente perde acesso imediatamente;
+- turno continua: pizzaria continua vendo a última/localização atual do motoboy;
+- fim do turno: rastreio interno é encerrado.
 
-## Mapa
+É necessário HTTPS, permissão de geolocalização, internet e PWA/navegador em execução. Rastreamento confiável em background precisa ser validado nos aparelhos reais, principalmente iOS.
 
-Leaflet e OpenStreetMap não exigem API paga de rota. O módulo não calcula rota nem previsão automática.
+## Laranjinha Smart / Rede
+
+O objetivo é o app do garçom rodar na Laranjinha Smart e iniciar pagamento na mesma máquina. A fundação SmartPOS está pronta, mas nenhum endpoint REST da Rede é usado por suposição.
+
+A ativação depende de:
+
+- aprovação KYP/Conexão Itaú;
+- SDK/App2App oficial da Laranjinha Smart Store;
+- documentação de intents/callbacks;
+- identificação do terminal;
+- retornos de pagamento, NSU, autorização, cancelamento/estorno;
+- regras de certificação/publicação.
+
+Até isso chegar, o pagamento SmartPOS permanece explicitamente desabilitado.
+
+## OneSignal, Resend e Print Bridge
+
+Use as variáveis de `.env.example`. WhatsApp permanece manual. Print Bridge usa agente local e chave compartilhada; não simule impressão confirmada sem retorno do agente.

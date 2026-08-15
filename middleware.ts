@@ -11,7 +11,9 @@ type CookieToSet = {
 };
 
 export async function middleware(request: NextRequest) {
-  if (request.nextUrl.pathname === "/api/integrations/ifood/webhook") {
+  // Webhook oficial da 99Food precisa ser público para os servidores da plataforma.
+  // A própria rota faz a validação criptográfica/autenticidade conforme o contrato oficial.
+  if (request.nextUrl.pathname === "/api/integrations/99food/webhook") {
     return NextResponse.next();
   }
 

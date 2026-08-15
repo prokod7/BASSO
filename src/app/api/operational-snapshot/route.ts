@@ -16,7 +16,7 @@ export async function GET() {
       db.from("inventory_items").select("*"),
       db.from("products").select("id,name,category"),
       db.from("coupons").select("*").order("created_at", { ascending: false }),
-      db.from("integration_events").select("id,provider,event_type,status,created_at,attempts,last_error").order("created_at", { ascending: false }).limit(50),
+      db.from("integration_events").select("id,provider,event_type,status,created_at,attempts").order("created_at", { ascending: false }).limit(50),
       db.from("audit_logs").select("id,actor_label,action,entity_type,entity_id,created_at,reason").order("created_at", { ascending: false }).limit(100),
       db.from("cash_sessions").select("*").eq("status","open").order("opened_at",{ascending:false}).limit(1).maybeSingle(),
       db.from("financial_entries").select("*,financial_categories(name)").is("deleted_at",null).order("due_date",{ascending:false}).limit(200),
@@ -36,10 +36,10 @@ export async function GET() {
       tabsByTable.set(t.table_number,arr);
     }
     const tables=(tablesR.data||[]).map((t:any)=>({number:t.number,capacity:t.capacity,status:t.status,people:t.people_count||undefined,openedAt:t.opened_at||undefined,groupId:t.group_id||undefined,tabs:tabsByTable.get(t.number)||[]}));
-    const drivers=(driversR.data||[]).map((d:any)=>({id:d.id,name:d.name,phone:d.phone,vehicle:d.vehicle||"Moto",available:d.available,latitude:d.last_latitude?Number(d.last_latitude):undefined,longitude:d.last_longitude?Number(d.last_longitude):undefined,lastLocationAt:d.last_location_at||undefined,activeOrderId:d.active_order_id||undefined}));
+    const drivers=(driversR.data||[]).map((d:any)=>({id:d.id,name:d.name,phone:d.phone,vehicle:d.vehicle||"Moto",available:d.available,latitude:d.last_latitude?Number(d.last_latitude):undefined,longitude:d.last_longitude?Number(d.last_longitude):undefined,lastLocationAt:d.last_location_at||undefined,activeOrderId:d.active_order_id||undefined,shiftActive:Boolean(d.shift_started_at)&&(!d.shift_ended_at||Date.parse(d.shift_started_at)>Date.parse(d.shift_ended_at)),shiftStartedAt:d.shift_started_at||undefined,shiftEndedAt:d.shift_ended_at||undefined}));
     const inventory=(inventoryR.data||[]).map((i:any)=>{const p=productMap.get(i.product_id) as any;return {id:i.id,productId:i.product_id,name:p?.name||i.product_id,unit:i.unit,quantity:Number(i.quantity),minQuantity:Number(i.minimum_quantity),allowNegative:i.allow_negative,updatedAt:i.updated_at}});
     const coupons=(couponsR.data||[]).map((c:any)=>({id:c.id,code:c.code,type:c.discount_type,value:c.value,totalLimit:c.total_limit,uses:c.uses,minimum:c.minimum_cents,channels:c.channels,active:c.active,startsAt:c.starts_at||undefined,endsAt:c.ends_at||undefined}));
-    const integrationEvents=(eventsR.data||[]).map((e:any)=>({id:e.id,provider:e.provider,type:e.event_type,status:e.status==="done"?"ok":e.status==="failed"?"error":"pending",createdAt:e.created_at,attempts:e.attempts,lastError:e.last_error||undefined}));
+    const integrationEvents=(eventsR.data||[]).map((e:any)=>({id:e.id,provider:e.provider,type:e.event_type,status:e.status==="done"?"ok":e.status==="failed"?"error":"pending",createdAt:e.created_at,attempts:e.attempts}));
     const audit=(auditR.data||[]).map((a:any)=>({id:String(a.id),actor:a.actor_label||"Sistema",action:a.action,entity:a.entity_type,entityId:a.entity_id,createdAt:a.created_at,details:a.reason||undefined}));
     const cash=cashR.data as any;
     let cashMovements:any[]=[];

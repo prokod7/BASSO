@@ -10,7 +10,7 @@ files.forEach((name, index) => {
   const content = fs.readFileSync(path.join(directory, name), "utf8");
   if (content.trim().length < 80) errors.push(`${name} parece vazio ou incompleto.`);
 });
-if (!files.some((name) => name.startsWith("015_"))) errors.push("Migration 015 ausente.");
+if (!files.some((name) => name.startsWith("016_"))) errors.push("Migration 016 ausente.");
 if (errors.length) {
   console.error(errors.join("\n"));
   process.exit(1);

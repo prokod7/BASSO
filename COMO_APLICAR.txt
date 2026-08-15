@@ -1,16 +1,10 @@
-ATUALIZAÇÃO 01 — COMO APLICAR
+PEDIDOPRO — MEGA UPDATE 06
 
-1. Extraia este ZIP.
-2. Copie todo o conteúdo para a raiz do repositório, mantendo as pastas.
-3. Aceite substituir os arquivos existentes.
-4. Se ainda existir um arquivo chamado vercel.json, renomeie-o para vercel.pro.json ou remova-o temporariamente no plano Hobby.
-5. No painel da Vercel, adicione temporariamente:
-   INITIAL_USER_PASSWORD=uma-senha-forte-com-12-ou-mais-caracteres
-6. Faça commit/push e aguarde o novo deploy.
-7. Acesse /login com:
-   gestor@laforneriabasso.com.br
-   e a senha configurada em INITIAL_USER_PASSWORD.
-8. O primeiro login cria automaticamente as sete contas se elas ainda não existirem.
-9. Depois do acesso bem-sucedido, remova INITIAL_USER_PASSWORD da Vercel e faça outro redeploy.
+1. Faça backup/commit do repositório atual.
+2. Copie todo o conteúdo deste patch para a raiz do projeto e aceite substituir.
+3. No Supabase, execute SOMENTE 016_integration_ready_99food_tracking_smartpos.sql se 001–015 já estiverem instaladas.
+4. Configure as ENV da 99Food somente com valores fornecidos no portal.
+5. Faça commit/push e aguarde o gate GitHub/Vercel.
+6. Acesse /painel/integracoes e /painel/integracoes/99food.
 
-Não existe SQL novo nesta atualização. Mantenha as migrações 001 a 012 já executadas.
+IMPORTANTE: a 99Food permanece bloqueada por OFFICIAL_DOCUMENTATION_REQUIRED até as páginas oficiais de autenticação, webhook, eventos, pedidos/status/cancelamento, valores e APIItemID serem fornecidas e aplicadas. Nenhum endpoint foi inventado.

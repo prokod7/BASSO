@@ -89,7 +89,20 @@ export interface Order {
 }
 export interface DemoTable { number: number; capacity: number; status: "free" | "occupied" | "cleaning" | "partial"; people?: number; openedAt?: string; groupId?: string; tabs: DemoTab[]; }
 export interface DemoTab { id: string; name: string; items: CartItem[]; paidCents: number; totalCents: number; waiter: string; status: "open" | "partial" | "closed" | "cancelled"; }
-export interface Driver { id: string; name: string; phone: string; vehicle: string; available: boolean; latitude?: number; longitude?: number; lastLocationAt?: string; activeOrderId?: string; }
+export interface Driver {
+  id: string;
+  name: string;
+  phone: string;
+  vehicle: string;
+  available: boolean;
+  latitude?: number;
+  longitude?: number;
+  lastLocationAt?: string;
+  activeOrderId?: string;
+  shiftActive?: boolean;
+  shiftStartedAt?: string;
+  shiftEndedAt?: string;
+}
 export interface InventoryItem { id: string; productId: string; name: string; unit: string; quantity: number; minQuantity: number; allowNegative: boolean; updatedAt: string; }
 export interface Coupon { id: string; code: string; type: "percentage" | "fixed"; value: number; totalLimit: number | null; uses: number; minimum: number | null; channels: OrderChannel[]; active: boolean; startsAt?: string; endsAt?: string; }
 
