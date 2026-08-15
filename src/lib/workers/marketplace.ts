@@ -140,3 +140,59 @@ export async function processIntegrationEvent(event: IntegrationEventRow): Promi
     throw error;
   }
 }
+
+export interface DrainIntegrationQueueResult {
+  ok: boolean;
+  claimed: number;
+  completed: number;
+  processed: number;
+  failed: number;
+}
+
+/**
+ * Backward-compatible queue drainer used by older route handlers.
+ *
+ * Mega Update 06 routes primarily call `processIntegrationEvent` directly after
+ * claiming rows, but existing deployments still import `drainIntegrationQueue`.
+ * Keeping this exported helper prevents those routes from breaking while using
+ * the same claim/process/finalize path and idempotency guarantees.
+ */
+export async function drainIntegrationQueue(
+  limitOrOptions: number | { limit?: number } = 10,
+): Promise<DrainIntegrationQueueResult> {
+  const db = createAdminClient();
+  if (!db) throw new Error("Supabase não configurado.");
+
+  const requestedLimit = typeof limitOrOptions === "number"
+    ? limitOrOptions
+    : (limitOrOptions.limit ?? 10);
+  const limit = Math.max(1, Math.min(100, Math.trunc(requestedLimit || 10)));
+
+  const { data: events, error } = await db.rpc("claim_integration_events", {
+    p_limit: limit,
+  });
+  if (error) throw error;
+
+  let completed = 0;
+  let failed = 0;
+  const claimed = Array.isArray(events) ? events.length : 0;
+
+  for (const row of events || []) {
+    try {
+      await processIntegrationEvent(row as IntegrationEventRow);
+      completed += 1;
+    } catch {
+      // `processIntegrationEvent` already records the failed attempt through
+      // `finish_integration_event`; the drainer only aggregates the result.
+      failed += 1;
+    }
+  }
+
+  return {
+    ok: failed === 0,
+    claimed,
+    completed,
+    processed: completed,
+    failed,
+  };
+}
