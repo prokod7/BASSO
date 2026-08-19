@@ -26,6 +26,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: detail, operationalStatus: runtime.operational_status }, { status: 409 });
     }
     const quote = await quoteCommercialTerms({ items: supplied.items, channel: supplied.channel, couponCode: supplied.couponCode, district: supplied.address?.district });
+    if (supplied.channel === "own_delivery" && quote.coverageConfigurationPending) {
+      return NextResponse.json({ error: "A entrega está temporariamente indisponível porque os bairros e taxas ainda não foram configurados. Escolha retirada ou fale com a pizzaria." }, { status: 409 });
+    }
+    if (supplied.paymentMethod === "cash" && supplied.changeFor != null && supplied.changeFor < quote.total) {
+      throw new Error(`O valor para troco deve ser igual ou maior que R$ ${(quote.total / 100).toFixed(2).replace(".", ",")}.`);
+    }
     const order = parseIncomingOrder({ ...supplied, items: quote.items, subtotal: quote.subtotal, discount: quote.discount, deliveryFee: quote.deliveryFee, total: quote.total, couponCode: quote.couponCode });
     const { error } = await db.rpc("create_order_transaction", { p_order: order });
     if (error) throw error;

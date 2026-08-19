@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Crosshair, Loader2, LockKeyhole, ShoppingBag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { useDemoState, demoActions } from "@/lib/demo-store";
 import { checkoutSchema } from "@/lib/order-validation";
@@ -16,6 +16,15 @@ const LocationPicker = dynamic(() => import("@/components/maps/LocationPicker").
 const emptyAddress: Address = { cep: "", street: "", number: "", district: "", complement: "", reference: "", city: "Rio Grande da Serra", state: "SP" };
 const tableTabKey = (table: number) => `lfb-table-tab-v31-${table}`;
 const tableNameKey = (table: number) => `lfb-table-name-v31-${table}`;
+
+type CheckoutQuote = {
+  subtotal: number;
+  discount: number;
+  deliveryFee: number;
+  total: number;
+  couponCode?: string;
+  coverageConfigurationPending?: boolean;
+};
 
 export default function CheckoutPage() {
   const cart = useCart();
@@ -37,6 +46,10 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [serverQuote, setServerQuote] = useState<CheckoutQuote | null>(null);
+  const [quoteError, setQuoteError] = useState("");
+  const [quoting, setQuoting] = useState(false);
+  const checkoutKeyRef = useRef(uid("checkout"));
 
   useEffect(() => {
     const table = Number(new URLSearchParams(window.location.search).get("mesa"));
@@ -57,8 +70,50 @@ export default function CheckoutPage() {
     if (!coupon || (coupon.minimum && cart.subtotal < coupon.minimum)) return 0;
     return coupon.type === "percentage" ? Math.round(cart.subtotal * coupon.value / 100) : Math.min(coupon.value, cart.subtotal);
   }, [coupon, cart.subtotal]);
-  const deliveryFee = 0;
-  const total = Math.max(0, cart.subtotal - discount + deliveryFee);
+  const localDeliveryFee = 0;
+  const localTotal = Math.max(0, cart.subtotal - discount + localDeliveryFee);
+  const displaySubtotal = !isDemoMode() && serverQuote ? serverQuote.subtotal : cart.subtotal;
+  const displayDiscount = !isDemoMode() && serverQuote ? serverQuote.discount : discount;
+  const displayDeliveryFee = !isDemoMode() && serverQuote ? serverQuote.deliveryFee : localDeliveryFee;
+  const total = !isDemoMode() && serverQuote ? serverQuote.total : localTotal;
+
+  useEffect(() => {
+    if (isDemoMode() || !cart.items.length) return;
+    if (channel === "own_delivery" && !address.district.trim()) {
+      setServerQuote(null);
+      setQuoteError("");
+      return;
+    }
+    setServerQuote(null);
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setQuoting(true);
+      setQuoteError("");
+      try {
+        const response = await fetch("/api/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: cart.items,
+            channel,
+            couponCode: couponCode.trim() || undefined,
+            district: channel === "own_delivery" ? address.district.trim() : undefined,
+          }),
+        });
+        const body = await response.json().catch(() => null) as CheckoutQuote & { error?: string } | null;
+        if (!response.ok) throw new Error(body?.error || "Não foi possível atualizar o total.");
+        if (!cancelled && body) setServerQuote(body);
+      } catch (error) {
+        if (!cancelled) {
+          setServerQuote(null);
+          setQuoteError(error instanceof Error ? error.message : "Não foi possível atualizar o total.");
+        }
+      } finally {
+        if (!cancelled) setQuoting(false);
+      }
+    }, 550);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [address.district, cart.items, channel, couponCode]);
 
   const useLocation = () => {
     if (!navigator.geolocation) { setError("Geolocalização não está disponível neste aparelho."); return; }
@@ -89,15 +144,15 @@ export default function CheckoutPage() {
       address: channel === "own_delivery" ? { ...address, cep: address.cep.replace(/\D/g, "") } : undefined
     });
     if (!parsed.success) { setError(parsed.error.issues[0]?.message || "Revise os dados do checkout."); return; }
-    if (couponCode && !coupon) { setError("Cupom inválido, pausado, esgotado ou indisponível para este canal."); return; }
-    if (coupon?.minimum && cart.subtotal < coupon.minimum) { setError(`Este cupom exige pedido mínimo de ${currency(coupon.minimum)}.`); return; }
+    if (isDemoMode() && couponCode && !coupon) { setError("Cupom inválido, pausado, esgotado ou indisponível para este canal."); return; }
+    if (isDemoMode() && coupon?.minimum && cart.subtotal < coupon.minimum) { setError(`Este cupom exige pedido mínimo de ${currency(coupon.minimum)}.`); return; }
 
     setLoading(true);
     try {
       let finalSubtotal = cart.subtotal;
       let finalDiscount = discount;
-      let finalDeliveryFee = deliveryFee;
-      let finalTotal = total;
+      let finalDeliveryFee = localDeliveryFee;
+      let finalTotal = localTotal;
       let finalCoupon = coupon?.code;
       if (!isDemoMode()) {
         const quoteResponse = await fetch("/api/quote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: cart.items, channel, couponCode: couponCode || undefined, district: channel === "own_delivery" ? parsed.data.address?.district : undefined }) });
@@ -108,6 +163,13 @@ export default function CheckoutPage() {
         finalDeliveryFee = quoteBody.deliveryFee;
         finalTotal = quoteBody.total;
         finalCoupon = quoteBody.couponCode;
+      }
+
+      if (!isTableOrder && payment === "cash" && changeFor.trim()) {
+        const changeForCents = Math.round(Number(changeFor.replace(",", ".")) * 100);
+        if (!Number.isFinite(changeForCents) || changeForCents < finalTotal) {
+          throw new Error(`O valor para troco deve ser igual ou maior que ${currency(finalTotal)}.`);
+        }
       }
 
       const now = new Date().toISOString();
@@ -140,12 +202,13 @@ export default function CheckoutPage() {
         couponCode: finalCoupon,
         createdAt: now,
         updatedAt: now,
-        sourceIdempotencyKey: uid("checkout"),
+        sourceIdempotencyKey: checkoutKeyRef.current,
         trackingToken: channel === "own_delivery" ? uid("track") : undefined
       };
 
       let accessToken: string | undefined;
       let finalNumber = order.number;
+      let finalOrderId = order.id;
       if (isDemoMode()) {
         demoActions.createOrder(order);
       } else {
@@ -157,12 +220,13 @@ export default function CheckoutPage() {
         let result = await send(order);
         if (!result.response.ok && isTableOrder && order.tabId && /comanda|mesa/i.test(result.body.error || "")) {
           localStorage.removeItem(tableTabKey(tableNumber!));
-          order = { ...order, tabId: undefined, sourceIdempotencyKey: uid("checkout") };
+          order = { ...order, tabId: undefined };
           result = await send(order);
         }
         if (!result.response.ok) throw new Error(result.body.error || "Falha ao criar pedido.");
         accessToken = result.body.accessToken;
         finalNumber = Number(result.body.number || order.number);
+        finalOrderId = String(result.body.id || order.id);
         resolvedTabId = result.body.tabId || order.tabId;
       }
 
@@ -170,9 +234,9 @@ export default function CheckoutPage() {
         localStorage.setItem(tableTabKey(tableNumber), resolvedTabId);
         localStorage.setItem(tableNameKey(tableNumber), tabName.trim());
       }
-      customerDeviceActions.saveOrder({ id, number: finalNumber, token: accessToken, phone: order.customerPhone, total: finalTotal, status: "received", createdAt: now, items: cart.items });
+      customerDeviceActions.saveOrder({ id: finalOrderId, number: finalNumber, token: accessToken, phone: order.customerPhone, total: finalTotal, status: "received", createdAt: now, items: cart.items });
       cart.clear();
-      router.push(`/pedido/${id}${accessToken ? `?token=${encodeURIComponent(accessToken)}` : ""}`);
+      router.push(`/pedido/${finalOrderId}${accessToken ? `?token=${encodeURIComponent(accessToken)}` : ""}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível finalizar o pedido.");
       setLoading(false);
@@ -194,10 +258,10 @@ export default function CheckoutPage() {
         {!isTableOrder && <Section title="Pagamento"><div className="grid gap-2 sm:grid-cols-3">{([["pix","Pix"],["cash","Dinheiro"],["debit","Débito"],["credit","Crédito"],["meal_voucher","Refeição"],["food_voucher","Alimentação"]] as [PaymentMethod,string][]).map(([id,label]) => <Choice key={id} active={payment === id} onClick={() => setPayment(id)} label={label}/>)}</div>{payment === "cash" && <Field label="Troco para quanto?" className="mt-4"><input className="input" value={changeFor} onChange={e => setChangeFor(e.target.value)} inputMode="decimal" placeholder="Ex.: 100,00"/></Field>}<p className="mt-3 text-xs text-black/45">Pagamentos em cartão são confirmados presencialmente. Dados de cartão e CVV não são armazenados.</p></Section>}
         {isTableOrder && <Section title="Pagamento"><p className="rounded-2xl bg-basso-black p-4 text-sm font-semibold text-white">O pagamento será realizado no fechamento da comanda com a equipe. Nenhuma cobrança é feita pelo QR Code.</p></Section>}
 
-        <Section title="Cupom e observações"><div className="grid gap-4 sm:grid-cols-2"><Field label="Cupom"><input className="input uppercase" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="Código do cupom"/></Field><Field label="Observações gerais"><textarea className="textarea min-h-20" value={notes} onChange={e => setNotes(e.target.value)} maxLength={500}/></Field></div>{couponCode && <p className={`mt-2 text-xs font-semibold ${coupon ? "text-emerald-700" : "text-red-600"}`}>{coupon ? `Cupom ${coupon.code} disponível.` : "Cupom não encontrado ou indisponível."}</p>}</Section>
+        <Section title="Cupom e observações"><div className="grid gap-4 sm:grid-cols-2"><Field label="Cupom"><input className="input uppercase" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="Código do cupom"/></Field><Field label="Observações gerais"><textarea className="textarea min-h-20" value={notes} onChange={e => setNotes(e.target.value)} maxLength={500}/></Field></div>{couponCode && <p className={`mt-2 text-xs font-semibold ${quoting ? "text-black/45" : (!isDemoMode() ? serverQuote?.couponCode : coupon?.code) ? "text-emerald-700" : "text-red-600"}`}>{quoting ? "Validando cupom e valores..." : (!isDemoMode() ? serverQuote?.couponCode : coupon?.code) ? `Cupom ${(!isDemoMode() ? serverQuote?.couponCode : coupon?.code) || couponCode} aplicado.` : quoteError || "Cupom não encontrado ou indisponível."}</p>}{!couponCode && quoteError && <p className="mt-2 text-xs font-semibold text-amber-700">{quoteError}</p>}</Section>
       </div>
 
-      <aside className="lg:sticky lg:top-5 lg:self-start"><div className="surface overflow-hidden"><div className="bg-basso-black p-5 text-white"><h2 className="font-display text-2xl font-bold">Resumo</h2><p className="mt-1 text-xs text-white/55">Confira os itens antes de enviar.</p></div><div className="max-h-72 space-y-3 overflow-y-auto p-5">{cart.items.map(i => <div key={i.id} className="flex justify-between gap-4 text-sm"><div><strong>{i.quantity}× {i.name}</strong></div><span className="shrink-0 font-semibold">{currency(i.unitPrice * i.quantity)}</span></div>)}</div><div className="space-y-2 border-t border-black/5 p-5 text-sm"><Line label="Subtotal" value={currency(cart.subtotal)}/>{discount > 0 && <Line label="Desconto" value={`− ${currency(discount)}`} good/>}<Line label="Taxa de entrega" value={channel === "own_delivery" ? "Calculada pela região" : currency(0)}/>{isTableOrder && <Line label="Destino" value={`Mesa ${tableNumber}`}/>}<div className="my-3 border-t border-dashed border-black/10"/><div className="flex items-center justify-between text-lg"><strong>Total parcial</strong><strong className="text-basso-wine">{currency(total)}</strong></div><button type="submit" className="btn-primary mt-4 w-full py-3.5" disabled={loading}>{loading ? <Loader2 className="animate-spin"/> : <LockKeyhole size={18}/>} {isTableOrder ? "Enviar para a comanda" : "Confirmar pedido"}</button><p className="text-center text-[11px] text-black/40">Ao confirmar, você concorda com os termos e a política de privacidade.</p></div></div>{error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}</aside>
+      <aside className="lg:sticky lg:top-5 lg:self-start"><div className="surface overflow-hidden"><div className="bg-basso-black p-5 text-white"><h2 className="font-display text-2xl font-bold">Resumo</h2><p className="mt-1 text-xs text-white/55">Confira os itens antes de enviar.</p></div><div className="max-h-72 space-y-3 overflow-y-auto p-5">{cart.items.map(i => <div key={i.id} className="flex justify-between gap-4 text-sm"><div><strong>{i.quantity}× {i.name}</strong></div><span className="shrink-0 font-semibold">{currency(i.unitPrice * i.quantity)}</span></div>)}</div><div className="space-y-2 border-t border-black/5 p-5 text-sm"><Line label="Subtotal" value={currency(displaySubtotal)}/>{displayDiscount > 0 && <Line label="Desconto" value={`− ${currency(displayDiscount)}`} good/>}<Line label="Taxa de entrega" value={channel === "own_delivery" ? (serverQuote ? currency(displayDeliveryFee) : quoting ? "Calculando..." : "Informe o bairro") : currency(0)}/>{isTableOrder && <Line label="Destino" value={`Mesa ${tableNumber}`}/>} {serverQuote?.coverageConfigurationPending && channel === "own_delivery" && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">A tabela de cobertura ainda não está configurada; a operação deverá revisar a taxa antes do despacho.</p>}<div className="my-3 border-t border-dashed border-black/10"/><div className="flex items-center justify-between text-lg"><strong>Total</strong><strong className="text-basso-wine">{currency(total)}</strong></div><button type="submit" className="btn-primary mt-4 w-full py-3.5" disabled={loading || quoting || (channel === "own_delivery" && (!serverQuote || serverQuote.coverageConfigurationPending))}>{loading ? <Loader2 className="animate-spin"/> : <LockKeyhole size={18}/>} {isTableOrder ? "Enviar para a comanda" : "Confirmar pedido"}</button><p className="text-center text-[11px] text-black/40">Ao confirmar, você concorda com os termos e a política de privacidade.</p></div></div>{error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}</aside>
     </form>
   </main>;
 }

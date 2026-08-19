@@ -19,7 +19,7 @@ export async function GET() {
     const about: SystemAbout = {
       appName: "PedidoPro",
       clientName: "La Forneria Basso",
-      version: "5.0.0",
+      version: "7.0.0",
       environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
       databaseVersion,
       databaseMigrationName,

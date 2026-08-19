@@ -1,10 +1,22 @@
 # PedidoPro — La Forneria Basso
 
-**Versão atual: 6.0.0 — Mega Update 06 (Integration Ready + 99Food contract-first).**
+**Versão atual: 5.0.0 — Mega Update 05 (maturidade operacional e autonomia).**
 
-# La Forneria Basso — PedidoPro 6.0
+# La Forneria Basso — PedidoPro 4.0
 
 Sistema omnichannel da La Forneria Basso construído a partir do Documento Mestre Final 3.1 e do cardápio oficial. O projeto reúne cardápio digital, configurador de pizzas, checkout, pedidos, PDV, salão, comandas, garçom, KDS, expedição, delivery, motoboy, CRM, fidelidade interna, estoque restrito, compras, caixa, financeiro, relatórios, comunicação, impressão, diagnóstico, contingência e administração em uma única aplicação.
+
+## Mega Update 07 — Production Final
+
+A versão 7.0 endurece o PedidoPro para operação real: elimina fallback demo em produção, torna caixa/financeiro/estoque/cupons/KDS/salão/motoboy/campanhas server-first, adiciona numeração atômica de pedidos, checkout com quote autoritativa e retry idempotente, checklist persistente de expedição e melhorias de carrinho/busca/status da loja.
+
+Após as migrations anteriores, execute também:
+
+```text
+supabase/migrations/017_production_final_hardening.sql
+```
+
+A versão exige banco na migration 017. A 99Food continua bloqueada por contrato oficial até a documentação técnica ser fornecida; Rede/Laranjinha continua aguardando SDK/App2App e homologação. Veja `MEGA_UPDATE_07.md` e `docs/MEGA_UPDATE_07_VALIDATION.md`.
 
 ## Stack
 
@@ -15,7 +27,7 @@ Sistema omnichannel da La Forneria Basso construído a partir do Documento Mestr
 - Leaflet + OpenStreetMap para mapa e rastreamento simples
 - OneSignal e Resend preparados para push/e-mail
 - Bridge local Node.js para impressão setorizada
-- iFood preservado; 99Food com arquitetura contract-first e webhook dedicado; Laranjinha Smart preparada sem endpoints presumidos
+- Adaptadores de iFood, 99Food e Rede preparados para credenciais e homologação
 
 ## Regras centrais
 
@@ -50,12 +62,6 @@ O pacote 4.0 acrescenta:
 
 Leia [`MEGA_UPDATE_04.md`](MEGA_UPDATE_04.md).
 
-## Mega Update 06
-
-O pacote 6.0 acrescenta webhook dedicado e diagnóstico 99Food, fila/redaction/correlação de integrações, arquitetura assíncrona para buscar detalhes do pedido, fundação de rastreio interno por turno com link do cliente separado e registro de terminais `waiter_smartpos`. A integração externa da 99Food permanece propositalmente bloqueada até a documentação oficial ser fornecida, evitando endpoints ou assinaturas inventados.
-
-Leia [`MEGA_UPDATE_06.md`](MEGA_UPDATE_06.md).
-
 ## Modo demonstração
 
 ```bash
@@ -78,16 +84,16 @@ Acesse:
 
 ## Produção
 
-1. Em instalação nova, execute as migrations `001` a `016` em ordem.
-2. Em banco já atualizado até `015`, execute somente `016_integration_ready_99food_tracking_smartpos.sql`.
-3. Configure as variáveis de `.env.example` na Vercel.
-4. Defina `NEXT_PUBLIC_DEMO_MODE=false`.
-5. Faça deploy com Node.js 22.
-6. Acesse `/painel/sistema` e confirme migration 016.
-7. Acesse `/painel/integracoes` para saúde das integrações.
-8. Para 99Food, forneça primeiro as páginas oficiais listadas em `docs/99FOOD_OFFICIAL_DOCS_NEEDED.md`; nenhuma chamada é inventada.
-9. Teste turno/GPS de motoboy em aparelho real antes de ativar para clientes.
-10. Ative Laranjinha Smart somente após SDK/App2App e certificação oficial.
+1. Crie o projeto Supabase.
+2. Em instalação nova, execute as migrations `001` a `014` em ordem.
+3. Em banco já atualizado até `013`, execute somente `014_autonomy_operations_and_control.sql`.
+4. Configure as variáveis de `.env.example` na Vercel.
+5. Defina `NEXT_PUBLIC_DEMO_MODE=false`.
+6. Crie os usuários iniciais com `npm run seed:users` ou pelo bootstrap controlado.
+7. Faça deploy com Node.js 22.
+8. Acesse `/painel/diagnostico` e confirme migration 014 e saúde do banco.
+9. Configure operação, usuários, bairros, estoque inicial e impressão.
+10. Homologue separadamente cada integração externa.
 
 No plano Hobby, mantenha `vercel.pro.json`. Restaure o nome `vercel.json` somente quando a cadência do cron for compatível com o plano utilizado.
 
@@ -129,4 +135,4 @@ public/assets/           imagens oficiais aprovadas
 
 ## Ativação externa
 
-Credenciais, tokens, endpoints, assinaturas e contratos de fornecedores não são inventados. O iFood permanece funcional; a 99Food só sai do gate de documentação após aplicação literal das páginas oficiais; rastreamento usa GPS interno; Laranjinha Smart aguarda SDK/App2App e certificação. Consulte [`docs/INTEGRATION_ACTIVATION.md`](docs/INTEGRATION_ACTIVATION.md) e [`docs/99FOOD_OFFICIAL_DOCS_NEEDED.md`](docs/99FOOD_OFFICIAL_DOCS_NEEDED.md).
+Credenciais, tokens, webhooks, URLs definitivas, modelos de terminal, bairros, taxas e nomes reais não são inventados no código. iFood, 99Food, Rede, Pix automático, OneSignal, Resend, Print Bridge e rastreamento só ficam operacionais após configuração e homologação. Consulte [`docs/INTEGRATION_ACTIVATION.md`](docs/INTEGRATION_ACTIVATION.md).

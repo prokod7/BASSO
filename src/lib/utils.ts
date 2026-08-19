@@ -6,3 +6,5 @@ export const uid = (prefix = "id") => `${prefix}_${Date.now().toString(36)}_${Ma
 export const normalizePhone = (v: string) => v.replace(/\D/g, "").slice(0, 13);
 export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const isDemoMode = () => process.env.NEXT_PUBLIC_DEMO_MODE !== "false";
+
+export const normalizeSearchText = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();

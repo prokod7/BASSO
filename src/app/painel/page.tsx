@@ -32,6 +32,7 @@ import { PageHeader } from "@/components/internal/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { buildDemoControlCenter } from "@/lib/admin-control";
 import { currency, isDemoMode, shortDateTime } from "@/lib/utils";
+import { apiJson, formatApiError } from "@/lib/client/api";
 import type { ControlCenterSnapshot } from "@/types";
 
 export default function DashboardPage() {
@@ -47,12 +48,10 @@ export default function DashboardPage() {
         setSnapshot(buildDemoControlCenter());
         return;
       }
-      const response = await fetch("/api/control-center", { cache: "no-store" });
-      const body = (await response.json()) as ControlCenterSnapshot & { error?: string };
-      if (!response.ok) throw new Error(body.error || "Falha ao carregar o centro de comando.");
+      const body = await apiJson<ControlCenterSnapshot>("/api/control-center", { cache: "no-store" });
       setSnapshot(body);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Falha ao carregar o centro de comando.");
+      setError(formatApiError(loadError, "Falha ao carregar o centro de comando."));
     } finally {
       setLoading(false);
     }
@@ -89,7 +88,7 @@ export default function DashboardPage() {
         actions={<><button className="btn-secondary" onClick={load} disabled={loading}>{loading ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} />}Atualizar</button><Link className="btn-secondary" href="/painel/rotinas"><ListChecks size={17} />Abrir rotina</Link><Link className="btn-primary" href="/painel/pdv"><Receipt size={17} />Nova venda</Link></>}
       />
 
-      {error && <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"><WifiOff className="mt-0.5 shrink-0" size={19} /><div><p>{error}</p><p className="mt-1 text-xs font-normal">Caso o erro cite tabelas novas, execute a migration 014 antes de utilizar o Mega Update 04.</p></div></div>}
+      {error && <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"><WifiOff className="mt-0.5 shrink-0" size={19} /><div><p>{error}</p><p className="mt-1 text-xs font-normal">Caso o erro cite banco desatualizado, confirme que a migration 017 foi executada antes de operar esta versão.</p></div></div>}
       {!snapshot && loading && <div className="surface grid min-h-80 place-items-center"><div className="text-center"><Loader2 className="mx-auto animate-spin text-basso-wine" size={36} /><p className="mt-3 text-sm font-semibold text-black/45">Montando a visão operacional...</p></div></div>}
 
       {snapshot && (

@@ -66,7 +66,7 @@ check("Validação explícita contra bordas", /Bordas não existem neste sistema
 
 const sqlFiles = fs.readdirSync(path.join(root,"supabase/migrations")).filter(x => x.endsWith(".sql")).sort();
 const sql = sqlFiles.map(x => read(`supabase/migrations/${x}`)).join("\n");
-check("Migrações SQL 001–016 presentes", sqlFiles.length >= 16 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("016")), sqlFiles.join(", "));
+check("Migrações SQL 001–017 presentes", sqlFiles.length >= 17 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("017")), sqlFiles.join(", "));
 check("RLS habilitado", /enable row level security/i.test(sql));
 check("Auditoria imutável", /audit_no_update/i.test(sql));
 check("Chaves de idempotência", /idempotency_keys/i.test(sql));
@@ -205,6 +205,31 @@ check("Rastreamento interno separado do cliente", /driver_shifts/.test(sql) && /
 check("Cliente perde rastreio ao concluir e turno interno permanece independente", /sync_customer_tracking_visibility/.test(sql) && /customer_visible=false/.test(sql) && /end_driver_shift/.test(sql));
 check("SmartPOS preparado sem API Rede inventada", /registered_devices/.test(sql) && /waiter_smartpos/.test(sql) && /SDK\/App2App/.test(read("src/lib/integrations/rede.ts")));
 check("Garçom preparado para terminal SmartPOS", /waiter_smartpos/.test(read("src/app/painel/garcom/page.tsx")) && /api\/devices\/register/.test(read("src/app/painel/garcom/page.tsx")));
+
+const productionFinalFiles = [
+  "supabase/migrations/017_production_final_hardening.sql",
+  "src/lib/client/api.ts",
+  "src/app/error.tsx",
+  "src/app/loading.tsx",
+  "src/app/painel/error.tsx",
+  "src/app/painel/loading.tsx",
+  "src/app/api/inventory/route.ts",
+  "src/app/api/audit/route.ts",
+  "src/app/api/coupons/[id]/route.ts"
+];
+check("Mega Update 07 Production Final presente", productionFinalFiles.every(exists), productionFinalFiles.filter(file => !exists(file)).join(", "));
+const productionMigration = read("supabase/migrations/017_production_final_hardening.sql");
+const demoStore = read("src/lib/demo-store.ts");
+const checkoutFinal = read("src/app/checkout/page.tsx");
+const expeditionFinal = read("src/app/painel/expedicao/page.tsx");
+check("Produção não restaura localStorage operacional", demoStore.includes("if (!isDemoMode()) {\n    memory = emptyState();") && demoStore.includes("if (typeof window !== \"undefined\" && isDemoMode()) localStorage.setItem"));
+check("Numeração de pedido é atômica no PostgreSQL", /order_number_seq/.test(productionMigration) && /orders_assign_number_server_side/.test(productionMigration) && /nextval\('public\.order_number_seq'\)/.test(productionMigration));
+check("Checkout usa cotação autoritativa e chave idempotente persistente", /CheckoutQuote/.test(checkoutFinal) && /checkoutKeyRef/.test(checkoutFinal) && /finalOrderId/.test(checkoutFinal) && /coverageConfigurationPending/.test(checkoutFinal));
+check("Delivery público bloqueia cobertura não configurada", /coverageConfigurationPending/.test(publicOrderApi) && /bairros e taxas ainda não foram configurados/i.test(publicOrderApi));
+check("Caixa, financeiro e estoque usam APIs em produção", /api\/cash/.test(read("src/app/painel/caixa/page.tsx")) && /api\/financial/.test(read("src/app/painel/financeiro/page.tsx")) && /api\/inventory/.test(read("src/app/painel/estoque/page.tsx")));
+check("KDS, salão e motoboy usam mutações server-first", /api\/orders\/\$\{order\.id\}\/status/.test(read("src/app/painel/kds/page.tsx")) && /api\/tables\//.test(read("src/app/painel/salao/page.tsx")) && /api\/drivers\/shifts\/start/.test(read("src/app/painel/motoboy/page.tsx")));
+check("Checklist da expedição persiste e é validado no banco", /expedition_checklist/.test(productionMigration) && /save_order_expedition_checklist/.test(productionMigration) && /set_order_expedition_status_v2/.test(productionMigration) && /action: "checklist"/.test(expeditionFinal));
+check("App e diagnóstico alinhados na versão 7 / migration 17", JSON.parse(read("package.json")).version === "7.0.0" && /requiredMigration:\s*17/.test(read("src/app/api/system/diagnostics/route.ts")) && /appVersion:\s*"7\.0\.0"/.test(read("src/app/api/system/diagnostics/route.ts")));
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 check("PWA com ícones 192 e 512", manifest.icons?.some(x => x.sizes === "192x192") && manifest.icons?.some(x => x.sizes === "512x512"));

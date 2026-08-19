@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-15T03:25:36.322Z",
-  "passed": 87,
+  "generatedAt": "2026-08-17T02:37:23.732Z",
+  "passed": 96,
   "failed": 0,
-  "sha256": "ec208696e9970b8ad4a42af419ffa86a977a47b8612a966ea698497140db5f79",
+  "sha256": "f5dddcfb62aea31c56bc91bd32ea1583977f19ef3cbd92492985852495ce8aa9",
   "results": [
     {
       "name": "42 pizzas tradicionais",
@@ -125,9 +125,9 @@
       "detail": ""
     },
     {
-      "name": "Migrações SQL 001–016 presentes",
+      "name": "Migrações SQL 001–017 presentes",
       "ok": true,
-      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql, 016_integration_ready_99food_tracking_smartpos.sql"
+      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql, 016_integration_ready_99food_tracking_smartpos.sql, 017_production_final_hardening.sql"
     },
     {
       "name": "RLS habilitado",
@@ -411,6 +411,51 @@
     },
     {
       "name": "Garçom preparado para terminal SmartPOS",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Mega Update 07 Production Final presente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Produção não restaura localStorage operacional",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Numeração de pedido é atômica no PostgreSQL",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Checkout usa cotação autoritativa e chave idempotente persistente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Delivery público bloqueia cobertura não configurada",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Caixa, financeiro e estoque usam APIs em produção",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "KDS, salão e motoboy usam mutações server-first",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Checklist da expedição persiste e é validado no banco",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "App e diagnóstico alinhados na versão 7 / migration 17",
       "ok": true,
       "detail": ""
     },

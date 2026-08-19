@@ -12,17 +12,23 @@ export function PublicHeader() {
   const [status, setStatus] = useState({ open: false, label: "Consultando..." });
   const [homeHref, setHomeHref] = useState("/");
   useEffect(() => {
-    setStatus(storeStatus());
-    fetch("/api/store-status", { cache: "no-store" })
-      .then(async (response) => {
+    let mounted = true;
+    async function refreshStatus() {
+      const schedule = storeStatus();
+      if (mounted) setStatus(schedule);
+      try {
+        const response = await fetch("/api/store-status", { cache: "no-store" });
         const body = await response.json();
-        if (!response.ok) return;
+        if (!response.ok || !mounted) return;
         const open = Boolean(body.acceptingOrders && body.operationalStatus === "open");
-        setStatus({ open, label: open ? "Aberto para pedidos" : body.operationalStatus === "paused" ? (body.pauseReason || "Pedidos pausados") : "Fechado" });
-      })
-      .catch(() => undefined);
+        setStatus({ open, label: open ? schedule.label : body.operationalStatus === "paused" ? (body.pauseReason || "Pedidos pausados") : schedule.label });
+      } catch { /* mantém o horário local conhecido quando a rede falhar */ }
+    }
+    void refreshStatus();
+    const timer = window.setInterval(() => void refreshStatus(), 30_000);
     const table = Number(new URLSearchParams(window.location.search).get("mesa"));
     if (Number.isInteger(table) && table >= 1 && table <= 15) setHomeHref(`/?mesa=${table}`);
+    return () => { mounted = false; window.clearInterval(timer); };
   }, []);
   return <>
     <header className="sticky top-0 z-40 border-b border-black/5 bg-basso-paper/95 backdrop-blur-xl">

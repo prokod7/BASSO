@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/internal/PageHeader";
 import { OrderDetailPanel } from "@/components/internal/OrderDetailPanel";
 import type { MapPoint } from "@/components/maps/OperationalMap";
 import { demoActions, useDemoState } from "@/lib/demo-store";
+import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client/api";
 import { currency, isDemoMode, shortDateTime } from "@/lib/utils";
 import type { Driver, Order, OrderStatus } from "@/types";
 
@@ -73,22 +74,15 @@ export default function DeliveryPage() {
       if (isDemoMode()) {
         demoActions.assignDriver(order.id, driverId);
       } else {
-        const response = await fetch("/api/delivery/assign", {
+        await apiJson("/api/delivery/assign", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ orderId: order.id, driverId }),
         });
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error || "Falha ao atribuir motoboy.");
-        demoActions.patchOrder(order.id, { driverId, trackingToken: body.trackingToken }, "Despacho");
-        drivers.forEach((driver) => {
-          if (driver.id === driverId) demoActions.patchDriver(driver.id, { available: false, activeOrderId: order.id });
-          else if (driver.activeOrderId === order.id) demoActions.patchDriver(driver.id, { available: true, activeOrderId: undefined });
-        });
+        requestOperationalRefresh();
       }
       setMessage("Entrega atribuída. O motoboy já pode visualizar a comanda no PWA.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Falha ao atribuir entrega.");
+      setMessage(formatApiError(error, "Falha ao atribuir entrega."));
     } finally {
       setBusy("");
     }
@@ -101,19 +95,15 @@ export default function DeliveryPage() {
       if (isDemoMode()) {
         demoActions.updateOrderStatus(order.id, next, "Despacho");
       } else {
-        const response = await fetch(`/api/orders/${order.id}/status`, {
+        await apiJson(`/api/orders/${order.id}/status`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: next, reason }),
         });
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error || "Falha ao alterar status.");
-        demoActions.patchOrder(order.id, { status: next }, "Despacho");
+        requestOperationalRefresh();
       }
-      if (next === "completed" && order.driverId) demoActions.patchDriver(order.driverId, { available: true, activeOrderId: undefined });
       setMessage(next === "out_for_delivery" ? "Entrega iniciada e status atualizado." : "Pedido concluído e motoboy liberado.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Falha ao atualizar entrega.");
+      setMessage(formatApiError(error, "Falha ao atualizar entrega."));
     } finally {
       setBusy("");
     }
@@ -151,7 +141,7 @@ export default function DeliveryPage() {
       title="Delivery e despacho"
       icon={Bike}
       description="Controle pedidos prontos, atribua motoboys, confirme recebimentos, abra a navegação externa, comunique o cliente e conclua a entrega sem depender do mapa."
-      actions={<button className="btn-secondary" onClick={() => window.dispatchEvent(new Event("lfb:refresh-operation"))}><RefreshCw size={17} />Atualizar operação</button>}
+      actions={<button className="btn-secondary" onClick={requestOperationalRefresh}><RefreshCw size={17} />Atualizar operação</button>}
     />
 
     {message && <p className="mb-4 rounded-xl bg-blue-50 p-4 text-sm font-semibold text-blue-800">{message}</p>}

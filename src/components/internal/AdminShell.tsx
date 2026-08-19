@@ -233,7 +233,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const statusClass = status.status === "online" ? "bg-emerald-50 text-emerald-700" : status.status === "error" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700";
+  const statusClass = status.status === "online" ? "bg-emerald-50 text-emerald-700" : status.status === "error" ? "bg-red-50 text-red-700" : status.status === "offline" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-700";
   const storeLabel = storeStatus.operationalStatus === "open" ? "aberta" : storeStatus.operationalStatus === "paused" ? "pausada" : "fechada";
 
   return (
@@ -244,7 +244,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <aside className={cn("fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/10 bg-basso-black text-white transition-all", collapsed ? "w-20" : "w-72", mobile ? "translate-x-0" : "-translate-x-full lg:translate-x-0")}>
         <div className="flex h-20 items-center gap-3 border-b border-white/10 px-4">
           <Image src="/assets/brand/logo.png" alt="La Forneria Basso" width={46} height={46} className="rounded-full ring-1 ring-basso-gold/40" />
-          {!collapsed && <div className="min-w-0"><p className="truncate font-display text-lg font-bold">La Forneria Basso</p><p className="text-[10px] uppercase tracking-[.18em] text-basso-goldLight">PedidoPro 5.0</p></div>}
+          {!collapsed && <div className="min-w-0"><p className="truncate font-display text-lg font-bold">La Forneria Basso</p><p className="text-[10px] uppercase tracking-[.18em] text-basso-goldLight">PedidoPro 7.0</p></div>}
           <button className="ml-auto p-2 lg:hidden" onClick={() => setMobile(false)} aria-label="Fechar menu"><X size={20} /></button>
         </div>
 
@@ -286,13 +286,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <button type="button" onClick={() => setStorePanel((value) => !value)} className={`hidden min-h-9 items-center gap-2 rounded-full px-3 text-xs font-black sm:flex ${storeStatus.operationalStatus === "open" ? "bg-emerald-50 text-emerald-700" : storeStatus.operationalStatus === "paused" ? "bg-amber-50 text-amber-800" : "bg-stone-100 text-stone-600"}`}>{storeStatus.operationalStatus === "open" ? <CirclePlay size={14} /> : storeStatus.operationalStatus === "paused" ? <CirclePause size={14} /> : <LockKeyhole size={14} />}Loja {storeLabel}</button>
             {storePanel && <StoreControlPanel status={storeStatus} onChange={setStoreStatus} onClose={() => setStorePanel(false)} />}
             <NotificationCenter />
-            <span className={cn("hidden max-w-56 items-center gap-2 truncate rounded-full px-3 py-1 text-xs font-bold xl:flex", statusClass)} title={status.message}>{status.status === "loading" ? <Loader2 size={13} className="animate-spin" /> : status.status === "error" ? <AlertCircle size={13} /> : <span>●</span>}{status.message || "Sistema operacional"}</span>
+            <span className={cn("hidden max-w-56 items-center gap-2 truncate rounded-full px-3 py-1 text-xs font-bold xl:flex", statusClass)} title={status.message}>{status.status === "loading" ? <Loader2 size={13} className="animate-spin" /> : status.status === "error" || status.status === "offline" ? <AlertCircle size={13} /> : <span>●</span>}{status.message || "Sistema operacional"}</span>
             <div className="grid h-9 w-9 place-items-center rounded-full bg-basso-wine text-xs font-black text-white">{userName.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "GB"}</div>
             <div className="hidden sm:block"><p className="max-w-28 truncate text-xs font-bold">{userName}</p><p className="text-[10px] text-black/40">{roleLabels[role] || role}</p></div>
           </div>
         </header>
 
-        {status.status === "error" && <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-center text-xs font-semibold text-red-700 sm:px-6">{status.message}</div>}
+        {(status.status === "error" || status.status === "offline") && <div className={`border-b px-4 py-2 text-center text-xs font-semibold sm:px-6 ${status.status === "offline" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-700"}`}>{status.message}</div>}
         <main className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>

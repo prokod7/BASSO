@@ -1,0 +1,4 @@
+"use client";
+import { AlertCircle, HeartPulse, RefreshCw } from "lucide-react";
+import Link from "next/link";
+export default function PanelError({reset}:{error:Error&{digest?:string};reset:()=>void}){return <section className="surface mx-auto max-w-2xl p-8 text-center"><AlertCircle className="mx-auto text-red-700" size={36}/><h1 className="mt-4 font-display text-2xl font-bold">Esta área do painel encontrou um erro</h1><p className="mt-2 text-sm text-black/55">Nenhuma ação deve ser considerada concluída enquanto esta mensagem estiver visível. Recarregue os dados ou consulte o diagnóstico.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><button className="btn-primary" onClick={reset}><RefreshCw size={17}/>Recarregar área</button><Link className="btn-secondary" href="/painel/diagnostico"><HeartPulse size={17}/>Abrir diagnóstico</Link></div></section>}

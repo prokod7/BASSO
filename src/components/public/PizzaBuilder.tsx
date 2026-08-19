@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { catalog, categoryImages, findFlavor } from "@/lib/catalog";
 import { pizzaTotal, validatePizzaSelection } from "@/lib/pricing";
 import type { CartItem, Flavor, PizzaSelection } from "@/types";
-import { currency, uid } from "@/lib/utils";
+import { currency, normalizeSearchText, uid } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 import { Modal } from "@/components/ui/Modal";
 import { customerDeviceActions, useCustomerDeviceState } from "@/lib/customer-device-store";
@@ -168,12 +168,14 @@ export function PizzaBuilder({
   open,
   onClose,
   onAdd,
+  initialSelection = null,
 }: {
   flavor?: Flavor | null;
   entry?: PizzaMenuEntry | null;
   open: boolean;
   onClose: () => void;
   onAdd?: (item: CartItem) => void;
+  initialSelection?: PizzaSelection | null;
 }) {
   const cart = useCart();
   const entryFlavors = useMemo(() => (entry ? flavorsForEntry(entry) : []), [entry]);
@@ -186,10 +188,10 @@ export function PizzaBuilder({
 
   const primaryFlavors = useMemo(() => {
     const source = entry ? entryFlavors : catalog.flavors.filter((item) => item.active);
-    const normalized = flavorQuery.trim().toLocaleLowerCase("pt-BR");
+    const normalized = normalizeSearchText(flavorQuery);
     if (!normalized) return source;
     return source.filter((item) =>
-      `${item.name} ${item.description}`.toLocaleLowerCase("pt-BR").includes(normalized),
+      normalizeSearchText(`${item.name} ${item.description}`).includes(normalized),
     );
   }, [entry, entryFlavors, flavorQuery]);
 
@@ -222,11 +224,22 @@ export function PizzaBuilder({
   const modalKey = `${flavor?.id || ""}:${entry?.scope || ""}:${entry?.size || ""}`;
   useEffect(() => {
     if (!open) return;
+    if (initialSelection) {
+      setSelection({
+        ...initialSelection,
+        removedA: [...initialSelection.removedA],
+        removedB: [...initialSelection.removedB],
+        addons: { ...initialSelection.addons },
+      });
+      setFlavorQuery("");
+      setError("");
+      return;
+    }
     const nextFlavor = flavor || entryFlavors[0] || catalog.flavors.find((item) => item.active);
     if (nextFlavor) resetFor(nextFlavor, entry?.size || "grande");
     // The modal must reset whenever another card/category is opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modalKey, open]);
+  }, [modalKey, open, initialSelection]);
 
   const toggleRemoved = (half: "A" | "B", ingredient: string) =>
     setSelection((current) => {
@@ -286,7 +299,7 @@ export function PizzaBuilder({
     <Modal
       open={open}
       onClose={onClose}
-      title={entry ? `${scopeLabel} • ${sizeLabel}` : "Monte sua pizza"}
+      title={initialSelection ? "Editar pizza" : entry ? `${scopeLabel} • ${sizeLabel}` : "Monte sua pizza"}
       className="sm:max-w-3xl"
     >
       <div className="grid md:grid-cols-[260px_1fr]">
@@ -516,7 +529,7 @@ export function PizzaBuilder({
 
           {error && <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
           <button className="btn-primary sticky bottom-0 w-full py-3.5" onClick={add}>
-            <ShoppingBag size={19} /> Adicionar ao carrinho • {currency(total)}
+            <ShoppingBag size={19} /> {initialSelection ? "Salvar alterações" : "Adicionar ao carrinho"} • {currency(total)}
           </button>
         </div>
       </div>

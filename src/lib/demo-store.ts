@@ -81,8 +81,21 @@ function initialState(): DemoState {
   };
 }
 
+
+function emptyState(): DemoState {
+  return {
+    orders: [], tables: [], drivers: [], inventory: [], coupons: [],
+    cashOpen: false, cashInitial: 0, cashOpenedAt: undefined, cashMovements: [],
+    financialEntries: [], campaigns: [], integrationEvents: [], audit: []
+  };
+}
+
+function fallbackState(): DemoState {
+  return isDemoMode() ? initialState() : emptyState();
+}
+
 function normalizeState(value: Partial<DemoState> | null): DemoState {
-  const fallback = initialState();
+  const fallback = fallbackState();
   if (!value) return fallback;
   return {
     ...fallback,
@@ -102,7 +115,11 @@ function normalizeState(value: Partial<DemoState> | null): DemoState {
 
 function load(): DemoState {
   if (memory) return memory;
-  if (typeof window === "undefined") return initialState();
+  if (typeof window === "undefined") return fallbackState();
+  if (!isDemoMode()) {
+    memory = emptyState();
+    return memory;
+  }
   try {
     const parsed = JSON.parse(localStorage.getItem(KEY) || "null") as Partial<DemoState> | null;
     memory = normalizeState(parsed);
@@ -124,7 +141,7 @@ function fire(path: string, init?: RequestInit) {
 
 function save(next: DemoState) {
   memory = next;
-  if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(next));
+  if (typeof window !== "undefined" && isDemoMode()) localStorage.setItem(KEY, JSON.stringify(next));
   listeners.forEach(l => l());
   channel?.postMessage("changed");
 }
@@ -138,12 +155,15 @@ function subscribe(listener: () => void) {
 }
 
 export function useDemoState<T>(selector: (state: DemoState) => T): T {
-  return useSyncExternalStore(subscribe, () => selector(load()), () => selector(initialState()));
+  return useSyncExternalStore(subscribe, () => selector(load()), () => selector(fallbackState()));
 }
 export const demoActions = {
-  reset() { save(initialState()); },
+  reset() { save(fallbackState()); },
   addOrderLocal(order: Order, actor = "Operação") { const s=load(); const tables=order.tabId?s.tables.map(table=>({...table,tabs:table.tabs.map(tab=>tab.id===order.tabId?{...tab,items:[...tab.items,...order.items],totalCents:tab.totalCents+order.total}:tab)})):s.tables; save({ ...s, tables, orders:[order,...s.orders], audit:[{id:uid("audit"),actor,action:"ORDER_CREATED",entity:"order",entityId:order.id,createdAt:new Date().toISOString()},...s.audit] }); },
-  replaceSnapshot(snapshot: Partial<DemoState>) { save({ ...initialState(), ...load(), ...snapshot }); },
+  replaceSnapshot(snapshot: Partial<DemoState>) {
+    const base = fallbackState();
+    save({ ...base, ...snapshot });
+  },
   createOrder(order: Order, endpoint = "/api/orders", metadata?: Record<string, unknown>) { const s = load(); const tables=order.tabId?s.tables.map(table=>({...table,tabs:table.tabs.map(tab=>tab.id===order.tabId?{...tab,items:[...tab.items,...order.items],totalCents:tab.totalCents+order.total}:tab)})):s.tables; save({ ...s, tables, orders: [order, ...s.orders], audit: [{ id: uid("audit"), actor: endpoint.includes("internal") ? "Operação" : "Cliente", action: "ORDER_CREATED", entity: "order", entityId: order.id, createdAt: new Date().toISOString() }, ...s.audit] }); fire(endpoint, { method: "POST", headers: { "Idempotency-Key": order.sourceIdempotencyKey }, body: JSON.stringify({ ...order, ...(metadata || {}) }) }); },
   patchOrder(id: string, patch: Partial<Order>, actor = "Operação") {
     const s = load();

@@ -16,7 +16,7 @@ import {
 import { ComboBuilder } from "@/components/public/ComboBuilder";
 import { ProductCard } from "@/components/public/ProductCard";
 import { allProducts, catalog, categoryImages } from "@/lib/catalog";
-import { currency } from "@/lib/utils";
+import { currency, normalizeSearchText } from "@/lib/utils";
 
 const categoryNav = [
   ["mais-pedidas", "Mais pedidas"],
@@ -72,15 +72,13 @@ export default function HomePage() {
     if (Number.isInteger(table) && table >= 1 && table <= 15) setTableNumber(table);
   }, []);
 
-  const normalized = query.trim().toLocaleLowerCase("pt-BR");
+  const normalized = normalizeSearchText(query);
   const products = useMemo(
     () =>
       allProducts.filter(
         (product) =>
           !normalized ||
-          `${product.name} ${product.description}`
-            .toLocaleLowerCase("pt-BR")
-            .includes(normalized),
+          normalizeSearchText(`${product.name} ${product.description}`).includes(normalized),
       ),
     [normalized],
   );
@@ -88,9 +86,7 @@ export default function HomePage() {
   const comboMatches = useMemo(
     () =>
       !normalized ||
-      `${catalog.combo.name} ${catalog.combo.description}`
-        .toLocaleLowerCase("pt-BR")
-        .includes(normalized),
+      normalizeSearchText(`${catalog.combo.name} ${catalog.combo.description}`).includes(normalized),
     [normalized],
   );
 
@@ -98,9 +94,7 @@ export default function HomePage() {
     const source = flavorsForEntry(entry);
     if (!normalized) return source.length;
     return source.filter((flavor) =>
-      `${flavor.name} ${flavor.description}`
-        .toLocaleLowerCase("pt-BR")
-        .includes(normalized),
+      normalizeSearchText(`${flavor.name} ${flavor.description}`).includes(normalized),
     ).length;
   };
 

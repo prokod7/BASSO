@@ -1,8 +1,8 @@
 # Relatório de verificação estática
 
-Gerado em: 2026-08-15T03:25:36.322Z
+Gerado em: 2026-08-17T02:37:23.732Z
 
-Resultado: **87/87 verificações aprovadas**.
+Resultado: **96/96 verificações aprovadas**.
 
 | Verificação | Resultado | Detalhe |
 |---|---:|---|
@@ -30,7 +30,7 @@ Resultado: **87/87 verificações aprovadas**.
 | Telas públicas e operacionais presentes | APROVADO | — |
 | Nenhum componente de seleção de borda | APROVADO | — |
 | Validação explícita contra bordas | APROVADO | — |
-| Migrações SQL 001–016 presentes | APROVADO | 001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql, 016_integration_ready_99food_tracking_smartpos.sql |
+| Migrações SQL 001–017 presentes | APROVADO | 001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql, 016_integration_ready_99food_tracking_smartpos.sql, 017_production_final_hardening.sql |
 | RLS habilitado | APROVADO | — |
 | Auditoria imutável | APROVADO | — |
 | Chaves de idempotência | APROVADO | — |
@@ -88,6 +88,15 @@ Resultado: **87/87 verificações aprovadas**.
 | Cliente perde rastreio ao concluir e turno interno permanece independente | APROVADO | — |
 | SmartPOS preparado sem API Rede inventada | APROVADO | — |
 | Garçom preparado para terminal SmartPOS | APROVADO | — |
+| Mega Update 07 Production Final presente | APROVADO | — |
+| Produção não restaura localStorage operacional | APROVADO | — |
+| Numeração de pedido é atômica no PostgreSQL | APROVADO | — |
+| Checkout usa cotação autoritativa e chave idempotente persistente | APROVADO | — |
+| Delivery público bloqueia cobertura não configurada | APROVADO | — |
+| Caixa, financeiro e estoque usam APIs em produção | APROVADO | — |
+| KDS, salão e motoboy usam mutações server-first | APROVADO | — |
+| Checklist da expedição persiste e é validado no banco | APROVADO | — |
+| App e diagnóstico alinhados na versão 7 / migration 17 | APROVADO | — |
 | PWA com ícones 192 e 512 | APROVADO | — |
 | Service worker presente | APROVADO | — |
 | Bridge de impressão presente | APROVADO | — |
