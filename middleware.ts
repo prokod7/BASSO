@@ -22,37 +22,25 @@ export async function middleware(request: NextRequest) {
   }
 
   let response = NextResponse.next({ request });
-
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key) {
-    return NextResponse.redirect(
-      new URL("/login?error=config", request.url),
-    );
+    return NextResponse.redirect(new URL("/login?error=config", request.url));
   }
 
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (cookiesToSet: CookieToSet[]) => {
-        cookiesToSet.forEach(({ name, value }) => {
-          request.cookies.set(name, value);
-        });
-
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
-
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       },
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", request.nextUrl.pathname);
@@ -65,6 +53,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/painel/:path*",
+    "/garcom/:path*",
     "/trocar-senha",
     "/api/operational-snapshot",
     "/api/attention",
@@ -72,6 +61,8 @@ export const config = {
     "/api/system/:path*",
     "/api/auth/change-password",
     "/api/orders/:path*/status",
+    "/api/orders/:path*/served",
+    "/api/client-errors",
     "/api/inventory/:path*",
     "/api/coupons/:path*",
     "/api/cash/:path*",
