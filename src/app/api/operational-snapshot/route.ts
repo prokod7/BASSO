@@ -2,50 +2,291 @@ import { NextResponse } from "next/server";
 import { requireOperationalRole } from "@/lib/authz";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const ACTIVE_ORDER_STATUSES = ["received", "confirmed", "preparing", "ready", "out_for_delivery"];
+
+function warningFrom(label: string, error: unknown) {
+  const message = error && typeof error === "object" && "message" in error ? String((error as { message?: unknown }).message || "") : String(error || "");
+  return `${label}: ${message || "consulta indisponível"}`;
+}
+
 export async function GET() {
   try {
-    await requireOperationalRole(["manager","counter","waiter","kitchen","bar","driver","finance","viewer"], "orders.view");
+    await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance", "viewer"], "orders.view");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
-    const [ordersR, itemsR, tablesR, tabsR, driversR, inventoryR, productsR, couponsR, eventsR, auditR, cashR, financialR, campaignsR] = await Promise.all([
-      db.from("orders").select("*").is("deleted_at", null).order("created_at", { ascending: false }).limit(200),
-      db.from("order_items").select("*").order("created_at", { ascending: true }).limit(2000),
+
+    const warnings: string[] = [];
+
+    // Núcleo crítico: se uma destas consultas falhar, não fabricamos uma operação vazia.
+    const [recentOrdersR, tablesR, tabsR, driversR] = await Promise.all([
+      db.from("orders").select("*").is("deleted_at", null).order("created_at", { ascending: false }).limit(250),
       db.from("restaurant_tables").select("*").order("number"),
       db.from("tabs").select("*").neq("status", "closed"),
       db.from("drivers").select("*").eq("active", true),
+    ]);
+
+    for (const [label, result] of [
+      ["Pedidos", recentOrdersR],
+      ["Mesas", tablesR],
+      ["Comandas", tabsR],
+      ["Motoboys", driversR],
+    ] as const) {
+      if (result.error) throw new Error(warningFrom(label, result.error));
+    }
+
+    // Comandas abertas podem conter pedidos mais antigos que a janela dos 250 recentes.
+    const openTabIds = (tabsR.data || []).map((tab: any) => String(tab.id)).filter(Boolean);
+    let tabOrders: any[] = [];
+    if (openTabIds.length) {
+      const tabOrdersR = await db.from("orders").select("*").is("deleted_at", null).in("tab_id", openTabIds);
+      if (tabOrdersR.error) warnings.push(warningFrom("Pedidos de comandas", tabOrdersR.error));
+      else tabOrders = tabOrdersR.data || [];
+    }
+
+    const byId = new Map<string, any>();
+    for (const order of [...(recentOrdersR.data || []), ...tabOrders]) byId.set(String(order.id), order);
+    const rawOrders = [...byId.values()].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+    const orderIds = rawOrders.map((order) => String(order.id)).filter(Boolean);
+
+    // Itens são buscados SOMENTE para os pedidos carregados; não usamos mais os 2.000 itens históricos mais antigos.
+    let rawItems: any[] = [];
+    if (orderIds.length) {
+      const itemsR = await db.from("order_items").select("*").in("order_id", orderIds).order("created_at", { ascending: true });
+      if (itemsR.error) throw new Error(warningFrom("Itens dos pedidos", itemsR.error));
+      rawItems = itemsR.data || [];
+    }
+
+    // Domínios auxiliares não podem derrubar KDS/Delivery/Salão caso uma consulta isolada falhe.
+    const [inventoryR, productsR, couponsR, eventsR, auditR, cashR, financialR, campaignsR] = await Promise.all([
       db.from("inventory_items").select("*"),
       db.from("products").select("id,name,category"),
       db.from("coupons").select("*").order("created_at", { ascending: false }),
       db.from("integration_events").select("id,provider,event_type,status,created_at,attempts").order("created_at", { ascending: false }).limit(50),
       db.from("audit_logs").select("id,actor_label,action,entity_type,entity_id,created_at,reason").order("created_at", { ascending: false }).limit(100),
-      db.from("cash_sessions").select("*").eq("status","open").order("opened_at",{ascending:false}).limit(1).maybeSingle(),
-      db.from("financial_entries").select("*,financial_categories(name)").is("deleted_at",null).order("due_date",{ascending:false}).limit(200),
-      db.from("campaigns").select("*").order("created_at",{ascending:false}).limit(100)
+      db.from("cash_sessions").select("*").eq("status", "open").order("opened_at", { ascending: false }).limit(1).maybeSingle(),
+      db.from("financial_entries").select("*,financial_categories(name)").is("deleted_at", null).order("due_date", { ascending: false }).limit(200),
+      db.from("campaigns").select("*").order("created_at", { ascending: false }).limit(100),
     ]);
-    const failed = [ordersR,itemsR,tablesR,tabsR,driversR,inventoryR,productsR,couponsR,eventsR,auditR,cashR,financialR,campaignsR].find(r => r.error);
-    if (failed?.error) throw failed.error;
-    const productMap = new Map((productsR.data || []).map((p: any) => [p.id,p]));
+
+    const optional = [
+      ["Estoque", inventoryR], ["Produtos", productsR], ["Cupons", couponsR], ["Integrações", eventsR],
+      ["Auditoria", auditR], ["Caixa", cashR], ["Financeiro", financialR], ["Campanhas", campaignsR],
+    ] as const;
+    for (const [label, result] of optional) if (result.error) warnings.push(warningFrom(label, result.error));
+
+    const productMap = new Map((productsR.error ? [] : productsR.data || []).map((product: any) => [product.id, product]));
     const itemsByOrder = new Map<string, any[]>();
-    for (const i of itemsR.data || []) { const arr = itemsByOrder.get(i.order_id) || []; arr.push({ id:i.id, kind:i.kind, name:i.name_snapshot, quantity:i.quantity, unitPrice:i.unit_price_cents, productId:i.product_id || undefined, selection:i.selection || undefined }); itemsByOrder.set(i.order_id,arr); }
-    const orders = (ordersR.data || []).map((o: any) => ({ id:o.id,number:Number(o.number),channel:o.channel,status:o.status,paymentStatus:o.payment_status,customerName:o.customer_name,customerPhone:o.customer_phone,customerId:o.customer_id||undefined,address:o.address||undefined,tableNumber:o.table_number||undefined,tabId:o.tab_id||undefined,items:itemsByOrder.get(o.id)||[],subtotal:o.subtotal_cents,discount:o.discount_cents,deliveryFee:o.delivery_fee_cents,total:o.total_cents,paymentMethod:o.payment_method,changeFor:o.change_for_cents||undefined,notes:o.notes||undefined,couponCode:o.coupon_code||undefined,createdAt:o.created_at,updatedAt:o.updated_at,driverId:o.driver_id||undefined,sourceIdempotencyKey:o.source_idempotency_key,origin:o.order_origin||undefined,externalId:o.external_id||undefined,priority:o.priority||"normal",estimatedReadyAt:o.estimated_ready_at||undefined,viewedAt:o.viewed_at||undefined,assignedTo:o.assigned_to||undefined,internalSummary:o.internal_summary||undefined,version:Number(o.version||1) }));
-    const tabsByTable = new Map<number, any[]>();
-    for (const t of tabsR.data || []) {
-      const tabOrders=orders.filter((order:any)=>order.tabId===t.id&&order.status!=="cancelled");
-      const arr=tabsByTable.get(t.table_number)||[];
-      arr.push({id:t.id,name:t.name,items:tabOrders.flatMap((order:any)=>order.items),paidCents:t.paid_cents,totalCents:tabOrders.reduce((sum:number,order:any)=>sum+order.total,0),serviceChargeRate:Number(t.service_charge_rate_percent||10),serviceChargeApplied:t.service_charge_applied!==false,serviceChargeCents:Number(t.service_charge_cents||0),waiter:"Equipe",status:t.status});
-      tabsByTable.set(t.table_number,arr);
+    for (const item of rawItems) {
+      const orderId = String(item.order_id);
+      const array = itemsByOrder.get(orderId) || [];
+      array.push({
+        id: String(item.id),
+        kind: item.kind,
+        name: item.name_snapshot || "Item",
+        quantity: Number(item.quantity || 1),
+        unitPrice: Number(item.unit_price_cents || 0),
+        productId: item.product_id || undefined,
+        selection: item.selection && typeof item.selection === "object" ? item.selection : undefined,
+        sector: item.sector || (item.kind === "product" ? "bar" : "kitchen"),
+        productionStatus: item.production_status || "queued",
+        cancelledReason: item.cancelled_reason || undefined,
+        updatedAt: item.updated_at || undefined,
+      });
+      itemsByOrder.set(orderId, array);
     }
-    const tables=(tablesR.data||[]).map((t:any)=>({number:t.number,capacity:t.capacity,status:t.status,people:t.people_count||undefined,openedAt:t.opened_at||undefined,groupId:t.group_id||undefined,tabs:tabsByTable.get(t.number)||[]}));
-    const drivers=(driversR.data||[]).map((d:any)=>({id:d.id,name:d.name,phone:d.phone,vehicle:d.vehicle||"Moto",available:d.available,latitude:d.last_latitude?Number(d.last_latitude):undefined,longitude:d.last_longitude?Number(d.last_longitude):undefined,lastLocationAt:d.last_location_at||undefined,activeOrderId:d.active_order_id||undefined,shiftActive:Boolean(d.shift_started_at)&&(!d.shift_ended_at||Date.parse(d.shift_started_at)>Date.parse(d.shift_ended_at)),shiftStartedAt:d.shift_started_at||undefined,shiftEndedAt:d.shift_ended_at||undefined}));
-    const inventory=(inventoryR.data||[]).map((i:any)=>{const p=productMap.get(i.product_id) as any;return {id:i.id,productId:i.product_id,name:p?.name||i.product_id,unit:i.unit,quantity:Number(i.quantity),minQuantity:Number(i.minimum_quantity),allowNegative:i.allow_negative,updatedAt:i.updated_at}});
-    const coupons=(couponsR.data||[]).map((c:any)=>({id:c.id,code:c.code,type:c.discount_type,value:c.value,totalLimit:c.total_limit,uses:c.uses,minimum:c.minimum_cents,channels:c.channels,active:c.active,startsAt:c.starts_at||undefined,endsAt:c.ends_at||undefined}));
-    const integrationEvents=(eventsR.data||[]).map((e:any)=>({id:e.id,provider:e.provider,type:e.event_type,status:e.status==="done"?"ok":e.status==="failed"?"error":"pending",createdAt:e.created_at,attempts:e.attempts}));
-    const audit=(auditR.data||[]).map((a:any)=>({id:String(a.id),actor:a.actor_label||"Sistema",action:a.action,entity:a.entity_type,entityId:a.entity_id,createdAt:a.created_at,details:a.reason||undefined}));
-    const cash=cashR.data as any;
-    let cashMovements:any[]=[];
-    if(cash){const {data}=await db.from("cash_movements").select("id,kind,amount_cents,reason,created_at").eq("session_id",cash.id).order("created_at",{ascending:false});cashMovements=(data||[]).map((m:any)=>({id:m.id,kind:m.kind,amount:m.amount_cents,reason:m.reason,createdAt:m.created_at,actor:"Equipe"}));}
-    const financialEntries=(financialR.data||[]).map((e:any)=>({id:e.id,kind:e.kind,status:e.status,description:e.description,categoryId:e.category_id||undefined,categoryName:e.financial_categories?.name||"Sem categoria",amount:e.amount_cents,dueDate:e.due_date,settledAt:e.settled_at||undefined,paymentMethod:e.payment_method||undefined,recurring:e.recurring,notes:e.notes||undefined,createdAt:e.created_at}));
-    const campaigns=(campaignsR.data||[]).map((c:any)=>({id:c.id,name:c.name,channel:c.channel,segment:c.segment,template:c.template,status:c.status,scheduledAt:c.scheduled_at||undefined,createdAt:c.created_at,metrics:{recipients:0,sent:0,opened:0,converted:0}}));
-    return NextResponse.json({orders,tables,drivers,inventory,coupons,integrationEvents,audit,cashOpen:!!cash,cashInitial:cash?.initial_cents||0,cashOpenedAt:cash?.opened_at||undefined,cashMovements,financialEntries,campaigns},{headers:{"Cache-Control":"no-store"}});
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao carregar operação." }, { status: 401 }); }
+
+    const orders = rawOrders.map((order: any) => ({
+      id: String(order.id),
+      number: Number(order.number || 0),
+      channel: order.channel,
+      status: order.status,
+      paymentStatus: order.payment_status || "pending",
+      customerName: order.customer_name || "Cliente",
+      customerPhone: order.customer_phone || "",
+      customerId: order.customer_id || undefined,
+      address: order.address && typeof order.address === "object" ? order.address : undefined,
+      tableNumber: order.table_number || undefined,
+      tabId: order.tab_id || undefined,
+      items: itemsByOrder.get(String(order.id)) || [],
+      subtotal: Number(order.subtotal_cents || 0),
+      discount: Number(order.discount_cents || 0),
+      deliveryFee: Number(order.delivery_fee_cents || 0),
+      total: Number(order.total_cents || 0),
+      paymentMethod: order.payment_method || "cash",
+      changeFor: order.change_for_cents || undefined,
+      notes: order.notes || undefined,
+      couponCode: order.coupon_code || undefined,
+      createdAt: order.created_at,
+      updatedAt: order.updated_at || order.created_at,
+      driverId: order.driver_id || undefined,
+      sourceIdempotencyKey: order.source_idempotency_key || String(order.id),
+      origin: order.order_origin || undefined,
+      externalId: order.external_id || undefined,
+      priority: order.priority || "normal",
+      estimatedReadyAt: order.estimated_ready_at || undefined,
+      viewedAt: order.viewed_at || undefined,
+      assignedTo: order.assigned_to || undefined,
+      internalSummary: order.internal_summary || undefined,
+      servedAt: order.served_at || undefined,
+      version: Number(order.version || 1),
+    }));
+
+    const tabsByTable = new Map<number, any[]>();
+    for (const tab of tabsR.data || []) {
+      const tabOrdersForCurrent = orders.filter((order: any) => order.tabId === tab.id && order.status !== "cancelled");
+      const array = tabsByTable.get(Number(tab.table_number)) || [];
+      array.push({
+        id: tab.id,
+        name: tab.name || "Comanda",
+        items: tabOrdersForCurrent.flatMap((order: any) => order.items),
+        paidCents: Number(tab.paid_cents || 0),
+        totalCents: tabOrdersForCurrent.reduce((sum: number, order: any) => sum + Number(order.total || 0), 0),
+        serviceChargeRate: Number(tab.service_charge_rate_percent || 10),
+        serviceChargeApplied: tab.service_charge_applied !== false,
+        serviceChargeCents: Number(tab.service_charge_cents || 0),
+        waiter: "Equipe",
+        status: tab.status || "open",
+      });
+      tabsByTable.set(Number(tab.table_number), array);
+    }
+
+    const tables = (tablesR.data || []).map((table: any) => ({
+      number: Number(table.number),
+      capacity: Number(table.capacity || 2),
+      status: table.status || "free",
+      people: table.people_count || undefined,
+      openedAt: table.opened_at || undefined,
+      groupId: table.group_id || undefined,
+      tabs: tabsByTable.get(Number(table.number)) || [],
+    }));
+
+    const drivers = (driversR.data || []).map((driver: any) => ({
+      id: driver.id,
+      name: driver.name || "Motoboy",
+      phone: driver.phone || "",
+      vehicle: driver.vehicle || "Moto",
+      available: Boolean(driver.available),
+      latitude: driver.last_latitude == null ? undefined : Number(driver.last_latitude),
+      longitude: driver.last_longitude == null ? undefined : Number(driver.last_longitude),
+      lastLocationAt: driver.last_location_at || undefined,
+      activeOrderId: driver.active_order_id || undefined,
+      shiftActive: Boolean(driver.shift_started_at) && (!driver.shift_ended_at || Date.parse(driver.shift_started_at) > Date.parse(driver.shift_ended_at)),
+      shiftStartedAt: driver.shift_started_at || undefined,
+      shiftEndedAt: driver.shift_ended_at || undefined,
+    }));
+
+    const inventory = (inventoryR.error ? [] : inventoryR.data || []).map((item: any) => {
+      const product = productMap.get(item.product_id) as any;
+      return {
+        id: item.id,
+        productId: item.product_id,
+        name: product?.name || item.product_id,
+        unit: item.unit,
+        quantity: Number(item.quantity || 0),
+        minQuantity: Number(item.minimum_quantity || 0),
+        allowNegative: Boolean(item.allow_negative),
+        updatedAt: item.updated_at,
+      };
+    });
+
+    const coupons = (couponsR.error ? [] : couponsR.data || []).map((coupon: any) => ({
+      id: coupon.id,
+      code: coupon.code,
+      type: coupon.discount_type,
+      value: coupon.value,
+      totalLimit: coupon.total_limit,
+      uses: coupon.uses,
+      minimum: coupon.minimum_cents,
+      channels: Array.isArray(coupon.channels) ? coupon.channels : [],
+      active: Boolean(coupon.active),
+      startsAt: coupon.starts_at || undefined,
+      endsAt: coupon.ends_at || undefined,
+    }));
+
+    const integrationEvents = (eventsR.error ? [] : eventsR.data || []).map((event: any) => ({
+      id: event.id,
+      provider: event.provider,
+      type: event.event_type,
+      status: event.status === "done" ? "ok" : event.status === "failed" ? "error" : "pending",
+      createdAt: event.created_at,
+      attempts: Number(event.attempts || 0),
+    }));
+
+    const audit = (auditR.error ? [] : auditR.data || []).map((entry: any) => ({
+      id: String(entry.id),
+      actor: entry.actor_label || "Sistema",
+      action: entry.action,
+      entity: entry.entity_type,
+      entityId: entry.entity_id,
+      createdAt: entry.created_at,
+      details: entry.reason || undefined,
+    }));
+
+    const cash = cashR.error ? null : cashR.data as any;
+    let cashMovements: any[] = [];
+    if (cash) {
+      const movementsR = await db.from("cash_movements").select("id,kind,amount_cents,reason,created_at").eq("session_id", cash.id).order("created_at", { ascending: false });
+      if (movementsR.error) warnings.push(warningFrom("Movimentações do caixa", movementsR.error));
+      else cashMovements = (movementsR.data || []).map((movement: any) => ({
+        id: movement.id,
+        kind: movement.kind,
+        amount: Number(movement.amount_cents || 0),
+        reason: movement.reason || "Movimentação",
+        createdAt: movement.created_at,
+        actor: "Equipe",
+      }));
+    }
+
+    const financialEntries = (financialR.error ? [] : financialR.data || []).map((entry: any) => ({
+      id: entry.id,
+      kind: entry.kind,
+      status: entry.status,
+      description: entry.description,
+      categoryId: entry.category_id || undefined,
+      categoryName: entry.financial_categories?.name || "Sem categoria",
+      amount: Number(entry.amount_cents || 0),
+      dueDate: entry.due_date,
+      settledAt: entry.settled_at || undefined,
+      paymentMethod: entry.payment_method || undefined,
+      recurring: Boolean(entry.recurring),
+      notes: entry.notes || undefined,
+      createdAt: entry.created_at,
+    }));
+
+    const campaigns = (campaignsR.error ? [] : campaignsR.data || []).map((campaign: any) => ({
+      id: campaign.id,
+      name: campaign.name,
+      channel: campaign.channel,
+      segment: campaign.segment || { type: "all" },
+      template: campaign.template || { title: "", message: "" },
+      status: campaign.status,
+      scheduledAt: campaign.scheduled_at || undefined,
+      createdAt: campaign.created_at,
+      metrics: { recipients: 0, sent: 0, opened: 0, converted: 0 },
+    }));
+
+    return NextResponse.json({
+      snapshotVersion: 9,
+      generatedAt: new Date().toISOString(),
+      warnings,
+      orders,
+      tables,
+      drivers,
+      inventory,
+      coupons,
+      integrationEvents,
+      audit,
+      cashOpen: Boolean(cash),
+      cashInitial: Number(cash?.initial_cents || 0),
+      cashOpenedAt: cash?.opened_at || undefined,
+      cashMovements,
+      financialEntries,
+      campaigns,
+      activeOrderCount: orders.filter((order: any) => ACTIVE_ORDER_STATUSES.includes(order.status)).length,
+    }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Falha ao carregar operação.";
+    const authError = /sess[aã]o|login|n[aã]o autorizado|permiss|jwt|auth/i.test(message);
+    return NextResponse.json({ error: message }, { status: authError ? 401 : 500, headers: { "Cache-Control": "no-store" } });
+  }
 }
