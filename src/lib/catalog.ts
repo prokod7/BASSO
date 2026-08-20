@@ -1,18 +1,40 @@
 import raw from "@/data/catalog.json";
 import type { Addon, Flavor, Product } from "@/types";
 
-const source = raw as unknown as any;
-const beverages = (source.beverages || []).filter((item: Product) => item.id !== "suco-del-valle-lata-290-ml").map((item: Product) => item.id === "agua-tonica-schweppes-lata-350-ml" ? { ...item, active: false } : item);
+type BaseCatalog = Omit<typeof raw, "flavors" | "addons" | "beverages" | "desserts"> & {
+  flavors: Flavor[];
+  addons: Addon[];
+  beverages: Product[];
+  desserts: Product[];
+};
+
+const source = raw as unknown as BaseCatalog;
+const beverages = source.beverages
+  .filter((item) => item.id !== "suco-del-valle-lata-290-ml")
+  .map((item) => item.id === "agua-tonica-schweppes-lata-350-ml" ? { ...item, active: false } : item);
 const delValle: Product[] = [
   { id: "suco-del-valle-uva-lata-290-ml", name: "Suco Del Valle Uva lata 290 ml", description: "Suco Del Valle sabor Uva, lata 290 ml.", price: 700, active: true, stockTracked: false, category: "beverages" },
   { id: "suco-del-valle-pessego-lata-290-ml", name: "Suco Del Valle Pêssego lata 290 ml", description: "Suco Del Valle sabor Pêssego, lata 290 ml.", price: 700, active: true, stockTracked: false, category: "beverages" },
   { id: "suco-del-valle-goiaba-lata-290-ml", name: "Suco Del Valle Goiaba lata 290 ml", description: "Suco Del Valle sabor Goiaba, lata 290 ml.", price: 700, active: true, stockTracked: false, category: "beverages" },
   { id: "suco-del-valle-maracuja-lata-290-ml", name: "Suco Del Valle Maracujá lata 290 ml", description: "Suco Del Valle sabor Maracujá, lata 290 ml.", price: 700, active: true, stockTracked: false, category: "beverages" },
 ];
-const flavors = (source.flavors || []).map((flavor: Flavor) => flavor.id === "salame" ? { ...flavor, ingredients: flavor.ingredients.filter((ingredient: string) => ingredient.toLocaleLowerCase("pt-BR") !== "salsa"), description: "Massa de longa fermentação, passata di pomodoro, mozzarella, salame e azeitonas pretas." } : flavor);
-const allFlavorIds = flavors.filter((flavor: Flavor) => flavor.active).map((flavor: Flavor) => flavor.id);
-const combo = { ...source.combo, options: { ...source.combo.options, grandeFlavors: allFlavorIds, masses: ["traditional", "integral"], allowHalfHalf: true, allowAddonPlacement: true } };
-export const catalog = { ...source, flavors, beverages: [...beverages, ...delValle], combo } as typeof source & { flavors: Flavor[]; addons: Addon[]; beverages: Product[]; desserts: Product[] };
+const flavors: Flavor[] = source.flavors.map((flavor) => flavor.id === "salame" ? {
+  ...flavor,
+  ingredients: flavor.ingredients.filter((ingredient) => ingredient.toLocaleLowerCase("pt-BR") !== "salsa"),
+  description: "Massa de longa fermentação, passata di pomodoro, mozzarella, salame e azeitonas pretas.",
+} : flavor);
+const allFlavorIds = flavors.filter((flavor) => flavor.active).map((flavor) => flavor.id);
+const combo = {
+  ...source.combo,
+  options: {
+    ...source.combo.options,
+    grandeFlavors: allFlavorIds,
+    masses: ["traditional", "integral"],
+    allowHalfHalf: true,
+    allowAddonPlacement: true,
+  },
+};
+export const catalog: BaseCatalog = { ...source, flavors, beverages: [...beverages, ...delValle], combo };
 
 const productImages: Record<string, string> = {
   "agua-tonica-fys-lata-350-ml": "/assets/products/agua-tonica-fys-lata-350ml.jpg",
@@ -42,7 +64,7 @@ const productImages: Record<string, string> = {
   "sprite-2-l": "/assets/products/sprite-2l.webp",
   "sprite-zero-2-l": "/assets/products/sprite-2l-zero.png",
   "pudim-tradicional": "/assets/products/sobremesa-perfeita-para-completar-a-sua-experiencia-pudim-no-copo-americano.png",
-  "pudim-frutas-vermelhas": "/assets/products/sobremesa-perfeita-para-completar-a-sua-experiencia-pudim-no-copo-americano.png"
+  "pudim-frutas-vermelhas": "/assets/products/sobremesa-perfeita-para-completar-a-sua-experiencia-pudim-no-copo-americano.png",
 };
 
 export const categoryImages = {
@@ -50,12 +72,12 @@ export const categoryImages = {
   premium: { grande: "/assets/products/pizzas-premium-pizza-grande.png", broto: "/assets/products/pizzas-premium-pizza-broto.jpeg" },
   sweet: { grande: "/assets/products/pizzas-doces-pizza-grande.jpeg", broto: "/assets/products/pizzas-doces-pizza-broto.jpeg" },
   featured: { grande: "/assets/products/as-mais-pedidas-pizza-grande.png", broto: "/assets/products/as-mais-pedidas-pizza-broto.jpeg" },
-  combo: "/assets/products/combo-r-79-99-pizza-grande-broto-doce-refrigerante-2-litros.png"
+  combo: "/assets/products/combo-r-79-99-pizza-grande-broto-doce-refrigerante-2-litros.png",
 } as const;
 
-export const allProducts: Product[] = [...catalog.beverages, ...catalog.desserts].map((p: Product) => ({ ...p, image: productImages[p.id] }));
-export const findFlavor = (id: string) => catalog.flavors.find((f: Flavor) => f.id === id);
-export const findAddon = (id: string) => catalog.addons.find((a: Addon) => a.id === id);
-export const findProduct = (id: string) => allProducts.find((p: Product) => p.id === id);
+export const allProducts: Product[] = [...catalog.beverages, ...catalog.desserts].map((product) => ({ ...product, image: productImages[product.id] }));
+export const findFlavor = (id: string) => catalog.flavors.find((flavor) => flavor.id === id);
+export const findAddon = (id: string) => catalog.addons.find((addon) => addon.id === id);
+export const findProduct = (id: string) => allProducts.find((product) => product.id === id);
 export const flavorImage = (flavor: Flavor, size: "grande" | "broto" = "grande") => categoryImages[flavor.category][size];
-export const minimumFlavorPrice = (category: Flavor["category"], size: "grande" | "broto" = "grande") => Math.min(...catalog.flavors.filter((f: Flavor) => f.category === category).map((f: Flavor) => size === "grande" ? f.priceGrande : f.priceBroto));
+export const minimumFlavorPrice = (category: Flavor["category"], size: "grande" | "broto" = "grande") => Math.min(...catalog.flavors.filter((flavor) => flavor.category === category).map((flavor) => size === "grande" ? flavor.priceGrande : flavor.priceBroto));
