@@ -3,11 +3,15 @@ import raw from "@/data/catalog.json";
 import { catalog } from "@/lib/catalog";
 
 describe("cardápio oficial", () => {
-  it("preserva as quantidades oficiais", () => {
+  it("preserva as quantidades oficiais e expõe as variações normalizadas", () => {
     expect(catalog.flavors.filter(item => item.category === "traditional")).toHaveLength(42);
     expect(catalog.flavors.filter(item => item.category === "premium")).toHaveLength(11);
     expect(catalog.flavors.filter(item => item.category === "sweet")).toHaveLength(11);
-    expect(catalog.beverages).toHaveLength(29);
+    expect(raw.beverages).toHaveLength(29);
+    // O item genérico Del Valle do cadastro-fonte vira quatro sabores selecionáveis.
+    expect(catalog.beverages).toHaveLength(32);
+    expect(catalog.beverages.filter(item => item.id.startsWith("suco-del-valle-") && item.id !== "suco-del-valle-lata-290-ml")).toHaveLength(4);
+    expect(catalog.beverages.some(item => item.id === "suco-del-valle-lata-290-ml")).toBe(false);
     expect(catalog.addons).toHaveLength(20);
     expect(catalog.desserts).toHaveLength(2);
     expect(catalog.combo.price).toBe(7999);
