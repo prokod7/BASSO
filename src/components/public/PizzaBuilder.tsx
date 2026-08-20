@@ -73,10 +73,7 @@ export function PizzaMenuCard({
   resultCount?: number;
 }) {
   const sizeLabel = entry.size === "grande" ? "Grande" : "Broto";
-  const subtitle =
-    entry.size === "grande"
-      ? "1 sabor ou meio a meio"
-      : "1 sabor";
+  const subtitle = entry.size === "grande" ? "1 sabor ou meio a meio" : "1 sabor";
 
   return (
     <button
@@ -129,9 +126,7 @@ export function PizzaCard({ flavor, onOpen }: { flavor: Flavor; onOpen: (f: Flav
     <article className="surface group relative flex min-h-[152px] overflow-hidden transition sm:min-h-[168px] sm:hover:-translate-y-0.5 sm:hover:shadow-premium">
       <button
         type="button"
-        className={`absolute right-3 top-3 z-10 grid h-10 w-10 place-items-center rounded-full ${
-          favorite ? "bg-red-50 text-red-600" : "bg-black/5 text-black/35"
-        }`}
+        className={`absolute right-3 top-3 z-10 grid h-10 w-10 place-items-center rounded-full ${favorite ? "bg-red-50 text-red-600" : "bg-black/5 text-black/35"}`}
         onClick={() => customerDeviceActions.toggleFavorite(ref)}
         aria-label={favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
       >
@@ -141,9 +136,7 @@ export function PizzaCard({ flavor, onOpen }: { flavor: Flavor; onOpen: (f: Flav
         <div className="flex items-center gap-2 pr-10">
           <h3 className="font-display text-lg font-bold leading-tight">{flavor.name}</h3>
           {flavor.featured && (
-            <span className="rounded-full bg-basso-gold/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-basso-wine">
-              Mais pedida
-            </span>
+            <span className="rounded-full bg-basso-gold/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-basso-wine">Mais pedida</span>
           )}
         </div>
         <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-black/50">{flavor.description}</p>
@@ -227,18 +220,12 @@ export function PizzaBuilder({
   }, [flavorPickerBase, flavorCategory, flavorQuery]);
 
   const availablePickerCategories = useMemo(
-    () => (["traditional", "premium", "sweet"] as Flavor["category"][]).filter((category) =>
-      flavorPickerBase.some((item) => item.category === category),
-    ),
+    () => (["traditional", "premium", "sweet"] as Flavor["category"][]).filter((category) => flavorPickerBase.some((item) => item.category === category)),
     [flavorPickerBase],
   );
 
   const total = useMemo(() => {
-    try {
-      return pizzaTotal(selection);
-    } catch {
-      return 0;
-    }
+    try { return pizzaTotal(selection); } catch { return 0; }
   }, [selection]);
 
   const resetFor = (nextFlavor: Flavor, size: PizzaSelection["size"]) => {
@@ -285,20 +272,15 @@ export function PizzaBuilder({
         if (!arePizzaFlavorsCompatible(a, nextFlavor) || a.id === nextFlavor.id) return current;
         return { ...current, flavorB: nextFlavor.id, removedB: [] };
       }
-
       const previousB = current.flavorB ? findFlavor(current.flavorB) : undefined;
-      const keepSecond = Boolean(
-        previousB && previousB.id !== nextFlavor.id && arePizzaFlavorsCompatible(nextFlavor, previousB),
-      );
+      const keepSecond = Boolean(previousB && previousB.id !== nextFlavor.id && arePizzaFlavorsCompatible(nextFlavor, previousB));
       return {
         ...current,
         flavorA: nextFlavor.id,
         flavorB: keepSecond ? current.flavorB : undefined,
         removedA: [],
         removedB: keepSecond ? current.removedB : [],
-        addonPlacements: keepSecond
-          ? current.addonPlacements
-          : normalizePlacementsWithoutSecondHalf(current.addonPlacements),
+        addonPlacements: keepSecond ? current.addonPlacements : normalizePlacementsWithoutSecondHalf(current.addonPlacements),
       };
     });
     setError("");
@@ -321,21 +303,14 @@ export function PizzaBuilder({
     setSelection((current) => {
       const key = half === "A" ? "removedA" : "removedB";
       const list = current[key];
-      return {
-        ...current,
-        [key]: list.includes(ingredient)
-          ? list.filter((item) => item !== ingredient)
-          : [...list, ingredient],
-      };
+      return { ...current, [key]: list.includes(ingredient) ? list.filter((item) => item !== ingredient) : [...list, ingredient] };
     });
 
   const setAddon = (id: string, delta: number) =>
     setSelection((current) => {
       const quantity = current.addons[id] || 0;
       const next = Math.max(0, Math.min(2, quantity + delta));
-      const sumWithout = Object.entries(current.addons)
-        .filter(([key]) => key !== id)
-        .reduce((sum, [, value]) => sum + value, 0);
+      const sumWithout = Object.entries(current.addons).filter(([key]) => key !== id).reduce((sum, [, value]) => sum + value, 0);
       if (sumWithout + next > 5) return current;
       const placements = { ...(current.addonPlacements || {}) };
       if (next > 0 && !placements[id]) placements[id] = "whole";
@@ -344,10 +319,7 @@ export function PizzaBuilder({
     });
 
   const setAddonPlacement = (id: string, placement: "whole" | "halfA" | "halfB") =>
-    setSelection((current) => ({
-      ...current,
-      addonPlacements: { ...(current.addonPlacements || {}), [id]: placement },
-    }));
+    setSelection((current) => ({ ...current, addonPlacements: { ...(current.addonPlacements || {}), [id]: placement } }));
 
   const add = () => {
     try {
@@ -356,16 +328,10 @@ export function PizzaBuilder({
       const b = selection.flavorB ? findFlavor(selection.flavorB) : undefined;
       const name = `Pizza ${selection.size === "grande" ? "Grande" : "Broto"} • ${a.name}${b ? ` / ${b.name}` : ""}`;
       const item: CartItem = {
-        id: uid("cart"),
-        kind: "pizza",
-        name,
-        quantity: 1,
-        unitPrice: pizzaTotal(selection),
-        image: entry ? imageForEntry(entry) : categoryImages[a.category][selection.size],
-        selection,
+        id: uid("cart"), kind: "pizza", name, quantity: 1, unitPrice: pizzaTotal(selection),
+        image: entry ? imageForEntry(entry) : categoryImages[a.category][selection.size], selection,
       };
-      if (onAdd) onAdd(item);
-      else cart.addItem(item);
+      if (onAdd) onAdd(item); else cart.addItem(item);
       onClose();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível adicionar a pizza.");
@@ -379,12 +345,7 @@ export function PizzaBuilder({
   const builderImage = entry ? imageForEntry(entry) : categoryImages[currentA.category][selection.size];
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={initialSelection ? "Editar pizza" : `${sizeLabel} • ${scopeLabel}`}
-      className="sm:max-w-4xl"
-    >
+    <Modal open={open} onClose={onClose} title={initialSelection ? "Editar pizza" : `${sizeLabel} • ${scopeLabel}`} className="sm:max-w-4xl">
       <div className="md:grid md:grid-cols-[250px_1fr]">
         <aside className="relative hidden min-h-full bg-basso-black md:block">
           <Image src={builderImage} alt={`${scopeLabel} ${sizeLabel}`} fill className="object-cover opacity-85" />
@@ -412,19 +373,15 @@ export function PizzaBuilder({
                   <div className="grid grid-cols-2 gap-1 rounded-xl bg-black/[.035] p-1">
                     {(["grande", "broto"] as const).map((size) => (
                       <button
-                        type="button"
-                        key={size}
+                        type="button" key={size}
                         className={`min-h-10 rounded-lg px-2 text-xs font-bold ${selection.size === size ? "bg-white text-basso-wine shadow-sm" : "text-black/45"}`}
                         onClick={() => setSelection((current) => ({
-                          ...current,
-                          size,
+                          ...current, size,
                           flavorB: size === "broto" ? undefined : current.flavorB,
                           removedB: size === "broto" ? [] : current.removedB,
                           addonPlacements: size === "broto" ? normalizePlacementsWithoutSecondHalf(current.addonPlacements) : current.addonPlacements,
                         }))}
-                      >
-                        {size === "grande" ? "Grande" : "Broto"}
-                      </button>
+                      >{size === "grande" ? "Grande" : "Broto"}</button>
                     ))}
                   </div>
                 )}
@@ -434,13 +391,10 @@ export function PizzaBuilder({
                 <div className="grid grid-cols-2 gap-1 rounded-xl bg-black/[.035] p-1">
                   {catalog.masses.map((mass) => (
                     <button
-                      type="button"
-                      key={mass.id}
+                      type="button" key={mass.id}
                       className={`min-h-10 rounded-lg px-2 text-xs font-bold ${selection.mass === mass.id ? "bg-white text-basso-wine shadow-sm" : "text-black/45"}`}
                       onClick={() => setSelection((current) => ({ ...current, mass: mass.id as PizzaSelection["mass"] }))}
-                    >
-                      {mass.name}
-                    </button>
+                    >{mass.name}</button>
                   ))}
                 </div>
               </div>
@@ -455,59 +409,28 @@ export function PizzaBuilder({
               </div>
               {selection.size === "grande" && (
                 <div className="grid grid-cols-2 rounded-xl bg-black/[.04] p-1">
-                  <button
-                    type="button"
-                    onClick={useWholePizza}
-                    className={`min-h-10 rounded-lg px-3 text-xs font-bold ${!isHalfHalf ? "bg-white text-basso-wine shadow-sm" : "text-black/45"}`}
-                  >
-                    1 sabor
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openFlavorPicker("B")}
-                    className={`min-h-10 rounded-lg px-3 text-xs font-bold ${isHalfHalf ? "bg-white text-basso-wine shadow-sm" : "text-black/45"}`}
-                  >
-                    Meio a meio
-                  </button>
+                  <button type="button" onClick={useWholePizza} className={`min-h-10 rounded-lg px-3 text-xs font-bold ${!isHalfHalf ? "bg-white text-basso-wine shadow-sm" : "text-black/45"}`}>1 sabor</button>
+                  <button type="button" onClick={() => openFlavorPicker("B")} className={`min-h-10 rounded-lg px-3 text-xs font-bold ${isHalfHalf ? "bg-white text-basso-wine shadow-sm" : "text-black/45"}`}>Meio a meio</button>
                 </div>
               )}
             </div>
 
             <div className={`mt-3 grid gap-2 ${isHalfHalf ? "grid-cols-2" : "grid-cols-1"}`}>
-              <FlavorSelectionCard
-                slotLabel={isHalfHalf ? "1ª metade" : selection.size === "grande" ? "Pizza inteira" : "Sabor da Broto"}
-                flavor={currentA}
-                size={selection.size}
-                half={isHalfHalf}
-                onClick={() => openFlavorPicker("A")}
-              />
-              {isHalfHalf && currentB && (
-                <FlavorSelectionCard
-                  slotLabel="2ª metade"
-                  flavor={currentB}
-                  size={selection.size}
-                  half
-                  onClick={() => openFlavorPicker("B")}
-                />
-              )}
+              <FlavorSelectionCard slotLabel={isHalfHalf ? "1ª metade" : selection.size === "grande" ? "Pizza inteira" : "Sabor da Broto"} flavor={currentA} size={selection.size} half={isHalfHalf} onClick={() => openFlavorPicker("A")} />
+              {isHalfHalf && currentB && <FlavorSelectionCard slotLabel="2ª metade" flavor={currentB} size={selection.size} half onClick={() => openFlavorPicker("B")} />}
             </div>
 
             {selection.size === "grande" && (
-              <p className="mt-2.5 px-1 text-[11px] leading-relaxed text-black/45">
-                Meio a meio = <strong>50% de cada sabor</strong>. Você pode misturar Tradicional, Premium e Doce.
-              </p>
+              <p className="mt-2.5 px-1 text-[11px] leading-relaxed text-black/45">Meio a meio = <strong>50% de cada sabor</strong>. Você pode misturar Tradicional, Premium e Doce.</p>
             )}
           </section>
 
           <section className="mt-5 space-y-2">
             <p className="px-1 text-[10px] font-black uppercase tracking-[.14em] text-black/35">Personalize se quiser</p>
 
-            <details className="mobile-details overflow-hidden rounded-2xl border border-black/8 bg-white" defaultOpen={Boolean(initialSelection && removedCount)}>
+            <details className="mobile-details overflow-hidden rounded-2xl border border-black/8 bg-white">
               <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-3 active:bg-black/[.02]">
-                <div>
-                  <p className="text-sm font-bold">Retirar ingredientes</p>
-                  <p className="text-[11px] text-black/40">{removedCount ? `${removedCount} removido(s)` : "Opcional"}</p>
-                </div>
+                <div><p className="text-sm font-bold">Retirar ingredientes</p><p className="text-[11px] text-black/40">{removedCount ? `${removedCount} removido(s)` : "Opcional"}</p></div>
                 <ChevronDown size={18} className="mobile-details-chevron shrink-0 text-black/35 transition" />
               </summary>
               <div className="space-y-3 border-t border-black/5 p-3">
@@ -516,12 +439,9 @@ export function PizzaBuilder({
               </div>
             </details>
 
-            <details className="mobile-details overflow-hidden rounded-2xl border border-black/8 bg-white" defaultOpen={Boolean(initialSelection && addonUnits)}>
+            <details className="mobile-details overflow-hidden rounded-2xl border border-black/8 bg-white">
               <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-3 active:bg-black/[.02]">
-                <div>
-                  <p className="text-sm font-bold">Adicionais</p>
-                  <p className="text-[11px] text-black/40">{addonUnits ? `${addonUnits} unidade(s)` : "Até 5 unidades"}</p>
-                </div>
+                <div><p className="text-sm font-bold">Adicionais</p><p className="text-[11px] text-black/40">{addonUnits ? `${addonUnits} unidade(s)` : "Até 5 unidades"}</p></div>
                 <ChevronDown size={18} className="mobile-details-chevron shrink-0 text-black/35 transition" />
               </summary>
               <div className="divide-y divide-black/5 border-t border-black/5">
@@ -531,10 +451,7 @@ export function PizzaBuilder({
                   return (
                     <div key={addon.id} className="p-3.5">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold">{addon.name}</p>
-                          <p className="mt-0.5 text-[11px] text-basso-wine">{currency(addon.price)} inteira • {currency(Math.round(addon.price / 2))} metade</p>
-                        </div>
+                        <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{addon.name}</p><p className="mt-0.5 text-[11px] text-basso-wine">{currency(addon.price)} inteira • {currency(Math.round(addon.price / 2))} metade</p></div>
                         <div className="flex h-11 shrink-0 items-center rounded-xl border border-black/10 bg-basso-paper/60">
                           <button type="button" className="grid h-11 w-11 place-items-center disabled:opacity-25" disabled={!quantity} onClick={() => setAddon(addon.id, -1)} aria-label={`Remover ${addon.name}`}><Minus size={16} /></button>
                           <span className="w-7 text-center text-sm font-black">{quantity}</span>
@@ -554,23 +471,13 @@ export function PizzaBuilder({
               </div>
             </details>
 
-            <details className="mobile-details overflow-hidden rounded-2xl border border-black/8 bg-white" defaultOpen={Boolean(initialSelection?.notes)}>
+            <details className="mobile-details overflow-hidden rounded-2xl border border-black/8 bg-white">
               <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-3 active:bg-black/[.02]">
-                <div>
-                  <p className="text-sm font-bold">Observações</p>
-                  <p className="text-[11px] text-black/40">{selection.notes.trim() ? "Observação adicionada" : "Opcional"}</p>
-                </div>
+                <div><p className="text-sm font-bold">Observações</p><p className="text-[11px] text-black/40">{selection.notes.trim() ? "Observação adicionada" : "Opcional"}</p></div>
                 <ChevronDown size={18} className="mobile-details-chevron shrink-0 text-black/35 transition" />
               </summary>
               <div className="border-t border-black/5 p-3">
-                <textarea
-                  id="pizza-notes"
-                  className="textarea min-h-28"
-                  maxLength={500}
-                  value={selection.notes}
-                  onChange={(event) => setSelection((current) => ({ ...current, notes: event.target.value }))}
-                  placeholder="Ex.: assar bem, cortar em 8 pedaços..."
-                />
+                <textarea id="pizza-notes" className="textarea min-h-28" maxLength={500} value={selection.notes} onChange={(event) => setSelection((current) => ({ ...current, notes: event.target.value }))} placeholder="Ex.: assar bem, cortar em 8 pedaços..." />
                 <p className="mt-1 text-right text-xs text-black/35">{selection.notes.length}/500</p>
               </div>
             </details>
@@ -578,15 +485,9 @@ export function PizzaBuilder({
 
           {error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
 
-          <div
-            className="sticky bottom-0 z-20 -mx-4 mt-5 border-t border-black/5 bg-basso-paper/95 px-4 pt-3 backdrop-blur-xl sm:-mx-5 sm:px-5"
-            style={{ paddingBottom: "max(.75rem, env(safe-area-inset-bottom))" }}
-          >
+          <div className="sticky bottom-0 z-20 -mx-4 mt-5 border-t border-black/5 bg-basso-paper/95 px-4 pt-3 backdrop-blur-xl sm:-mx-5 sm:px-5" style={{ paddingBottom: "max(.75rem, env(safe-area-inset-bottom))" }}>
             <button type="button" className="btn-primary min-h-14 w-full rounded-2xl text-base shadow-lg shadow-basso-wine/15" onClick={add} disabled={!total}>
-              <ShoppingBag size={19} />
-              <span>{initialSelection ? "Salvar" : "Adicionar"}</span>
-              <span className="opacity-70">•</span>
-              <strong>{currency(total)}</strong>
+              <ShoppingBag size={19} /><span>{initialSelection ? "Salvar" : "Adicionar"}</span><span className="opacity-70">•</span><strong>{currency(total)}</strong>
             </button>
           </div>
         </div>
@@ -594,137 +495,54 @@ export function PizzaBuilder({
 
       {flavorPicker && (
         <FlavorPickerSheet
-          slot={flavorPicker}
-          size={selection.size}
-          currentA={currentA}
-          currentB={currentB}
-          results={flavorPickerResults}
-          categories={availablePickerCategories}
-          category={flavorCategory}
-          query={flavorQuery}
-          onCategory={setFlavorCategory}
-          onQuery={setFlavorQuery}
-          onChoose={(nextFlavor) => chooseFlavor(flavorPicker, nextFlavor)}
-          onClose={() => {
-            setFlavorPicker(null);
-            setFlavorQuery("");
-            setFlavorCategory("all");
-          }}
+          slot={flavorPicker} size={selection.size} currentA={currentA} currentB={currentB}
+          results={flavorPickerResults} categories={availablePickerCategories} category={flavorCategory} query={flavorQuery}
+          onCategory={setFlavorCategory} onQuery={setFlavorQuery} onChoose={(nextFlavor) => chooseFlavor(flavorPicker, nextFlavor)}
+          onClose={() => { setFlavorPicker(null); setFlavorQuery(""); setFlavorCategory("all"); }}
         />
       )}
     </Modal>
   );
 }
 
-function FlavorSelectionCard({
-  slotLabel,
-  flavor,
-  size,
-  half,
-  onClick,
-}: {
-  slotLabel: string;
-  flavor: Flavor;
-  size: PizzaSelection["size"];
-  half?: boolean;
-  onClick: () => void;
-}) {
+function FlavorSelectionCard({ slotLabel, flavor, size, half, onClick }: { slotLabel: string; flavor: Flavor; size: PizzaSelection["size"]; half?: boolean; onClick: () => void }) {
   const fullPrice = size === "grande" ? flavor.priceGrande : flavor.priceBroto;
   const shownPrice = half ? Math.round(fullPrice / 2) : fullPrice;
-
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group min-h-[122px] w-full rounded-2xl border border-black/10 bg-white p-3.5 text-left shadow-sm transition active:scale-[.99] sm:p-4 sm:hover:border-basso-wine/35 sm:hover:shadow-md"
-    >
+    <button type="button" onClick={onClick} className="group min-h-[122px] w-full rounded-2xl border border-black/10 bg-white p-3.5 text-left shadow-sm transition active:scale-[.99] sm:p-4 sm:hover:border-basso-wine/35 sm:hover:shadow-md">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] font-black uppercase tracking-[.13em] text-basso-wine">{slotLabel}</p>
-          <h4 className="mt-1 line-clamp-2 font-display text-lg font-bold leading-tight sm:text-xl">{flavor.name}</h4>
-        </div>
+        <div className="min-w-0 flex-1"><p className="text-[9px] font-black uppercase tracking-[.13em] text-basso-wine">{slotLabel}</p><h4 className="mt-1 line-clamp-2 font-display text-lg font-bold leading-tight sm:text-xl">{flavor.name}</h4></div>
         <ChevronRight size={17} className="mt-0.5 shrink-0 text-black/25" />
       </div>
-      <span className="mt-2 inline-flex rounded-full bg-basso-cream px-2 py-0.5 text-[9px] font-black uppercase text-basso-wine">
-        {flavorCategoryLabels[flavor.category]}
-      </span>
-      <div className="mt-2.5 flex items-end justify-between gap-2 border-t border-black/5 pt-2.5">
-        <span className="text-[10px] font-semibold text-black/35">Trocar</span>
-        <strong className="text-xs text-basso-wine sm:text-sm">{half ? "50% • " : ""}{currency(shownPrice)}</strong>
-      </div>
+      <span className="mt-2 inline-flex rounded-full bg-basso-cream px-2 py-0.5 text-[9px] font-black uppercase text-basso-wine">{flavorCategoryLabels[flavor.category]}</span>
+      <div className="mt-2.5 flex items-end justify-between gap-2 border-t border-black/5 pt-2.5"><span className="text-[10px] font-semibold text-black/35">Trocar</span><strong className="text-xs text-basso-wine sm:text-sm">{half ? "50% • " : ""}{currency(shownPrice)}</strong></div>
     </button>
   );
 }
 
-function FlavorPickerSheet({
-  slot,
-  size,
-  currentA,
-  currentB,
-  results,
-  categories,
-  category,
-  query,
-  onCategory,
-  onQuery,
-  onChoose,
-  onClose,
-}: {
-  slot: FlavorSlot;
-  size: PizzaSelection["size"];
-  currentA: Flavor;
-  currentB?: Flavor;
-  results: Flavor[];
-  categories: Flavor["category"][];
-  category: FlavorCategoryFilter;
-  query: string;
-  onCategory: (category: FlavorCategoryFilter) => void;
-  onQuery: (value: string) => void;
-  onChoose: (flavor: Flavor) => void;
-  onClose: () => void;
+function FlavorPickerSheet({ slot, size, currentA, currentB, results, categories, category, query, onCategory, onQuery, onChoose, onClose }: {
+  slot: FlavorSlot; size: PizzaSelection["size"]; currentA: Flavor; currentB?: Flavor; results: Flavor[]; categories: Flavor["category"][];
+  category: FlavorCategoryFilter; query: string; onCategory: (category: FlavorCategoryFilter) => void; onQuery: (value: string) => void; onChoose: (flavor: Flavor) => void; onClose: () => void;
 }) {
   const selectedId = slot === "A" ? currentA.id : currentB?.id;
   const isHalf = slot === "B" || Boolean(currentB);
-
   return (
     <div className="fixed inset-0 z-[160] flex h-[100dvh] flex-col bg-basso-paper sm:items-center sm:justify-center sm:bg-black/60 sm:p-4 sm:backdrop-blur-sm">
       <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-basso-paper sm:h-auto sm:max-h-[90dvh] sm:max-w-xl sm:rounded-3xl sm:shadow-2xl">
         <div className="shrink-0 border-b border-black/5 bg-white px-4 pb-3 pt-[calc(.5rem+env(safe-area-inset-top))] sm:px-5 sm:pt-4">
           <div className="flex min-h-11 items-center gap-3">
             <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black/5 active:scale-95" onClick={onClose} aria-label="Voltar"><X size={19} /></button>
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] font-black uppercase tracking-[.14em] text-basso-wine">{slot === "A" ? (isHalf ? "1ª metade" : "Sabor") : "2ª metade"}</p>
-              <h3 className="truncate font-display text-xl font-black">Escolher sabor</h3>
-            </div>
+            <div className="min-w-0 flex-1"><p className="text-[9px] font-black uppercase tracking-[.14em] text-basso-wine">{slot === "A" ? (isHalf ? "1ª metade" : "Sabor") : "2ª metade"}</p><h3 className="truncate font-display text-xl font-black">Escolher sabor</h3></div>
             <span className="shrink-0 text-xs font-bold text-black/35">{results.length}</span>
           </div>
-
-          {slot === "B" && (
-            <div className="mt-2 flex items-center gap-2 rounded-xl bg-basso-cream px-3 py-2 text-xs text-basso-wine">
-              <span className="font-semibold">1ª metade:</span>
-              <strong className="truncate">{currentA.name}</strong>
-            </div>
-          )}
-
+          {slot === "B" && <div className="mt-2 flex items-center gap-2 rounded-xl bg-basso-cream px-3 py-2 text-xs text-basso-wine"><span className="font-semibold">1ª metade:</span><strong className="truncate">{currentA.name}</strong></div>}
           <label className="relative mt-3 block">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30" />
-            <input
-              className="input h-12 pl-10 text-base"
-              value={query}
-              onChange={(event) => onQuery(event.target.value)}
-              placeholder="Buscar sabor ou ingrediente"
-              enterKeyHint="search"
-              inputMode="search"
-            />
+            <input className="input h-12 pl-10 text-base" value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Buscar sabor ou ingrediente" enterKeyHint="search" inputMode="search" />
           </label>
-
           <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none sm:-mx-5 sm:px-5">
             <CategoryChip active={category === "all"} onClick={() => onCategory("all")}>Todos</CategoryChip>
-            {categories.map((item) => (
-              <CategoryChip key={item} active={category === item} onClick={() => onCategory(item)}>
-                {flavorCategoryLabels[item]}
-              </CategoryChip>
-            ))}
+            {categories.map((item) => <CategoryChip key={item} active={category === item} onClick={() => onCategory(item)}>{flavorCategoryLabels[item]}</CategoryChip>)}
           </div>
         </div>
 
@@ -735,98 +553,38 @@ function FlavorPickerSheet({
               const contribution = isHalf ? Math.round(fullPrice / 2) : fullPrice;
               const selected = item.id === selectedId;
               return (
-                <button
-                  type="button"
-                  key={item.id}
-                  onClick={() => onChoose(item)}
-                  className={`flex min-h-[76px] w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition active:scale-[.995] ${selected ? "border-basso-wine bg-basso-wine/[.055] ring-1 ring-basso-wine/20" : "border-black/8 bg-white"}`}
-                >
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${selected ? "bg-basso-wine text-white" : "bg-basso-cream text-basso-wine"}`}>
-                    {selected ? <Check size={16} /> : <span className="text-[10px] font-black">{item.name.charAt(0)}</span>}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="truncate text-[15px] font-bold">{item.name}</h4>
-                      <span className="shrink-0 rounded-full bg-basso-cream px-1.5 py-0.5 text-[8px] font-black uppercase text-basso-wine">{flavorCategoryLabels[item.category]}</span>
-                    </div>
-                    <p className="mt-1 truncate text-[11px] text-black/40">{item.ingredients.join(", ")}</p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    {isHalf && <p className="text-[8px] font-black uppercase tracking-wide text-black/30">50%</p>}
-                    <strong className="text-sm text-basso-wine">{currency(contribution)}</strong>
-                  </div>
+                <button type="button" key={item.id} onClick={() => onChoose(item)} className={`flex min-h-[76px] w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition active:scale-[.995] ${selected ? "border-basso-wine bg-basso-wine/[.055] ring-1 ring-basso-wine/20" : "border-black/8 bg-white"}`}>
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${selected ? "bg-basso-wine text-white" : "bg-basso-cream text-basso-wine"}`}>{selected ? <Check size={16} /> : <span className="text-[10px] font-black">{item.name.charAt(0)}</span>}</span>
+                  <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h4 className="truncate text-[15px] font-bold">{item.name}</h4><span className="shrink-0 rounded-full bg-basso-cream px-1.5 py-0.5 text-[8px] font-black uppercase text-basso-wine">{flavorCategoryLabels[item.category]}</span></div><p className="mt-1 truncate text-[11px] text-black/40">{item.ingredients.join(", ")}</p></div>
+                  <div className="shrink-0 text-right">{isHalf && <p className="text-[8px] font-black uppercase tracking-wide text-black/30">50%</p>}<strong className="text-sm text-basso-wine">{currency(contribution)}</strong></div>
                 </button>
               );
             })}
           </div>
-
-          {!results.length && (
-            <div className="grid min-h-56 place-items-center p-6 text-center">
-              <div>
-                <Search className="mx-auto text-black/20" size={28} />
-                <p className="mt-3 font-bold">Nenhum sabor encontrado</p>
-                <p className="mt-1 text-xs text-black/40">Tente outro termo ou outra categoria.</p>
-              </div>
-            </div>
-          )}
+          {!results.length && <div className="grid min-h-56 place-items-center p-6 text-center"><div><Search className="mx-auto text-black/20" size={28} /><p className="mt-3 font-bold">Nenhum sabor encontrado</p><p className="mt-1 text-xs text-black/40">Tente outro termo ou outra categoria.</p></div></div>}
         </div>
 
-        <div className="shrink-0 border-t border-black/5 bg-white px-4 pt-2 text-center" style={{ paddingBottom: "max(.65rem, env(safe-area-inset-bottom))" }}>
-          <p className="text-[10px] leading-relaxed text-black/35">Categorias servem para filtrar. No meio a meio, você pode misturar sabores de qualquer categoria.</p>
-        </div>
+        <div className="shrink-0 border-t border-black/5 bg-white px-4 pt-2 text-center" style={{ paddingBottom: "max(.65rem, env(safe-area-inset-bottom))" }}><p className="text-[10px] leading-relaxed text-black/35">Categorias servem para filtrar. No meio a meio, você pode misturar sabores de qualquer categoria.</p></div>
       </div>
     </div>
   );
 }
 
 function CategoryChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`min-h-10 shrink-0 rounded-full px-3.5 text-xs font-bold ${active ? "bg-basso-wine text-white" : "border border-black/10 bg-white text-black/55"}`}
-    >
-      {children}
-    </button>
-  );
+  return <button type="button" onClick={onClick} className={`min-h-10 shrink-0 rounded-full px-3.5 text-xs font-bold ${active ? "bg-basso-wine text-white" : "border border-black/10 bg-white text-black/55"}`}>{children}</button>;
 }
 
 function PlacementButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      className={`min-h-10 rounded-xl border px-2 text-[10px] font-bold ${active ? "border-basso-wine bg-basso-wine text-white" : "border-black/10 bg-white text-black/50"}`}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
+  return <button type="button" className={`min-h-10 rounded-xl border px-2 text-[10px] font-bold ${active ? "border-basso-wine bg-basso-wine text-white" : "border-black/10 bg-white text-black/50"}`} onClick={onClick}>{children}</button>;
 }
 
-function IngredientList({
-  title,
-  ingredients,
-  selected,
-  onToggle,
-}: {
-  title: string;
-  ingredients: string[];
-  selected: string[];
-  onToggle: (ingredient: string) => void;
-}) {
+function IngredientList({ title, ingredients, selected, onToggle }: { title: string; ingredients: string[]; selected: string[]; onToggle: (ingredient: string) => void }) {
   return (
     <div className="rounded-xl bg-basso-paper/70 p-2.5">
       <p className="mb-2 text-xs font-bold text-basso-wine">{title}</p>
       <div className="flex flex-wrap gap-2">
         {ingredients.map((ingredient) => (
-          <button
-            type="button"
-            key={ingredient}
-            className={`min-h-10 rounded-full border px-3 py-2 text-xs font-semibold transition ${selected.includes(ingredient) ? "border-red-300 bg-red-50 text-red-700 line-through" : "border-black/10 bg-white"}`}
-            onClick={() => onToggle(ingredient)}
-          >
-            {ingredient}
-          </button>
+          <button type="button" key={ingredient} className={`min-h-10 rounded-full border px-3 py-2 text-xs font-semibold transition ${selected.includes(ingredient) ? "border-red-300 bg-red-50 text-red-700 line-through" : "border-black/10 bg-white"}`} onClick={() => onToggle(ingredient)}>{ingredient}</button>
         ))}
       </div>
     </div>
