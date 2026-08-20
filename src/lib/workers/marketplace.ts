@@ -26,6 +26,47 @@ function cents(value: number): number {
   return Math.max(0, Math.round(value));
 }
 
+/** Mantém detalhes úteis do Supabase/API sem transformar objetos em [object Object]. */
+export function integrationErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const row = error as Record<string, unknown>;
+    const pieces = [row.message, row.details, row.hint, row.code]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .map((value) => value.trim());
+    if (pieces.length) return [...new Set(pieces)].join(" • ");
+  }
+  if (typeof error === "string" && error.trim()) return error.trim();
+  return "Falha desconhecida na integração";
+}
+
+/**
+ * Reconcilia o total oficial do marketplace com o modelo aritmético interno.
+ * Taxas adicionais que o provedor incorpora no total são absorvidas em
+ * deliveryFee; quando o total oficial é menor, a diferença vira desconto.
+ */
+export function reconcileMarketplaceTotals(
+  subtotalValue: number,
+  deliveryFeeValue: number,
+  discountValue: number,
+  totalValue: number,
+): { subtotal: number; deliveryFee: number; discount: number; total: number } {
+  const subtotal = cents(subtotalValue);
+  let deliveryFee = cents(deliveryFeeValue);
+  let discount = cents(discountValue);
+  const requestedTotal = cents(totalValue);
+  const currentTotal = Math.max(0, subtotal + deliveryFee - discount);
+  const total = requestedTotal || currentTotal;
+
+  if (total > currentTotal) {
+    deliveryFee += total - currentTotal;
+  } else if (total < currentTotal) {
+    discount = Math.min(subtotal + deliveryFee, discount + (currentTotal - total));
+  }
+
+  return { subtotal, deliveryFee, discount, total };
+}
+
 function stableId(provider: string, externalId: string): string {
   return `${provider}_${createHash("sha256").update(externalId).digest("hex").slice(0, 24)}`;
 }
@@ -47,7 +88,7 @@ export async function persistMarketplaceOrder(order: ExternalOrder): Promise<{ i
   if (!db) throw new Error("Supabase não configurado.");
   const sourceKey = `${order.provider}:${order.externalId}`;
   const { data: existing, error: existingError } = await db.from("orders").select("id").eq("source_idempotency_key", sourceKey).maybeSingle();
-  if (existingError) throw existingError;
+  if (existingError) throw new Error(integrationErrorMessage(existingError));
   if (existing) return { id: existing.id, duplicate: true };
 
   const mappings = await loadMappings(order.provider, order.items.map(item => item.externalProductId).filter(Boolean) as string[]);
@@ -76,13 +117,13 @@ export async function persistMarketplaceOrder(order: ExternalOrder): Promise<{ i
     };
   });
 
-  const subtotal = cents(order.subtotalCents || items.reduce((sum, item) => sum + item.unit_price_cents * item.quantity, 0));
-  const deliveryFee = cents(order.deliveryFeeCents);
-  const discount = Math.min(subtotal + deliveryFee, cents(order.discountCents));
-  const calculatedTotal = Math.max(0, subtotal - discount + deliveryFee);
-  const total = cents(order.totalCents) || calculatedTotal;
-  // Preserve provider total while satisfying the database arithmetic constraint.
-  const normalizedDiscount = Math.max(0, subtotal + deliveryFee - total);
+  const fallbackSubtotal = items.reduce((sum, item) => sum + item.unit_price_cents * item.quantity, 0);
+  const reconciled = reconcileMarketplaceTotals(
+    order.subtotalCents || fallbackSubtotal,
+    order.deliveryFeeCents,
+    order.discountCents,
+    order.totalCents,
+  );
 
   const orderRow = {
     id,
@@ -93,10 +134,10 @@ export async function persistMarketplaceOrder(order: ExternalOrder): Promise<{ i
     customer_name: order.customerDisplayName,
     customer_phone: order.customerPhone || "",
     address: order.deliveryAddress || null,
-    subtotal_cents: subtotal,
-    discount_cents: normalizedDiscount,
-    delivery_fee_cents: deliveryFee,
-    total_cents: total,
+    subtotal_cents: reconciled.subtotal,
+    discount_cents: reconciled.discount,
+    delivery_fee_cents: reconciled.deliveryFee,
+    total_cents: reconciled.total,
     payment_method: order.paymentMethod,
     source_idempotency_key: sourceKey,
     external_id: order.externalId,
@@ -106,7 +147,7 @@ export async function persistMarketplaceOrder(order: ExternalOrder): Promise<{ i
   };
 
   const { data: result, error: transactionError } = await db.rpc("create_marketplace_order_transaction", { p_order: orderRow, p_items: items });
-  if (transactionError) throw transactionError;
+  if (transactionError) throw new Error(integrationErrorMessage(transactionError));
   return { id: result?.id || id, duplicate: Boolean(result?.duplicate) };
 }
 
@@ -124,9 +165,6 @@ export async function processIntegrationEvent(event: IntegrationEventRow): Promi
         if (event.event_type === "ORDER_CANCELLED") await providerAdapter.cancelOrder(externalId, String(event.payload?.reason || "Cancelado pela operação"));
         else await providerAdapter.updateStatus(externalId, event.payload?.status);
       } else {
-        // 99Food gets an asynchronous resolver because the official webhook may be a
-        // notification-only envelope and require a follow-up order detail request.
-        // The resolver remains safety-gated until the official documentation is supplied.
         const normalized = event.provider === "99food"
           ? await resolveFood99OrderFromEvent(event.payload)
           : providerAdapter.normalizeOrder(event.payload);
@@ -136,7 +174,8 @@ export async function processIntegrationEvent(event: IntegrationEventRow): Promi
     }
     await db.rpc("finish_integration_event", { p_id: event.id, p_success: true, p_error: null });
   } catch (error) {
-    await db.rpc("finish_integration_event", { p_id: event.id, p_success: false, p_error: error instanceof Error ? error.message : "Falha desconhecida" });
+    const message = integrationErrorMessage(error);
+    await db.rpc("finish_integration_event", { p_id: event.id, p_success: false, p_error: message });
     throw error;
   }
 }
@@ -149,50 +188,27 @@ export interface DrainIntegrationQueueResult {
   failed: number;
 }
 
-/**
- * Backward-compatible queue drainer used by older route handlers.
- *
- * Mega Update 06 routes primarily call `processIntegrationEvent` directly after
- * claiming rows, but existing deployments still import `drainIntegrationQueue`.
- * Keeping this exported helper prevents those routes from breaking while using
- * the same claim/process/finalize path and idempotency guarantees.
- */
 export async function drainIntegrationQueue(
   limitOrOptions: number | { limit?: number } = 10,
 ): Promise<DrainIntegrationQueueResult> {
   const db = createAdminClient();
   if (!db) throw new Error("Supabase não configurado.");
 
-  const requestedLimit = typeof limitOrOptions === "number"
-    ? limitOrOptions
-    : (limitOrOptions.limit ?? 10);
+  const requestedLimit = typeof limitOrOptions === "number" ? limitOrOptions : (limitOrOptions.limit ?? 10);
   const limit = Math.max(1, Math.min(100, Math.trunc(requestedLimit || 10)));
-
-  const { data: events, error } = await db.rpc("claim_integration_events", {
-    p_limit: limit,
-  });
-  if (error) throw error;
+  const { data: events, error } = await db.rpc("claim_integration_events", { p_limit: limit });
+  if (error) throw new Error(integrationErrorMessage(error));
 
   let completed = 0;
   let failed = 0;
   const claimed = Array.isArray(events) ? events.length : 0;
-
   for (const row of events || []) {
     try {
       await processIntegrationEvent(row as IntegrationEventRow);
       completed += 1;
     } catch {
-      // `processIntegrationEvent` already records the failed attempt through
-      // `finish_integration_event`; the drainer only aggregates the result.
       failed += 1;
     }
   }
-
-  return {
-    ok: failed === 0,
-    claimed,
-    completed,
-    processed: completed,
-    failed,
-  };
+  return { ok: failed === 0, claimed, completed, processed: completed, failed };
 }
