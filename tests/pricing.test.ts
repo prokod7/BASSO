@@ -16,16 +16,17 @@ describe("regras de pizza", () => {
     expect(() => validatePizzaSelection(pizza({ size: "broto", flavorB: "calabresa-tradicional" }))).toThrow(/somente um sabor/i);
   });
 
-  it("bloqueia Tradicional com Premium", () => {
-    expect(() => validatePizzaSelection(pizza({ flavorB: "camarao" }))).toThrow(/Premium/i);
-  });
-
-  it("permite doce com salgado quando não viola Premium + Tradicional", () => {
+  it("permite meio a meio entre Tradicional, Premium e Doce", () => {
+    expect(() => validatePizzaSelection(pizza({ flavorB: "camarao" }))).not.toThrow();
     expect(() => validatePizzaSelection(pizza({ flavorB: "brigadeiro" }))).not.toThrow();
   });
 
-  it("cobra adicionais integralmente e limita repetição e total", () => {
-    expect(pizzaTotal(pizza({ addons: { bacon: 2, tomate: 1 } }))).toBe(7700);
+  it("cobra adicional inteiro na pizza inteira e metade na metade escolhida", () => {
+    expect(pizzaTotal(pizza({ addons: { bacon: 1 } }))).toBe(6000);
+    expect(pizzaTotal(pizza({ addons: { bacon: 1 }, addonPlacements: { bacon: "halfA" } }))).toBe(5500);
+  });
+
+  it("limita repetição e total de adicionais", () => {
     expect(() => pizzaTotal(pizza({ addons: { bacon: 3 } }))).toThrow(/máximo 2/i);
     expect(() => pizzaTotal(pizza({ addons: { bacon: 2, tomate: 2, cebola: 2 } }))).toThrow(/limite é de 5/i);
   });
@@ -45,4 +46,5 @@ describe("combo oficial", () => {
   const combo: ComboSelection = { mass: "integral", grandeFlavor: "mozzarella", brigadeiroBase: "chocolate-ao-leite", beverage: "guarana-antarctica-2-l", addons: {}, notes: "" };
   it("parte de R$ 79,99", () => expect(comboTotal(combo)).toBe(7999));
   it("cobra adicional integral", () => expect(comboTotal({ ...combo, addons: { bacon: 1 } })).toBe(8999));
+  it("permite meio a meio do combo entre categorias diferentes", () => expect(() => comboTotal({ ...combo, grandeFlavorB: "camarao" })).not.toThrow());
 });
