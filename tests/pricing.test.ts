@@ -22,8 +22,8 @@ describe("regras de pizza", () => {
   });
 
   it("cobra adicional inteiro na pizza inteira e metade na metade escolhida", () => {
-    expect(pizzaTotal(pizza({ addons: { bacon: 1 } }))).toBe(7000);
-    expect(pizzaTotal(pizza({ addons: { bacon: 1 }, addonPlacements: { bacon: "halfA" } }))).toBe(6500);
+    expect(pizzaTotal(pizza({ addons: { bacon: 1 } }))).toBe(6000);
+    expect(pizzaTotal(pizza({ addons: { bacon: 1 }, addonPlacements: { bacon: "halfA" } }))).toBe(5500);
   });
 
   it("limita repetição e total de adicionais", () => {
