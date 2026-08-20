@@ -152,7 +152,7 @@ export default function DeliveryPage() {
     </section>
 
     {showMap && <section className="surface mb-5 overflow-hidden p-3">
-      {points.length ? <OperationalMap points={points} className="h-96" /> : <div className="grid h-64 place-items-center rounded-2xl bg-basso-paper text-center"><div><MapPin className="mx-auto text-black/25" size={34} /><p className="mt-2 text-sm font-bold">Nenhuma coordenada disponível</p><p className="mt-1 text-xs text-black/45">A operação continua disponível pelo endereço textual.</p></div></div>}
+      {points.length ? <OperationalMap points={points} className="h-96" /> : <div className="grid h-64 place-items-center rounded-2xl bg-basso-paper text-center"><div><MapPin className="mx-auto text-black/25" size={34} /><p className="mt-2 text-sm font-bold">Nenhuma coordenada disponível</p><p className="mt-1 text-xs text-black/45">A operação continua funcional por endereço textual. O mapa é auxiliar e nunca bloqueia o despacho.</p></div></div>}
     </section>}
 
     <div className="grid gap-5 xl:grid-cols-[1fr_330px]">
