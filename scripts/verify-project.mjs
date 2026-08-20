@@ -16,7 +16,7 @@ function check(name, condition, detail = "") {
 check("42 pizzas tradicionais", catalog.flavors.filter(x => x.category === "traditional").length === 42);
 check("11 pizzas premium", catalog.flavors.filter(x => x.category === "premium").length === 11);
 check("11 pizzas doces", catalog.flavors.filter(x => x.category === "sweet").length === 11);
-check("29 bebidas", catalog.beverages.length === 29);
+check("29 bebidas base", catalog.beverages.length === 29);
 check("20 adicionais", catalog.addons.length === 20);
 check("1 combo oficial", catalog.combo?.price === 7999);
 check("Sobremesa com 2 variações", catalog.desserts.length === 2);
@@ -44,7 +44,7 @@ check("Todos os assets referenciados existem", missingAssets.length === 0, missi
 const requiredRoutes = [
   "src/app/page.tsx","src/app/checkout/page.tsx","src/app/pedido/[id]/page.tsx","src/app/acompanhar/[token]/page.tsx",
   "src/app/painel/page.tsx","src/app/painel/pedidos/page.tsx","src/app/painel/pdv/page.tsx","src/app/painel/salao/page.tsx",
-  "src/app/painel/garcom/page.tsx","src/app/painel/kds/page.tsx","src/app/painel/delivery/page.tsx","src/app/painel/motoboy/page.tsx",
+  "src/app/painel/garcom/page.tsx","src/app/garcom/page.tsx","src/app/painel/kds/page.tsx","src/app/painel/delivery/page.tsx","src/app/painel/motoboy/page.tsx",
   "src/app/painel/clientes/page.tsx","src/app/painel/fidelidade/page.tsx","src/app/painel/estoque/page.tsx","src/app/painel/caixa/page.tsx",
   "src/app/painel/financeiro/page.tsx","src/app/painel/relatorios/page.tsx","src/app/painel/integracoes/page.tsx","src/app/painel/integracoes/99food/page.tsx","src/app/painel/impressao/page.tsx",
   "src/app/painel/usuarios/page.tsx","src/app/painel/auditoria/page.tsx","src/app/painel/continuidade/page.tsx",
@@ -66,7 +66,7 @@ check("Validação explícita contra bordas", /Bordas não existem neste sistema
 
 const sqlFiles = fs.readdirSync(path.join(root,"supabase/migrations")).filter(x => x.endsWith(".sql")).sort();
 const sql = sqlFiles.map(x => read(`supabase/migrations/${x}`)).join("\n");
-check("Migrações SQL 001–017 presentes", sqlFiles.length >= 17 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("017")), sqlFiles.join(", "));
+check("Migrações SQL 001–019 presentes", sqlFiles.length >= 19 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("019")), sqlFiles.join(", "));
 check("RLS habilitado", /enable row level security/i.test(sql));
 check("Auditoria imutável", /audit_no_update/i.test(sql));
 check("Chaves de idempotência", /idempotency_keys/i.test(sql));
@@ -141,7 +141,6 @@ check("Exportação operacional protegida", /OPERATIONAL_EXPORT_GENERATED/.test(
 check("Gate de qualidade no GitHub", /npm run typecheck/.test(read(".github/workflows/quality.yml")) && /npm run build/.test(read(".github/workflows/quality.yml")));
 check("Modelos de comunicação administráveis", exists("src/app/painel/comunicacao/page.tsx") && exists("src/app/api/communication-templates/[key]/route.ts"));
 
-
 const maturityFiles = [
   "supabase/migrations/015_operational_maturity_and_reliability.sql",
   "src/app/painel/atencao/page.tsx",
@@ -164,8 +163,6 @@ check("Feature flags persistentes", /feature_flags/.test(sql) && /FEATURE_FLAG_U
 check("Inventário assistido e auditado", /inventory_counts/.test(sql) && /complete_inventory_count/.test(sql) && /Inventário rápido/.test(read("src/app/painel/inventario/page.tsx")));
 check("Troca obrigatória de senha", /must_change_password/.test(sql) && /trocar-senha/.test(read("src/components/internal/AdminShell.tsx")) && /PASSWORD_CHANGED/.test(read("src/app/api/auth/change-password/route.ts")));
 check("Snapshots de configuração", /configuration_snapshots/.test(sql) && /CONFIGURATION_SNAPSHOT_RESTORED/.test(read("src/app/api/system/snapshots/route.ts")));
-
-
 
 const integrationReadyFiles = [
   "supabase/migrations/016_integration_ready_99food_tracking_smartpos.sql",
@@ -229,7 +226,22 @@ check("Delivery público bloqueia cobertura não configurada", /coverageConfigur
 check("Caixa, financeiro e estoque usam APIs em produção", /api\/cash/.test(read("src/app/painel/caixa/page.tsx")) && /api\/financial/.test(read("src/app/painel/financeiro/page.tsx")) && /api\/inventory/.test(read("src/app/painel/estoque/page.tsx")));
 check("KDS, salão e motoboy usam mutações server-first", /api\/orders\/\$\{order\.id\}\/status/.test(read("src/app/painel/kds/page.tsx")) && /api\/tables\//.test(read("src/app/painel/salao/page.tsx")) && /api\/drivers\/shifts\/start/.test(read("src/app/painel/motoboy/page.tsx")));
 check("Checklist da expedição persiste e é validado no banco", /expedition_checklist/.test(productionMigration) && /save_order_expedition_checklist/.test(productionMigration) && /set_order_expedition_status_v2/.test(productionMigration) && /action: "checklist"/.test(expeditionFinal));
-check("App e diagnóstico alinhados na versão 7 / migration 17", JSON.parse(read("package.json")).version === "7.0.0" && /requiredMigration:\s*17/.test(read("src/app/api/system/diagnostics/route.ts")) && /appVersion:\s*"7\.0\.0"/.test(read("src/app/api/system/diagnostics/route.ts")));
+
+const diagnosticsSource = read("src/app/api/system/diagnostics/route.ts");
+check("App e diagnóstico alinhados na versão 9 / migration 19", JSON.parse(read("package.json")).version === "9.0.0" && /requiredMigration:\s*19/.test(diagnosticsSource) && /appVersion:\s*"9\.0\.0"/.test(diagnosticsSource));
+
+const finalHomologationFiles = [
+  "supabase/migrations/019_final_homologation.sql",
+  "src/lib/stable-store.ts",
+  "src/app/garcom/page.tsx",
+  "src/app/api/orders/[id]/served/route.ts",
+  "src/app/api/client-errors/route.ts"
+];
+check("Mega Update 09 Final Homologation presente", finalHomologationFiles.every(exists), finalHomologationFiles.filter(file => !exists(file)).join(", "));
+check("Store operacional usa assinatura estável", /useDemoState\(\(snapshot\) => snapshot\)/.test(read("src/lib/stable-store.ts")) && /normalizeOperationalSnapshot/.test(read("src/components/internal/OperationalHydrator.tsx")));
+check("Snapshot busca itens apenas dos pedidos carregados", /\.in\("order_id", orderIds\)/.test(read("src/app/api/operational-snapshot/route.ts")) && /snapshotVersion:\s*9/.test(read("src/app/api/operational-snapshot/route.ts")));
+check("Garçom mobile lança pedido e registra servido sem fechar comanda", /api\/internal-orders/.test(read("src/app/garcom/page.tsx")) && /\/served/.test(read("src/app/garcom/page.tsx")) && /mark_order_served/.test(sql));
+check("Telemetria de erro protegida e redigida", /client_error_events/.test(sql) && /SUPABASE_KEY_REDACTED/.test(read("src/app/api/client-errors/route.ts")) && /errorId/.test(read("src/app/painel/error.tsx")));
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 check("PWA com ícones 192 e 512", manifest.icons?.some(x => x.sizes === "192x192") && manifest.icons?.some(x => x.sizes === "512x512"));
