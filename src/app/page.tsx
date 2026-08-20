@@ -37,19 +37,19 @@ const pizzaSections: Array<{
   {
     id: "mais-pedidas",
     title: "Mais pedidas",
-    subtitle: "Escolha o tamanho e depois selecione entre os sabores em destaque.",
+    subtitle: "Escolha Grande ou Broto e monte sua pizza sem percorrer listas enormes.",
     scope: "featured",
   },
   {
     id: "tradicionais",
     title: "Pizzas Tradicionais",
-    subtitle: "42 sabores clássicos. Primeiro escolha Grande ou Broto.",
+    subtitle: "42 sabores clássicos. As categorias ajudam a encontrar o sabor; não limitam o meio a meio.",
     scope: "traditional",
   },
   {
     id: "premium",
     title: "Pizzas Premium",
-    subtitle: "11 criações especiais. No meio a meio, Premium combina com Premium ou Doce; não combina com Tradicional.",
+    subtitle: "11 criações especiais. No meio a meio, você pode combinar sabores de qualquer categoria.",
     scope: "premium",
   },
   {
@@ -134,18 +134,18 @@ export default function HomePage() {
           className="object-cover opacity-55"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent" />
-        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 py-10 md:grid-cols-[1.25fr_.75fr] md:px-6 md:py-16">
+        <div className="relative mx-auto grid max-w-7xl gap-6 px-4 py-7 md:grid-cols-[1.25fr_.75fr] md:gap-8 md:px-6 md:py-16">
           <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-3 py-1.5 text-xs font-bold text-basso-goldLight">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-3 py-1.5 text-[11px] font-bold text-basso-goldLight sm:text-xs">
               <Sparkles size={14} /> Massa de longa fermentação
             </span>
-            <h1 className="mt-5 font-display text-4xl font-bold leading-tight sm:text-5xl">
+            <h1 className="mt-4 font-display text-3xl font-bold leading-tight sm:mt-5 sm:text-5xl">
               Pizza artesanal com alma italiana.
             </h1>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/75 sm:text-base">
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/75 sm:mt-4 sm:text-base">
               Sabores tradicionais, criações premium e doces preparados para uma experiência acolhedora em Rio Grande da Serra.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3 text-xs text-white/70">
+            <div className="mt-4 flex flex-wrap gap-3 text-[11px] text-white/70 sm:mt-6 sm:text-xs">
               <span className="flex items-center gap-2">
                 <Clock3 size={16} className="text-basso-goldLight" /> Terça a domingo, 18h às 23h
               </span>
@@ -157,7 +157,7 @@ export default function HomePage() {
 
           <div className="self-end">
             {tableNumber ? (
-              <div className="rounded-2xl border border-basso-gold/35 bg-black/45 p-5 text-center backdrop-blur">
+              <div className="rounded-2xl border border-basso-gold/35 bg-black/45 p-4 text-center backdrop-blur sm:p-5">
                 <p className="text-xs font-black uppercase tracking-[.18em] text-basso-goldLight">
                   Pedido pelo QR Code
                 </p>
@@ -169,7 +169,7 @@ export default function HomePage() {
             ) : (
               <>
                 <DeliveryModeSelector mode={mode} onChange={setMode} />
-                <p className="mt-2 text-center text-xs text-white/55">
+                <p className="mt-2 text-center text-[11px] text-white/55 sm:text-xs">
                   Taxa e disponibilidade são calculadas no checkout conforme a região configurada.
                 </p>
               </>
@@ -179,7 +179,7 @@ export default function HomePage() {
       </section>
 
       <div className="sticky top-16 z-30 border-b border-black/5 bg-basso-paper/95 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 py-3 md:px-6">
+        <div className="mx-auto max-w-7xl px-4 py-2.5 md:px-6 md:py-3">
           <div className="relative">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-black/35"
@@ -192,7 +192,7 @@ export default function HomePage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <nav className="scrollbar-none mt-3 flex gap-2 overflow-x-auto pb-1">
+          <nav className="scrollbar-none mt-2.5 flex gap-2 overflow-x-auto pb-1 md:mt-3">
             {categoryNav.map(([id, label]) => (
               <a
                 key={id}
@@ -206,9 +206,9 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl space-y-14 px-4 py-8 md:px-6 md:py-12">
+      <div className="mx-auto max-w-7xl space-y-10 px-4 py-6 md:space-y-14 md:px-6 md:py-12">
         {!normalized && !tableNumber && (
-          <section className="grid gap-4 md:grid-cols-2">
+          <section className="grid gap-3 md:grid-cols-2 md:gap-4">
             <ImageCard
               src="/assets/brand/banner-entrega.png"
               title="Entrega"
@@ -236,7 +236,7 @@ export default function HomePage() {
               title={section.title}
               subtitle={section.subtitle}
             >
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2 md:gap-4">
                 {entries.map((entry) => (
                   <PizzaMenuCard
                     key={`${entry.scope}-${entry.size}`}
@@ -263,19 +263,19 @@ export default function HomePage() {
           <MenuSection
             id="combo"
             title="Combos"
-            subtitle="Combos disponíveis hoje. A pizza Grande pode ser inteira ou meio a meio, respeitando as mesmas regras de compatibilidade dos sabores."
+            subtitle="Combos disponíveis hoje. A pizza Grande pode ser inteira ou meio a meio, inclusive com sabores de categorias diferentes."
           >
             <div className="grid gap-4 lg:grid-cols-2">
               {comboMatches.map(combo => (
                 <article key={combo.id} className="surface grid overflow-hidden sm:grid-cols-[180px_1fr]">
-                  <div className="relative min-h-52">
+                  <div className="relative min-h-44 sm:min-h-52">
                     <Image src={categoryImages.combo} alt={combo.name} fill className="object-cover" />
                   </div>
-                  <div className="flex flex-col justify-center p-5">
+                  <div className="flex flex-col justify-center p-4 sm:p-5">
                     <p className="text-xs font-black uppercase tracking-[.18em] text-basso-gold">Combo</p>
-                    <h3 className="mt-2 font-display text-2xl font-bold">{combo.name}</h3>
+                    <h3 className="mt-2 font-display text-xl font-bold sm:text-2xl">{combo.name}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-black/55">{combo.description}</p>
-                    <div className="mt-5 flex items-center justify-between gap-4">
+                    <div className="mt-4 flex items-center justify-between gap-4 sm:mt-5">
                       <strong className="text-xl text-basso-wine">{currency(combo.price)}</strong>
                       <button type="button" className="btn-primary" onClick={() => setSelectedCombo(combo)}>
                         Configurar <ChevronRight size={18} />
@@ -294,7 +294,7 @@ export default function HomePage() {
             title="Bebidas"
             subtitle={`${products.filter((product) => product.category === "beverages").length} bebidas disponíveis. O estoque é controlado somente para bebidas e sobremesas.`}
           >
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
               {products
                 .filter((product) => product.category === "beverages")
                 .map((product) => (
@@ -310,7 +310,7 @@ export default function HomePage() {
             title="Sobremesas"
             subtitle="Pudim no Copo Americano, 180 ml."
           >
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
               {products
                 .filter((product) => product.category === "desserts")
                 .map((product) => (
@@ -389,9 +389,9 @@ function MenuSection({
 }) {
   return (
     <section id={id} className="scroll-mt-44">
-      <div className="mb-5">
-        <h2 className="font-display text-3xl font-bold tracking-tight">{title}</h2>
-        <p className="mt-1 text-sm text-black/50">{subtitle}</p>
+      <div className="mb-4 sm:mb-5">
+        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
+        <p className="mt-1 text-xs leading-relaxed text-black/50 sm:text-sm">{subtitle}</p>
       </div>
       {children}
     </section>
@@ -400,12 +400,12 @@ function MenuSection({
 
 function ImageCard({ src, title, text }: { src: string; title: string; text: string }) {
   return (
-    <div className="relative min-h-52 overflow-hidden rounded-3xl bg-basso-black text-white">
+    <div className="relative min-h-40 overflow-hidden rounded-3xl bg-basso-black text-white sm:min-h-52">
       <Image src={src} alt={title} fill className="object-cover opacity-65" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
-      <div className="absolute bottom-0 p-5">
-        <p className="font-display text-2xl font-bold">{title}</p>
-        <p className="mt-1 text-sm text-white/70">{text}</p>
+      <div className="absolute bottom-0 p-4 sm:p-5">
+        <p className="font-display text-xl font-bold sm:text-2xl">{title}</p>
+        <p className="mt-1 text-xs text-white/70 sm:text-sm">{text}</p>
       </div>
     </div>
   );
