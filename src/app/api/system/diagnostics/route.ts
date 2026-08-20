@@ -9,6 +9,7 @@ const REQUIRED_MIGRATION = 19;
 const APP_VERSION = "9.0.0";
 const actionSchema = z.object({ action: z.enum(["run_all", "run_one"]), key: z.string().max(80).optional() });
 type CheckResult = Omit<SystemHealthCheck, "label">;
+type DiagnosticErrorRow = Record<string, unknown> & { source: "client" | "audit"; created_at?: unknown };
 
 async function runDatabaseCheck(db: NonNullable<ReturnType<typeof createAdminClient>>): Promise<CheckResult> {
   const started = Date.now();
@@ -99,14 +100,15 @@ export async function GET() {
       db.from("client_error_events").select("error_id,route,message,digest,app_version,user_role,resolved_at,created_at").order("created_at", { ascending: false }).limit(25),
     ]);
     if (checksResult.error) throw checksResult.error;
-    const recentErrors = [
-      ...(clientErrorsResult.error ? [] : (clientErrorsResult.data || []).map((row: Record<string, unknown>) => ({ ...row, source: "client" }))),
-      ...(auditErrorsResult.error ? [] : (auditErrorsResult.data || []).map((row: Record<string, unknown>) => ({ ...row, source: "audit" }))),
-    ].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || ""))).slice(0, 25);
+    const recentErrors: DiagnosticErrorRow[] = [
+      ...(clientErrorsResult.error ? [] : (clientErrorsResult.data || []).map((row: Record<string, unknown>) => ({ ...row, source: "client" as const }))),
+      ...(auditErrorsResult.error ? [] : (auditErrorsResult.data || []).map((row: Record<string, unknown>) => ({ ...row, source: "audit" as const }))),
+    ];
+    recentErrors.sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
     return NextResponse.json({
       checks: (checksResult.data || []).map((row: Record<string, unknown>) => mapHealthCheck(row)),
       migrations: migrationsResult.data || [],
-      recentErrors,
+      recentErrors: recentErrors.slice(0, 25),
       requiredMigration: 19,
       appVersion: "9.0.0",
     }, { headers: { "Cache-Control": "no-store" } });
