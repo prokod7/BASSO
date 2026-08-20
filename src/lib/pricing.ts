@@ -9,6 +9,22 @@ export function flavorPrice(flavor: Flavor, size: PizzaSelection["size"]): numbe
   return size === "grande" ? flavor.priceGrande : flavor.priceBroto;
 }
 
+/**
+ * Regra oficial da Basso para pizza meio a meio:
+ * - Tradicional + Premium não pode ser combinado.
+ * - Doce pode ser combinado com Tradicional ou Premium.
+ *
+ * Esta função é compartilhada entre validação autoritativa e interface para
+ * impedir que o cliente consiga montar visualmente uma combinação que o
+ * servidor depois rejeitaria.
+ */
+export function arePizzaFlavorsCompatible(a: Flavor, b: Flavor): boolean {
+  const traditionalPremium =
+    (a.category === "traditional" && b.category === "premium") ||
+    (a.category === "premium" && b.category === "traditional");
+  return !traditionalPremium;
+}
+
 export function validatePizzaSelection(selection: PizzaSelection, flavorList: Flavor[] = catalog.flavors, addonList: Addon[] = catalog.addons): void {
   if (!selection || !["grande","broto"].includes(selection.size)) throw new PricingError("Tamanho de pizza inválido.");
   if (!["traditional","integral"].includes(selection.mass)) throw new PricingError("Massa inválida.");
@@ -20,6 +36,9 @@ export function validatePizzaSelection(selection: PizzaSelection, flavorList: Fl
   if (selection.flavorB) {
     const b = flavorList.find(flavor => flavor.id === selection.flavorB);
     if (!b || !b.active) throw new PricingError("Segundo sabor indisponível.");
+    if (!arePizzaFlavorsCompatible(a, b)) {
+      throw new PricingError("Pizzas Premium não podem ser combinadas meio a meio com pizzas Tradicionais.");
+    }
   }
   const totalAddonUnits = Object.values(selection.addons).reduce((sum, quantity) => sum + quantity, 0);
   if (totalAddonUnits > catalog.rules.maxAddonUnits) throw new PricingError("O limite é de 5 unidades de adicionais por pizza.");
@@ -80,7 +99,13 @@ export function comboTotal(selection: ComboSelection, addonList: Addon[] = catal
   if (totalUnits > 5 || quantities.some(quantity => !Number.isInteger(quantity) || quantity > 2 || quantity < 0)) throw new PricingError("Adicionais do combo excedem os limites permitidos.");
   const comboFlavorA = catalog.flavors.find(flavor => flavor.id === selection.grandeFlavor && flavor.active);
   if (!comboFlavorA) throw new PricingError("Sabor de pizza Grande inválido para o combo.");
-  if (selection.grandeFlavorB && !catalog.flavors.some(flavor => flavor.id === selection.grandeFlavorB && flavor.active)) throw new PricingError("Segundo sabor do combo inválido.");
+  if (selection.grandeFlavorB) {
+    const comboFlavorB = catalog.flavors.find(flavor => flavor.id === selection.grandeFlavorB && flavor.active);
+    if (!comboFlavorB) throw new PricingError("Segundo sabor do combo inválido.");
+    if (!arePizzaFlavorsCompatible(comboFlavorA, comboFlavorB)) {
+      throw new PricingError("Pizzas Premium não podem ser combinadas meio a meio com pizzas Tradicionais.");
+    }
+  }
   if (!availableBeverages.includes(selection.beverage)) throw new PricingError("Refrigerante inválido ou indisponível para o combo.");
   return comboPrice + addonPrice(selection.addons, addonList, selection.addonPlacements || {});
 }
