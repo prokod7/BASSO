@@ -11,23 +11,37 @@
   --gold: #b99a5b;
   --cream: #f5efe3;
 }
+
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--background); color: var(--foreground); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
 button, input, textarea, select { font: inherit; }
-button { -webkit-tap-highlight-color: transparent; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { touch-action: manipulation; }
+input, textarea, select { -webkit-appearance: none; appearance: none; }
 ::selection { background: #d9c18b; color: #21170d; }
 
 @layer components {
   .surface { @apply rounded-3xl border border-black/5 bg-white shadow-sm; }
   .surface-dark { @apply rounded-3xl border border-white/10 bg-basso-black text-white shadow-premium; }
   .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-[.12em] text-black/55; }
-  .input { @apply h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-basso-gold focus:ring-2 focus:ring-basso-gold/20 disabled:cursor-not-allowed disabled:opacity-60; }
-  .textarea { @apply min-h-24 w-full resize-y rounded-xl border border-black/10 bg-white p-3 text-sm outline-none transition focus:border-basso-gold focus:ring-2 focus:ring-basso-gold/20; }
-  .btn-primary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-basso-wine px-4 py-2.5 text-sm font-bold text-white transition hover:bg-basso-wineDark active:scale-[.99] disabled:pointer-events-none disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-basso-ink transition hover:border-basso-gold hover:bg-basso-cream/60 active:scale-[.99]; }
-  .btn-ghost { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-black/65 transition hover:bg-black/5 hover:text-black; }
-  .chip { @apply inline-flex items-center rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold; }
+  .input { @apply h-12 w-full rounded-xl border border-black/10 bg-white px-3 text-base outline-none transition focus:border-basso-gold focus:ring-2 focus:ring-basso-gold/20 disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:text-sm; }
+  .textarea { @apply min-h-24 w-full resize-y rounded-xl border border-black/10 bg-white p-3 text-base outline-none transition focus:border-basso-gold focus:ring-2 focus:ring-basso-gold/20 sm:text-sm; }
+  .btn-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-basso-wine px-4 py-3 text-sm font-bold text-white transition hover:bg-basso-wineDark active:scale-[.99] disabled:pointer-events-none disabled:opacity-50 sm:min-h-11 sm:py-2.5; }
+  .btn-secondary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-semibold text-basso-ink transition hover:border-basso-gold hover:bg-basso-cream/60 active:scale-[.99] sm:min-h-11 sm:py-2.5; }
+  .btn-ghost { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-black/65 transition hover:bg-black/5 hover:text-black; }
+  .chip { @apply inline-flex min-h-10 items-center rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-semibold; }
   .page-title { @apply font-display text-3xl font-bold tracking-tight text-basso-ink md:text-4xl; }
 }
 
@@ -35,6 +49,9 @@ button { -webkit-tap-highlight-color: transparent; }
 .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { scrollbar-width: none; }
+.mobile-details > summary { list-style: none; }
+.mobile-details > summary::-webkit-details-marker { display: none; }
+.mobile-details[open] .mobile-details-chevron { transform: rotate(180deg); }
 
 .lfb-map-marker { background: transparent; border: 0; }
 .lfb-map-marker__bubble { display:grid; place-items:center; width:38px; height:38px; border-radius:999px 999px 999px 4px; transform:rotate(-45deg); background:#5a111a; color:white; font-size:18px; box-shadow:0 8px 20px rgba(0,0,0,.28); border:2px solid white; }
