@@ -13,7 +13,9 @@ export default function DriverPage() {
   const drivers = useDemoState((state) => state.drivers);
   const [driverId, setDriverId] = useState(drivers[0]?.id || "");
   const driver = drivers.find((item) => item.id === driverId);
-  const order = useDemoState((state) => state.orders.find((item) => item.id === driver?.activeOrderId));
+  const allOrders = useDemoState((state) => state.orders);
+  const order = allOrders.find((item) => item.id === driver?.activeOrderId);
+  const availableOrders = allOrders.filter((item) => item.channel === "own_delivery" && item.status === "ready" && (!item.driverId || item.driverId === driverId));
   const [gpsActive, setGpsActive] = useState(false);
   const [working, setWorking] = useState("");
   const [message, setMessage] = useState("");
@@ -116,6 +118,18 @@ export default function DriverPage() {
     finally { setWorking(""); }
   }
 
+  async function chooseDelivery(orderId: string) {
+    if (!driverId || !driver?.shiftActive) { setMessage("Inicie o turno antes de escolher uma entrega."); return; }
+    if (driver.activeOrderId) { setMessage("Finalize a entrega atual antes de escolher outra."); return; }
+    setWorking(`claim:${orderId}`); setMessage("");
+    try {
+      if (isDemoMode()) demoActions.assignDriver(orderId, driverId);
+      else { await apiJson("/api/delivery/assign", { method: "POST", body: JSON.stringify({ orderId, driverId }) }); requestOperationalRefresh(); }
+      setMessage("Pedido assumido. Você pode iniciar a entrega quando estiver pronto para sair.");
+    } catch (error) { setMessage(formatApiError(error, "Não foi possível assumir esse pedido.")); }
+    finally { setWorking(""); }
+  }
+
   async function beginDelivery() {
     if (!order) return;
     if (!driver?.shiftActive) { setMessage("Inicie o turno do motoboy antes de sair para entrega."); return; }
@@ -178,7 +192,7 @@ export default function DriverPage() {
           <button className="btn-primary w-full py-4 text-base" onClick={beginDelivery} disabled={!!working || !driver?.shiftActive || order.status !== "ready"}>{working === "delivery" ? <Loader2 className="animate-spin" size={20} /> : <Crosshair size={20} />}{order.status === "ready" ? "Iniciar entrega" : "Entrega em andamento"}</button>
           <button className="btn-secondary w-full py-4 text-base" onClick={completeDelivery} disabled={!!working || order.status !== "out_for_delivery"}>{working === "complete" ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}Pedido entregue</button>
         </div>
-      </article> : <div className="surface p-10 text-center"><Bike className="mx-auto text-black/20" size={48} /><h2 className="mt-4 font-display text-2xl font-bold">Sem entrega atribuída</h2><p className="mt-2 text-sm text-black/50">Com o turno e o GPS ativos, a pizzaria continua vendo sua localização enquanto você aguarda a próxima entrega.</p></div>}
+      </article> : <div className="surface p-5"><div className="text-center"><Bike className="mx-auto text-black/20" size={48} /><h2 className="mt-4 font-display text-2xl font-bold">Escolha a próxima entrega</h2><p className="mt-2 text-sm text-black/50">Você decide a ordem dos pedidos disponíveis. Só é possível manter uma entrega ativa por vez.</p></div><div className="mt-5 space-y-3">{availableOrders.map(candidate=><button type="button" key={candidate.id} disabled={!!working||!driver?.shiftActive} onClick={()=>void chooseDelivery(candidate.id)} className="w-full rounded-2xl border border-black/10 p-4 text-left transition hover:border-basso-wine hover:bg-basso-wine/5 disabled:opacity-50"><div className="flex items-start justify-between gap-3"><div><strong className="font-display text-xl">Pedido #{candidate.number}</strong><p className="mt-1 text-sm">{candidate.customerName} • {candidate.address?.district||"Endereço a conferir"}</p></div><strong className="text-basso-wine">{currency(candidate.total)}</strong></div><p className="mt-2 text-xs text-black/45">{working===`claim:${candidate.id}`?"Assumindo pedido...":"Toque para assumir esta entrega"}</p></button>)}{!availableOrders.length&&<p className="rounded-xl bg-basso-paper p-5 text-center text-sm text-black/50">Nenhum pedido pronto para delivery neste momento.</p>}</div></div>}
     </div>
   </>;
 }

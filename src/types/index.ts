@@ -19,6 +19,7 @@ export interface Flavor {
 }
 export interface Addon { id: string; name: string; price: number; active: boolean; maxQuantity: number; }
 export interface Product { id: string; name: string; description: string; price: number; active: boolean; stockTracked: boolean; category: "beverages" | "desserts"; image?: string; variant?: string; }
+export type AddonPlacement = "whole" | "halfA" | "halfB";
 export interface PizzaSelection {
   size: "grande" | "broto";
   mass: "traditional" | "integral";
@@ -27,14 +28,17 @@ export interface PizzaSelection {
   removedA: string[];
   removedB: string[];
   addons: Record<string, number>;
+  addonPlacements?: Record<string, AddonPlacement>;
   notes: string;
 }
 export interface ComboSelection {
   mass: "traditional" | "integral";
-  grandeFlavor: "calabresa-tradicional" | "mozzarella";
+  grandeFlavor: string;
+  grandeFlavorB?: string;
   brigadeiroBase: "chocolate-ao-leite" | "creme-de-avela";
   beverage: string;
   addons: Record<string, number>;
+  addonPlacements?: Record<string, AddonPlacement>;
   notes: string;
 }
 export interface CartItem {
@@ -78,6 +82,8 @@ export interface Order {
   driverId?: string;
   sourceIdempotencyKey: string;
   rewardAuthorizationToken?: string;
+  origin?: "web" | "whatsapp" | "phone" | "counter" | "table" | "marketplace";
+  externalId?: string;
   priority?: OrderPriority;
   estimatedReadyAt?: string;
   viewedAt?: string;
@@ -88,7 +94,7 @@ export interface Order {
   balanceDue?: number;
 }
 export interface DemoTable { number: number; capacity: number; status: "free" | "occupied" | "cleaning" | "partial"; people?: number; openedAt?: string; groupId?: string; tabs: DemoTab[]; }
-export interface DemoTab { id: string; name: string; items: CartItem[]; paidCents: number; totalCents: number; waiter: string; status: "open" | "partial" | "closed" | "cancelled"; }
+export interface DemoTab { id: string; name: string; items: CartItem[]; paidCents: number; totalCents: number; serviceChargeRate?: number; serviceChargeApplied?: boolean; serviceChargeCents?: number; waiter: string; status: "open" | "partial" | "closed" | "cancelled"; }
 export interface Driver {
   id: string;
   name: string;

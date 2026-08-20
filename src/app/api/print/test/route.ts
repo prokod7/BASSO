@@ -1,0 +1,6 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { requireOperationalRole } from "@/lib/authz";
+import { createAdminClient } from "@/lib/supabase/admin";
+const schema=z.object({printerKey:z.string().min(2).max(80),sector:z.string().min(2).max(40)});
+export async function POST(request:NextRequest){try{const auth=await requireOperationalRole(["manager","counter"],"kds.manage");const body=schema.parse(await request.json());const db=createAdminClient();if(!db)return NextResponse.json({error:"Supabase não configurado."},{status:503});const payload={order:{number:"TESTE",channel:"system",customer_name:"Teste de impressão"},items:[{quantity:1,name_snapshot:"IMPRESSÃO DE TESTE PEDIDOPRO",unit_price_cents:0,selection:{notes:`Gerado por ${auth.displayName}`}}]};const {data,error}=await db.from("print_jobs").insert({sector:body.sector,printer_key:body.printerKey,payload,status:"queued",is_reprint:true,created_by:auth.userId==="demo"?null:auth.userId}).select("id").single();if(error)throw error;return NextResponse.json({queued:true,jobId:data.id});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Falha ao criar impressão de teste."},{status:400})}}

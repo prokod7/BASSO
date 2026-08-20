@@ -110,7 +110,7 @@ export async function priceItemsWithRuntime(db: any, items: CartItem[], channel:
       const selection = item.selection as PizzaSelection | undefined;
       if (!selection || !["mozzarella","calabresa-tradicional"].includes(selection.flavorA) || selection.size !== "grande" || selection.flavorB) throw new Error("Recompensa inválida.");
       validatePizzaSelection(selection, flavors, addons);
-      unitPrice = addonPrice(selection.addons, addons);
+      unitPrice = addonPrice(selection.addons, addons, selection.addonPlacements || {});
       const flavor = flavors.find(row => row.id === selection.flavorA)!;
       name = `Recompensa • Pizza Grande ${flavor.name}`;
     } else if (item.kind === "pizza") {
@@ -122,14 +122,25 @@ export async function priceItemsWithRuntime(db: any, items: CartItem[], channel:
       name = `Pizza ${selection.size === "grande" ? "Grande" : "Broto"} • ${a.name}${b ? ` / ${b.name}` : ""}`;
     } else if (item.kind === "combo") {
       const selection = item.selection as ComboSelection | undefined;
-      const combo = products.find(product => product.id === catalog.combo.id && product.category === "combo");
+      const comboId = item.productId || catalog.combo.id;
+      const combo = products.find(product => product.id === comboId && product.category === "combo");
       if (!selection || !combo?.active) throw new Error("Combo inválido ou indisponível.");
+
+      const config = (combo.config || {}) as { grandeFlavors?: unknown; beverages?: unknown; sweetFlavor?: unknown };
+      const allowedFlavorIds = Array.isArray(config.grandeFlavors) ? config.grandeFlavors.filter((value): value is string => typeof value === "string") : catalog.combo.options.grandeFlavors;
+      const allowedBeverageIds = Array.isArray(config.beverages) ? config.beverages.filter((value): value is string => typeof value === "string") : catalog.combo.options.beverages;
+      const sweetFlavorId = typeof config.sweetFlavor === "string" ? config.sweetFlavor : catalog.combo.options.sweetFlavor;
+
+      if (!allowedFlavorIds.includes(selection.grandeFlavor) || (selection.grandeFlavorB && !allowedFlavorIds.includes(selection.grandeFlavorB))) throw new Error("Sabor não permitido neste combo.");
+      if (!allowedBeverageIds.includes(selection.beverage)) throw new Error("Bebida não permitida neste combo.");
+
       const beverage = products.find(product => product.id === selection.beverage && product.category === "beverages");
-      if (!beverage?.active) throw new Error("Refrigerante do combo indisponível.");
+      if (!beverage?.active) throw new Error("Bebida do combo indisponível.");
       const grande = flavors.find(flavor => flavor.id === selection.grandeFlavor);
-      const sweet = flavors.find(flavor => flavor.id === catalog.combo.options.sweetFlavor);
-      if (!grande?.active || !sweet?.active) throw new Error("Um dos sabores do combo está indisponível.");
-      unitPrice = comboTotal(selection, addons, combo.price, [selection.beverage]);
+      const grandeB = selection.grandeFlavorB ? flavors.find(flavor => flavor.id === selection.grandeFlavorB) : undefined;
+      const sweet = flavors.find(flavor => flavor.id === sweetFlavorId);
+      if (!grande?.active || (selection.grandeFlavorB && !grandeB?.active) || !sweet?.active) throw new Error("Um dos sabores do combo está indisponível.");
+      unitPrice = comboTotal(selection, addons, combo.price, allowedBeverageIds);
       name = combo.name;
     } else {
       const product = products.find(row => row.id === item.productId && row.category !== "combo");

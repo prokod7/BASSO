@@ -47,6 +47,8 @@ export default function PrintPage() {
   const [profiles, setProfiles] = useState<PrintProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [bridge, setBridge] = useState(false);
+  const [bridgeOnline, setBridgeOnline] = useState(false);
+  const [lastHealthAt, setLastHealthAt] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [bridgeModal, setBridgeModal] = useState(false);
   const [editing, setEditing] = useState<PrintProfile | null>(null);
@@ -61,18 +63,21 @@ export default function PrintPage() {
         setJobs(demoJobs);
         setProfiles((current) => current.length ? current : demoProfiles);
         setBridge(false);
+        setBridgeOnline(false);
         return;
       }
       const [jobsResponse, profilesResponse] = await Promise.all([
         fetch("/api/print/jobs", { cache: "no-store" }),
         fetch("/api/print/profiles", { cache: "no-store" }),
       ]);
-      const jobsBody = (await jobsResponse.json()) as { jobs?: Job[]; bridgeConfigured?: boolean; error?: string };
+      const jobsBody = (await jobsResponse.json()) as { jobs?: Job[]; bridgeConfigured?: boolean; bridgeOnline?: boolean; lastHealthAt?: string | null; error?: string };
       const profilesBody = (await profilesResponse.json()) as { profiles?: PrintProfile[]; error?: string };
       if (!jobsResponse.ok) throw new Error(jobsBody.error || "Falha ao carregar fila.");
       if (!profilesResponse.ok) throw new Error(profilesBody.error || "Falha ao carregar perfis de impressão.");
       setJobs(jobsBody.jobs || []);
       setBridge(Boolean(jobsBody.bridgeConfigured));
+      setBridgeOnline(Boolean(jobsBody.bridgeOnline));
+      setLastHealthAt(jobsBody.lastHealthAt || null);
       setProfiles(profilesBody.profiles || []);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Falha ao carregar impressão.");
@@ -101,6 +106,20 @@ export default function PrintPage() {
     }
   }
 
+  async function testPrint(profile: PrintProfile) {
+    setWorking(`test:${profile.key}`); setMessage("");
+    try {
+      if (isDemoMode()) { setMessage("Teste simulado no modo demonstração."); return; }
+      const printerKey = profile.sector === "kitchen" ? "cozinha" : profile.sector === "bar" ? "bar" : "counter";
+      const response = await fetch("/api/print/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ printerKey, sector: profile.sector }) });
+      const body = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(body.error || "Falha ao criar impressão de teste.");
+      setMessage(bridgeOnline ? `Teste enviado para ${profile.name}. Aguarde a saída física.` : "Teste entrou na fila, mas o Print Bridge está offline. Ligue o agente local antes de esperar a impressão física.");
+      await load();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao testar impressão."); }
+    finally { setWorking(null); }
+  }
+
   async function saveProfile(profile: PrintProfile) {
     setWorking(profile.key);
     setMessage("");
@@ -127,11 +146,13 @@ export default function PrintPage() {
     <>
       <PageHeader title="Impressão e layout das comandas" icon={Printer} description="Administre equipamentos, largura, conexão, setor, vias, impressão automática, ordem dos blocos, destaques e fila real de reprocessamento." actions={<><button className="btn-secondary" onClick={load}><RefreshCw size={17} />Atualizar</button><button className="btn-primary" onClick={() => setBridgeModal(true)}><Settings2 size={17} />Configurar Print Bridge</button></>} />
       {message && <p className={`mb-4 rounded-xl p-3 text-sm font-semibold ${/falha|erro/i.test(message) ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-800"}`}>{message}</p>}
-      <div className="mb-6 grid gap-4 md:grid-cols-4"><Summary label="Perfis ativos" value={profiles.filter((profile) => profile.active).length} tone="green" /><Summary label="Aguardando impressão" value={queued} tone="amber" /><Summary label="Falhas na fila" value={failed} tone="red" /><Summary label="Print Bridge" value={bridge ? "Configurado" : "Pendente"} tone={bridge ? "green" : "amber"} /></div>
+      <div className="mb-6 grid gap-4 md:grid-cols-4"><Summary label="Perfis ativos" value={profiles.filter((profile) => profile.active).length} tone="green" /><Summary label="Aguardando impressão" value={queued} tone="amber" /><Summary label="Falhas na fila" value={failed} tone="red" /><Summary label="Print Bridge" value={bridgeOnline ? "Online" : bridge ? "Offline" : "Pendente"} tone={bridgeOnline ? "green" : "amber"} /></div>
+
+      <div className={`mb-6 rounded-2xl border p-4 text-sm ${bridgeOnline ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}><strong>{bridgeOnline ? "Print Bridge conectado" : "Print Bridge sem conexão ativa"}</strong><p className="mt-1 text-xs opacity-75">{bridgeOnline ? `Último heartbeat: ${lastHealthAt ? shortDateTime(lastHealthAt) : "agora"}. Você já pode executar impressão de teste.` : "A fila pode receber jobs, mas nenhuma impressora física será acionada enquanto o agente local não estiver rodando no computador da pizzaria."}</p></div>
 
       <section className="surface overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5"><div><h2 className="font-display text-2xl font-bold">Perfis das impressoras</h2><p className="text-sm text-black/45">A operação usa uma Epson e uma impressora térmica chinesa; o modelo exato será definido na implantação.</p></div><span className="rounded-full bg-basso-paper px-3 py-1 text-xs font-bold text-black/45">58 mm ou 80 mm</span></div>
-        {loading ? <div className="grid h-48 place-items-center"><Loader2 className="animate-spin" /></div> : <div className="grid gap-4 p-4 lg:grid-cols-2">{profiles.map((profile) => <article key={profile.key} className={`rounded-3xl border p-5 ${profile.active ? "border-black/5 bg-white" : "border-black/5 bg-stone-50 opacity-70"}`}><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-basso-cream text-basso-wine"><Printer size={22} /></span><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${profile.autoPrint ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{profile.autoPrint ? "Automática" : "Manual"}</span></div><h3 className="mt-4 font-display text-xl font-bold">{profile.name}</h3><p className="mt-1 text-sm text-black/45">{profile.manufacturer || "Fabricante não definido"} • {profile.model || "Modelo não definido"}</p><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><Info label="Papel" value={`${profile.widthMm} mm`} /><Info label="Colunas" value={String(profile.paperColumns)} /><Info label="Conexão" value={profile.connectionType} /><Info label="Setor" value={profile.sector} /><Info label="Vias" value={String(profile.copies)} /><Info label="Fonte" value={String(profile.template.fontSize || "normal")} /></div><div className="mt-4 grid grid-cols-2 gap-2"><button className="btn-secondary" onClick={() => setPreview(profile)}><Eye size={16} />Prévia</button><button className="btn-primary" onClick={() => setEditing(structuredClone(profile))}><Settings2 size={16} />Editar perfil</button></div></article>)}</div>}
+        {loading ? <div className="grid h-48 place-items-center"><Loader2 className="animate-spin" /></div> : <div className="grid gap-4 p-4 lg:grid-cols-2">{profiles.map((profile) => <article key={profile.key} className={`rounded-3xl border p-5 ${profile.active ? "border-black/5 bg-white" : "border-black/5 bg-stone-50 opacity-70"}`}><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-basso-cream text-basso-wine"><Printer size={22} /></span><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${profile.autoPrint ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{profile.autoPrint ? "Automática" : "Manual"}</span></div><h3 className="mt-4 font-display text-xl font-bold">{profile.name}</h3><p className="mt-1 text-sm text-black/45">{profile.manufacturer || "Fabricante não definido"} • {profile.model || "Modelo não definido"}</p><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><Info label="Papel" value={`${profile.widthMm} mm`} /><Info label="Colunas" value={String(profile.paperColumns)} /><Info label="Conexão" value={profile.connectionType} /><Info label="Setor" value={profile.sector} /><Info label="Vias" value={String(profile.copies)} /><Info label="Fonte" value={String(profile.template.fontSize || "normal")} /></div><div className="mt-4 grid grid-cols-3 gap-2"><button className="btn-secondary" onClick={() => setPreview(profile)}><Eye size={16} />Prévia</button><button className="btn-secondary" disabled={working === `test:${profile.key}`} onClick={() => void testPrint(profile)}><Printer size={16} />{working === `test:${profile.key}` ? "Enviando" : "Testar"}</button><button className="btn-primary" onClick={() => setEditing(structuredClone(profile))}><Settings2 size={16} />Editar</button></div></article>)}</div>}
       </section>
 
       <section className="surface mt-6 overflow-hidden"><div className="flex items-center justify-between border-b p-5"><div><h2 className="font-display text-2xl font-bold">Fila de impressão</h2><p className="text-sm text-black/45">Nenhum trabalho é marcado como impresso sem confirmação do agente local.</p></div><span className="text-xs font-bold text-black/40">{jobs.length} registro(s)</span></div>{loading ? <div className="grid h-48 place-items-center"><Loader2 className="animate-spin" /></div> : <div className="divide-y divide-black/5">{jobs.map((job) => <div key={job.id} className="grid gap-3 p-4 lg:grid-cols-[1fr_.7fr_1fr_1fr_1.4fr_auto] lg:items-center"><strong>{job.order_id ? `Pedido ${job.order_id}` : `Comanda ${job.tab_id || "-"}`}</strong><span className="text-sm capitalize">{job.sector}</span><span className="text-sm text-black/50">{job.printer_key}</span><span className={`flex items-center gap-1 text-xs font-bold ${job.status === "done" ? "text-emerald-700" : job.status === "failed" ? "text-red-700" : "text-amber-700"}`}>{job.status === "done" ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />} {job.status} • {job.attempts}{job.is_reprint ? " • reimpressão" : ""}</span><div><p className="text-xs text-black/40">{shortDateTime(job.created_at)}</p>{job.last_error && <p className="mt-1 text-xs font-semibold text-red-700">{job.last_error}</p>}</div><button className="btn-ghost" disabled={working === job.id} onClick={() => retry(job.id)}>{working === job.id ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}Reprocessar</button></div>)}{!jobs.length && <p className="p-10 text-center text-sm text-black/45">Nenhum trabalho de impressão registrado.</p>}</div>}</section>

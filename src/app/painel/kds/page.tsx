@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { BellRing, BellOff, ChefHat, Clock3, GlassWater, Loader2, Printer } from "lucide-react";
+import { BellRing, BellOff, ChefHat, Clock3, GlassWater, Loader2, Maximize2, Minimize2, Printer } from "lucide-react";
 import { PageHeader } from "@/components/internal/PageHeader";
 import { demoActions, useDemoState } from "@/lib/demo-store";
 import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client/api";
 import { statusLabel } from "@/lib/order-validation";
 import { isDemoMode } from "@/lib/utils";
-import type { Order, OrderStatus } from "@/types";
+import { findAddon, findFlavor } from "@/lib/catalog";
+import type { CartItem, Order, OrderStatus } from "@/types";
 
 const columns: { status: OrderStatus; label: string }[] = [
   { status: "received", label: "Recebidos" },
@@ -26,12 +27,33 @@ function targetForKds(order: Order): OrderStatus | null {
   return null;
 }
 
+function addonLines(item: CartItem): string[] {
+  const selection = item.selection;
+  if (!selection || !("addons" in selection)) return [];
+  const placements = (selection as { addonPlacements?: Record<string, "whole" | "halfA" | "halfB"> }).addonPlacements || {};
+  const flavorA = "flavorA" in selection ? findFlavor(selection.flavorA) : undefined;
+  const flavorB = "flavorB" in selection && selection.flavorB ? findFlavor(selection.flavorB) : undefined;
+  return Object.entries(selection.addons)
+    .filter(([, quantity]) => Number(quantity) > 0)
+    .map(([id, quantity]) => {
+      const addon = findAddon(id);
+      const placement = placements[id] || "whole";
+      const target = placement === "halfA"
+        ? `METADE ${flavorA?.name || "1"}`
+        : placement === "halfB"
+          ? `METADE ${flavorB?.name || "2"}`
+          : "PIZZA INTEIRA";
+      return `${quantity}× ${addon?.name || id} • ${target}`;
+    });
+}
+
 export default function KdsPage() {
   const allOrders = useDemoState((state) => state.orders.filter((order) => !["completed", "cancelled", "out_for_delivery"].includes(order.status)));
   const [sector, setSector] = useState<"kitchen" | "bar">("kitchen");
   const [sound, setSound] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [fullscreen, setFullscreen] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
   const orders = useMemo(
@@ -62,6 +84,21 @@ export default function KdsPage() {
       oscillator.stop(context.currentTime + 0.08);
     } catch {
       // Som é auxiliar. Falha de áudio nunca pode bloquear a operação.
+    }
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (typeof document === "undefined") return;
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setFullscreen(false);
+      }
+    } catch {
+      setMessage("O navegador não permitiu ativar o modo monitor em tela cheia.");
     }
   }
 
@@ -116,6 +153,7 @@ export default function KdsPage() {
       icon={ChefHat}
       description="Fila por setor com atualização persistida no servidor, cronômetros, observações, retiradas, adicionais e impressão auditada."
       actions={<>
+        <button className="btn-secondary" onClick={toggleFullscreen}>{fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}Modo monitor</button>
         <button className="btn-secondary" onClick={() => setSound((value) => !value)}>{sound ? <BellRing size={16} /> : <BellOff size={16} />}Som {sound ? "ativo" : "desativado"}</button>
         <div className="flex rounded-xl border bg-white p-1">
           <button className={`btn-ghost min-h-9 ${sector === "kitchen" ? "bg-basso-wine text-white hover:text-white" : ""}`} onClick={() => setSector("kitchen")}><ChefHat size={16} />Cozinha</button>
@@ -141,6 +179,7 @@ export default function KdsPage() {
                   {order.items.map((item) => <div key={item.id} className="rounded-xl bg-basso-paper p-3">
                     <p className="text-sm"><strong>{item.quantity}×</strong> {item.name}</p>
                     {item.selection && "removedA" in item.selection && item.selection.removedA.length > 0 && <p className="mt-1 text-xs font-bold text-red-700">SEM: {item.selection.removedA.join(", ")}</p>}
+                    {addonLines(item).map((line) => <p key={line} className="mt-1 text-xs font-black text-emerald-800">+ {line}</p>)}
                     {item.selection && "notes" in item.selection && item.selection.notes && <p className="mt-1 text-xs font-bold text-amber-800">OBS: {item.selection.notes}</p>}
                   </div>)}
                 </div>

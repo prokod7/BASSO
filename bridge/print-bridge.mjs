@@ -10,6 +10,7 @@ const config = JSON.parse(await fs.readFile(configPath, "utf8"));
 if (!config.baseUrl || !config.apiKey) throw new Error("baseUrl e apiKey são obrigatórios no config.json.");
 const intervalMs = Math.max(1500, Number(config.pollIntervalMs || 3000));
 let stopped = false;
+let lastHeartbeatAt = 0;
 process.on("SIGINT", () => { stopped = true; });
 process.on("SIGTERM", () => { stopped = true; });
 
@@ -44,7 +45,7 @@ function render(job) {
     if (selection.flavorA) lines.push(`   Sabor: ${selection.flavorA}${selection.flavorB ? ` / ${selection.flavorB}` : ""}`);
     if (selection.removedA?.length) lines.push(`   SEM: ${selection.removedA.join(", ")}`);
     if (selection.removedB?.length) lines.push(`   SEM 2a METADE: ${selection.removedB.join(", ")}`);
-    if (selection.addons && Object.keys(selection.addons).length) lines.push(`   ADICIONAIS: ${Object.entries(selection.addons).filter(([, q]) => Number(q) > 0).map(([id, q]) => `${q}x ${id}`).join(", ")}`);
+    if (selection.addons && Object.keys(selection.addons).length) lines.push(`   ADICIONAIS: ${Object.entries(selection.addons).filter(([, q]) => Number(q) > 0).map(([id, q]) => { const place=selection.addonPlacements?.[id]||"whole"; const label=place==="halfA"?`METADE ${selection.flavorA||"1"}`:place==="halfB"?`METADE ${selection.flavorB||"2"}`:"INTEIRA"; return `${q}x ${id} (${label})`; }).join(", ")}`);
     if (selection.notes) lines.push(`   OBS: ${selection.notes}`);
     lines.push("");
   }
@@ -113,7 +114,15 @@ async function request(endpoint, body) {
   return payload;
 }
 
+async function heartbeat() {
+  const now = Date.now();
+  if (now - lastHeartbeatAt < 20_000) return;
+  await request("/api/print/heartbeat", { bridge: "PedidoPro Print Bridge", hostname: os.hostname(), platform: process.platform, version: "1.1", printers: Object.keys(config.printers || {}) });
+  lastHeartbeatAt = now;
+}
+
 async function cycle() {
+  await heartbeat();
   const { jobs = [] } = await request("/api/print/claim", { limit: Number(config.batchSize || 3) });
   for (const job of jobs) {
     try {

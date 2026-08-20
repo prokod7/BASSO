@@ -20,9 +20,6 @@ export function validatePizzaSelection(selection: PizzaSelection, flavorList: Fl
   if (selection.flavorB) {
     const b = flavorList.find(flavor => flavor.id === selection.flavorB);
     if (!b || !b.active) throw new PricingError("Segundo sabor indisponível.");
-    if ((a.category === "premium" && b.category === "traditional") || (a.category === "traditional" && b.category === "premium")) {
-      throw new PricingError("Sabores Premium não podem ser combinados com Tradicionais.");
-    }
   }
   const totalAddonUnits = Object.values(selection.addons).reduce((sum, quantity) => sum + quantity, 0);
   if (totalAddonUnits > catalog.rules.maxAddonUnits) throw new PricingError("O limite é de 5 unidades de adicionais por pizza.");
@@ -30,6 +27,13 @@ export function validatePizzaSelection(selection: PizzaSelection, flavorList: Fl
     if (!Number.isInteger(quantity) || quantity < 0 || quantity > catalog.rules.maxSameAddon) throw new PricingError("Cada adicional aceita no máximo 2 unidades.");
     const addon = addonList.find(item => item.id === id);
     if (quantity && (!addon || !addon.active)) throw new PricingError("Adicional inválido ou indisponível.");
+  }
+
+  const placements = selection.addonPlacements || {};
+  for (const [id, placement] of Object.entries(placements)) {
+    if (!(id in selection.addons)) throw new PricingError("Posicionamento de adicional sem adicional correspondente.");
+    if (!(["whole", "halfA", "halfB"] as const).includes(placement)) throw new PricingError("Posicionamento de adicional inválido.");
+    if (placement === "halfB" && !selection.flavorB) throw new PricingError("A segunda metade exige uma pizza meio a meio.");
   }
   if (selection.notes.length > catalog.rules.notesMaxLength) throw new PricingError("A observação aceita até 500 caracteres.");
   const allowedA = new Set(a.ingredients);
@@ -53,16 +57,18 @@ export function pizzaBasePrice(selection: PizzaSelection, flavorList: Flavor[] =
   return Math.round((priceA + priceB) / 2);
 }
 
-export function addonPrice(addons: Record<string, number>, list: Addon[] = catalog.addons): number {
+export function addonPrice(addons: Record<string, number>, list: Addon[] = catalog.addons, placements: Record<string, "whole" | "halfA" | "halfB"> = {}): number {
   return Object.entries(addons).reduce((sum, [id, quantity]) => {
     const addon = list.find(item => item.id === id);
     if (!addon || !addon.active) throw new PricingError("Adicional inválido ou indisponível.");
-    return sum + addon.price * quantity;
+    const placement = placements[id] || "whole";
+    const multiplier = placement === "whole" ? 1 : 0.5;
+    return sum + Math.round(addon.price * quantity * multiplier);
   }, 0);
 }
 
 export function pizzaTotal(selection: PizzaSelection, flavorList: Flavor[] = catalog.flavors, addonList: Addon[] = catalog.addons): number {
-  return pizzaBasePrice(selection, flavorList, addonList) + addonPrice(selection.addons, addonList);
+  return pizzaBasePrice(selection, flavorList, addonList) + addonPrice(selection.addons, addonList, selection.addonPlacements || {});
 }
 
 export function comboTotal(selection: ComboSelection, addonList: Addon[] = catalog.addons, comboPrice: number = catalog.combo.price, availableBeverages: string[] = catalog.combo.options.beverages): number {
@@ -72,9 +78,11 @@ export function comboTotal(selection: ComboSelection, addonList: Addon[] = catal
   const quantities = Object.values(selection.addons);
   const totalUnits = quantities.reduce((sum, quantity) => sum + quantity, 0);
   if (totalUnits > 5 || quantities.some(quantity => !Number.isInteger(quantity) || quantity > 2 || quantity < 0)) throw new PricingError("Adicionais do combo excedem os limites permitidos.");
-  if (!catalog.combo.options.grandeFlavors.includes(selection.grandeFlavor)) throw new PricingError("Sabor de pizza Grande inválido para o combo.");
+  const comboFlavorA = catalog.flavors.find(flavor => flavor.id === selection.grandeFlavor && flavor.active);
+  if (!comboFlavorA) throw new PricingError("Sabor de pizza Grande inválido para o combo.");
+  if (selection.grandeFlavorB && !catalog.flavors.some(flavor => flavor.id === selection.grandeFlavorB && flavor.active)) throw new PricingError("Segundo sabor do combo inválido.");
   if (!availableBeverages.includes(selection.beverage)) throw new PricingError("Refrigerante inválido ou indisponível para o combo.");
-  return comboPrice + addonPrice(selection.addons, addonList);
+  return comboPrice + addonPrice(selection.addons, addonList, selection.addonPlacements || {});
 }
 
 export function cartSubtotal(items: Array<{ unitPrice: number; quantity: number }>): number {

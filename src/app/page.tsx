@@ -13,7 +13,7 @@ import {
   type PizzaMenuEntry,
   type PizzaMenuScope,
 } from "@/components/public/PizzaBuilder";
-import { ComboBuilder } from "@/components/public/ComboBuilder";
+import { ComboBuilder, type ComboOffer } from "@/components/public/ComboBuilder";
 import { ProductCard } from "@/components/public/ProductCard";
 import { allProducts, catalog, categoryImages } from "@/lib/catalog";
 import { currency, normalizeSearchText } from "@/lib/utils";
@@ -49,7 +49,7 @@ const pizzaSections: Array<{
   {
     id: "premium",
     title: "Pizzas Premium",
-    subtitle: "11 criações especiais. Premium não combina com Tradicional no meio a meio.",
+    subtitle: "11 criações especiais. As categorias ajudam a filtrar; no meio a meio você pode combinar sabores de qualquer categoria.",
     scope: "premium",
   },
   {
@@ -65,12 +65,31 @@ export default function HomePage() {
   const [tableNumber, setTableNumber] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [selectedPizza, setSelectedPizza] = useState<PizzaMenuEntry | null>(null);
-  const [comboOpen, setComboOpen] = useState(false);
+  const [selectedCombo, setSelectedCombo] = useState<ComboOffer | null>(null);
+  const [runtimeCombos, setRuntimeCombos] = useState<ComboOffer[]>([catalog.combo as unknown as ComboOffer]);
 
   useEffect(() => {
     const table = Number(new URLSearchParams(window.location.search).get("mesa"));
     if (Number.isInteger(table) && table >= 1 && table <= 15) setTableNumber(table);
   }, []);
+
+  useEffect(() => {
+    const channel = tableNumber ? "table_qr" : mode === "delivery" ? "own_delivery" : "pickup";
+    const controller = new AbortController();
+    fetch(`/api/menu/public?channel=${channel}`, { cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error("Falha ao carregar combos ativos.");
+        return response.json() as Promise<{ products?: Array<{ id:string; name:string; description:string; category:string; price:number; config?:ComboOffer["config"] }> }>;
+      })
+      .then(body => {
+        const combos = (body.products || [])
+          .filter(product => product.category === "combo")
+          .map(product => ({ id: product.id, name: product.name, description: product.description, price: product.price, config: product.config }));
+        if (combos.length) setRuntimeCombos(combos);
+      })
+      .catch(error => { if ((error as Error).name !== "AbortError") setRuntimeCombos([catalog.combo as unknown as ComboOffer]); });
+    return () => controller.abort();
+  }, [mode, tableNumber]);
 
   const normalized = normalizeSearchText(query);
   const products = useMemo(
@@ -84,10 +103,8 @@ export default function HomePage() {
   );
 
   const comboMatches = useMemo(
-    () =>
-      !normalized ||
-      normalizeSearchText(`${catalog.combo.name} ${catalog.combo.description}`).includes(normalized),
-    [normalized],
+    () => runtimeCombos.filter(combo => !normalized || normalizeSearchText(`${combo.name} ${combo.description}`).includes(normalized)),
+    [normalized, runtimeCombos],
   );
 
   const matchingCount = (entry: PizzaMenuEntry) => {
@@ -242,28 +259,32 @@ export default function HomePage() {
           );
         })}
 
-        {comboMatches && (
+        {comboMatches.length > 0 && (
           <MenuSection
             id="combo"
-            title="Combo oficial"
-            subtitle="Uma configuração completa pelo valor oficial."
+            title="Combos"
+            subtitle="Combos disponíveis hoje. A pizza Grande pode ser inteira ou meio a meio."
           >
-            <article className="surface grid overflow-hidden md:grid-cols-[360px_1fr]">
-              <div className="relative min-h-64">
-                <Image src={categoryImages.combo} alt={catalog.combo.name} fill className="object-cover" />
-              </div>
-              <div className="flex flex-col justify-center p-6 md:p-8">
-                <p className="text-xs font-black uppercase tracking-[.18em] text-basso-gold">Combo</p>
-                <h3 className="mt-2 font-display text-3xl font-bold">{catalog.combo.name}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-black/55">{catalog.combo.description}</p>
-                <div className="mt-6 flex items-center justify-between gap-4">
-                  <strong className="text-2xl text-basso-wine">{currency(catalog.combo.price)}</strong>
-                  <button className="btn-primary" onClick={() => setComboOpen(true)}>
-                    Configurar <ChevronRight size={18} />
-                  </button>
-                </div>
-              </div>
-            </article>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {comboMatches.map(combo => (
+                <article key={combo.id} className="surface grid overflow-hidden sm:grid-cols-[180px_1fr]">
+                  <div className="relative min-h-52">
+                    <Image src={categoryImages.combo} alt={combo.name} fill className="object-cover" />
+                  </div>
+                  <div className="flex flex-col justify-center p-5">
+                    <p className="text-xs font-black uppercase tracking-[.18em] text-basso-gold">Combo</p>
+                    <h3 className="mt-2 font-display text-2xl font-bold">{combo.name}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-black/55">{combo.description}</p>
+                    <div className="mt-5 flex items-center justify-between gap-4">
+                      <strong className="text-xl text-basso-wine">{currency(combo.price)}</strong>
+                      <button className="btn-primary" onClick={() => setSelectedCombo(combo)}>
+                        Configurar <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
           </MenuSection>
         )}
 
@@ -271,7 +292,7 @@ export default function HomePage() {
           <MenuSection
             id="bebidas"
             title="Bebidas"
-            subtitle="29 produtos. O estoque é controlado somente para bebidas e sobremesas."
+            subtitle={`${products.filter((product) => product.category === "beverages").length} bebidas disponíveis. O estoque é controlado somente para bebidas e sobremesas.`}
           >
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {products
@@ -299,7 +320,7 @@ export default function HomePage() {
           </MenuSection>
         )}
 
-        {normalized && !hasPizzaResult && products.length === 0 && !comboMatches && (
+        {normalized && !hasPizzaResult && products.length === 0 && comboMatches.length === 0 && (
           <div className="surface p-10 text-center">
             <p className="font-display text-2xl font-bold">Nenhum item encontrado</p>
             <p className="mt-2 text-sm text-black/50">Tente buscar por outro nome ou ingrediente.</p>
@@ -349,7 +370,7 @@ export default function HomePage() {
         open={Boolean(selectedPizza)}
         onClose={() => setSelectedPizza(null)}
       />
-      <ComboBuilder open={comboOpen} onClose={() => setComboOpen(false)} />
+      <ComboBuilder open={Boolean(selectedCombo)} onClose={() => setSelectedCombo(null)} combo={selectedCombo || undefined} />
       <CartDrawer />
     </main>
   );

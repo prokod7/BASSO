@@ -28,8 +28,8 @@ async function runMigrationsCheck(db: NonNullable<ReturnType<typeof createAdminC
   const version = Number(latest?.version || 0);
   return {
     key: "migrations",
-    status: version >= 17 ? "operational" : "warning",
-    detail: version >= 17 ? `Banco atualizado até a migration ${version}.` : `Banco está na migration ${version}; esta versão exige a migration 17.`,
+    status: version >= 18 ? "operational" : "warning",
+    detail: version >= 18 ? `Banco atualizado até a migration ${version}.` : `Banco está na migration ${version}; esta versão exige a migration 18.`,
     checkedAt: new Date().toISOString(),
     metadata: { version, latest },
   };
@@ -148,8 +148,8 @@ export async function GET() {
       checks: (checksResult.data || []).map((row: Record<string, unknown>) => mapHealthCheck(row)),
       migrations: migrationsResult.data || [],
       recentErrors: recentErrorsResult.data || [],
-      requiredMigration: 17,
-      appVersion: "7.0.0",
+      requiredMigration: 18,
+      appVersion: "8.0.0",
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao consultar diagnóstico." }, { status: 400 });

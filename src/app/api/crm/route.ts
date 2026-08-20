@@ -22,6 +22,14 @@ export async function GET(request: NextRequest) {
     const { data, error } = await requestQuery;
     if (error) throw error;
 
+    const customerIds = (data || []).map((row: any) => row.id);
+    const { data: addressRows, error: addressError } = customerIds.length
+      ? await db.from("customer_addresses").select("customer_id,cep,street,number,district,complement,reference,city,state,latitude,longitude,is_default,updated_at").in("customer_id", customerIds).order("is_default", { ascending: false }).order("updated_at", { ascending: false })
+      : { data: [], error: null };
+    if (addressError) throw addressError;
+    const addressByCustomer = new Map<string, any>();
+    for (const address of addressRows || []) if (!addressByCustomer.has(address.customer_id)) addressByCustomer.set(address.customer_id, address);
+
     const customers = (data || []).map((row: any) => ({
       id: row.id,
       name: row.name,
@@ -34,7 +42,8 @@ export async function GET(request: NextRequest) {
       averageTicket: Number(row.average_ticket_cents || 0),
       lastOrderAt: row.last_order_at || undefined,
       segment: row.segment,
-      consents: { email: row.marketing_email, push: row.marketing_push, whatsapp: row.marketing_whatsapp }
+      consents: { email: row.marketing_email, push: row.marketing_push, whatsapp: row.marketing_whatsapp },
+      address: addressByCustomer.has(row.id) ? { cep: addressByCustomer.get(row.id).cep, street: addressByCustomer.get(row.id).street, number: addressByCustomer.get(row.id).number, district: addressByCustomer.get(row.id).district, complement: addressByCustomer.get(row.id).complement || undefined, reference: addressByCustomer.get(row.id).reference || undefined, city: addressByCustomer.get(row.id).city, state: addressByCustomer.get(row.id).state, latitude: addressByCustomer.get(row.id).latitude == null ? undefined : Number(addressByCustomer.get(row.id).latitude), longitude: addressByCustomer.get(row.id).longitude == null ? undefined : Number(addressByCustomer.get(row.id).longitude) } : undefined
     }));
 
     if (request.nextUrl.searchParams.get("format") === "csv") {

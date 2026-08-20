@@ -1,12 +1,12 @@
 {
-  "baseUrl": "https://cardapio.seudominio.com.br",
-  "apiKey": "troque-por-uma-chave-longa-e-aleatoria",
-  "pollIntervalMs": 3000,
+  "baseUrl": "https://basso-seven.vercel.app",
+  "apiKey": "USE-A-MESMA-PRINT_BRIDGE_KEY-DA-VERCEL",
+  "pollIntervalMs": 2500,
   "batchSize": 3,
   "paperColumns": 42,
   "printers": {
-    "cozinha": { "type": "tcp", "host": "192.168.0.50", "port": 9100, "timeoutMs": 8000 },
-    "bar": { "type": "tcp", "host": "192.168.0.51", "port": 9100, "timeoutMs": 8000 },
-    "counter": { "type": "system", "name": "EPSON TM-T20" }
+    "cozinha": { "type": "system", "name": "NOME-EXATO-DA-EPSON-NO-WINDOWS" },
+    "bar": { "type": "system", "name": "NOME-EXATO-DA-IMPRESSORA-DO-BAR-SE-HOUVER" },
+    "counter": { "type": "system", "name": "NOME-EXATO-DA-IMPRESSORA-CHINESA-NO-WINDOWS" }
   }
 }

@@ -25,12 +25,6 @@ const scopeLabels: Record<PizzaMenuScope, string> = {
   sweet: "Pizzas Doces",
 };
 
-function compatible(first: Flavor, candidate: Flavor) {
-  if (first.category === "premium" && candidate.category === "traditional") return false;
-  if (first.category === "traditional" && candidate.category === "premium") return false;
-  return true;
-}
-
 export function flavorsForEntry(entry: PizzaMenuEntry): Flavor[] {
   return catalog.flavors.filter((flavor) => {
     if (!flavor.active) return false;
@@ -201,10 +195,7 @@ export function PizzaBuilder({
     ? primaryFlavors
     : [currentA, ...primaryFlavors];
   const compatibleFlavors = useMemo(
-    () =>
-      catalog.flavors.filter(
-        (item) => item.active && item.id !== currentA.id && compatible(currentA, item),
-      ),
+    () => catalog.flavors.filter((item) => item.active && item.id !== currentA.id),
     [currentA],
   );
   const total = useMemo(() => {
@@ -230,6 +221,7 @@ export function PizzaBuilder({
         removedA: [...initialSelection.removedA],
         removedB: [...initialSelection.removedB],
         addons: { ...initialSelection.addons },
+        addonPlacements: { ...(initialSelection.addonPlacements || {}) },
       });
       setFlavorQuery("");
       setError("");
@@ -261,8 +253,14 @@ export function PizzaBuilder({
         .filter(([key]) => key !== id)
         .reduce((sum, [, value]) => sum + value, 0);
       if (sumWithout + next > 5) return current;
-      return { ...current, addons: { ...current.addons, [id]: next } };
+      const placements = { ...(current.addonPlacements || {}) };
+      if (next > 0 && !placements[id]) placements[id] = "whole";
+      if (next === 0) delete placements[id];
+      return { ...current, addons: { ...current.addons, [id]: next }, addonPlacements: placements };
     });
+
+  const setAddonPlacement = (id: string, placement: "whole" | "halfA" | "halfB") =>
+    setSelection((current) => ({ ...current, addonPlacements: { ...(current.addonPlacements || {}), [id]: placement } }));
 
   const add = () => {
     try {
@@ -433,6 +431,7 @@ export function PizzaBuilder({
                       ...current,
                       flavorB: event.target.value || undefined,
                       removedB: [],
+                      addonPlacements: event.target.value ? current.addonPlacements : Object.fromEntries(Object.entries(current.addonPlacements || {}).map(([id, placement]) => [id, placement === "halfB" ? "whole" : placement])) as PizzaSelection["addonPlacements"],
                     }))
                   }
                 >
@@ -444,7 +443,7 @@ export function PizzaBuilder({
                   ))}
                 </select>
                 <p className="mt-2 text-xs text-black/45">
-                  Meio a meio = 50% de cada sabor. Premium não combina com Tradicional.
+                  Meio a meio = 50% de cada sabor. Você pode combinar sabores de qualquer categoria.
                 </p>
               </>
             )}
@@ -480,29 +479,24 @@ export function PizzaBuilder({
                 const quantity = selection.addons[addon.id] || 0;
                 return (
                   <div key={addon.id} className="flex items-center justify-between gap-3 p-3">
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">{addon.name}</p>
-                      <p className="text-xs text-basso-wine">{currency(addon.price)} por unidade</p>
+                      <p className="text-xs text-basso-wine">{currency(addon.price)} inteira • {currency(Math.round(addon.price / 2))} em uma metade</p>
+                      {quantity > 0 && (
+                        <div className="mt-2">
+                          <p className="mb-1 text-[10px] font-black uppercase tracking-wide text-black/40">Onde vai este adicional?</p>
+                          <div className="grid gap-1 sm:grid-cols-3">
+                          <button type="button" className={`rounded-lg border px-2 py-1.5 text-[11px] font-bold ${(selection.addonPlacements?.[addon.id] || "whole") === "whole" ? "border-basso-wine bg-basso-wine/5 text-basso-wine" : "border-black/10"}`} onClick={() => setAddonPlacement(addon.id, "whole")}>Pizza inteira</button>
+                          <button type="button" className={`rounded-lg border px-2 py-1.5 text-[11px] font-bold ${selection.addonPlacements?.[addon.id] === "halfA" ? "border-basso-wine bg-basso-wine/5 text-basso-wine" : "border-black/10"}`} onClick={() => setAddonPlacement(addon.id, "halfA")}>Metade {currentA.name}</button>
+                          {currentB && <button type="button" className={`rounded-lg border px-2 py-1.5 text-[11px] font-bold ${selection.addonPlacements?.[addon.id] === "halfB" ? "border-basso-wine bg-basso-wine/5 text-basso-wine" : "border-black/10"}`} onClick={() => setAddonPlacement(addon.id, "halfB")}>Metade {currentB.name}</button>}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center rounded-lg border border-black/10">
-                      <button
-                        className="p-2 disabled:opacity-30"
-                        disabled={!quantity}
-                        onClick={() => setAddon(addon.id, -1)}
-                      >
-                        <Minus size={15} />
-                      </button>
+                    <div className="flex shrink-0 items-center rounded-lg border border-black/10">
+                      <button type="button" className="p-2 disabled:opacity-30" disabled={!quantity} onClick={() => setAddon(addon.id, -1)}><Minus size={15} /></button>
                       <span className="w-7 text-center text-xs font-bold">{quantity}</span>
-                      <button
-                        className="p-2 disabled:opacity-30"
-                        disabled={
-                          quantity >= 2 ||
-                          Object.values(selection.addons).reduce((sum, value) => sum + value, 0) >= 5
-                        }
-                        onClick={() => setAddon(addon.id, 1)}
-                      >
-                        <Plus size={15} />
-                      </button>
+                      <button type="button" className="p-2 disabled:opacity-30" disabled={quantity >= 2 || Object.values(selection.addons).reduce((sum, value) => sum + value, 0) >= 5} onClick={() => setAddon(addon.id, 1)}><Plus size={15} /></button>
                     </div>
                   </div>
                 );

@@ -1,10 +1,22 @@
 # PedidoPro — La Forneria Basso
 
-**Versão atual: 5.0.0 — Mega Update 05 (maturidade operacional e autonomia).**
+**Versão atual: 8.0.0 — Mega Update 08 (operação final Basso).**
 
-# La Forneria Basso — PedidoPro 4.0
+# La Forneria Basso — PedidoPro 8.0
 
 Sistema omnichannel da La Forneria Basso construído a partir do Documento Mestre Final 3.1 e do cardápio oficial. O projeto reúne cardápio digital, configurador de pizzas, checkout, pedidos, PDV, salão, comandas, garçom, KDS, expedição, delivery, motoboy, CRM, fidelidade interna, estoque restrito, compras, caixa, financeiro, relatórios, comunicação, impressão, diagnóstico, contingência e administração em uma única aplicação.
+
+## Mega Update 08 — Operação Final Basso
+
+A versão 8.0 consolida os ajustes finais de operação solicitados pela Basso: adicionais na pizza inteira ou em uma metade com cobrança proporcional, meio a meio entre qualquer categoria, combos meio a meio com agendamento, PDV para pedidos recebidos por WhatsApp com base de clientes, taxa de serviço removível nas mesas, autonomia do motoboy para escolher a próxima entrega, KDS em modo monitor, identificação visual/código de iFood e 99Food, área privada do cliente, Kanban por arrastar e soltar e reestruturação do Print Bridge.
+
+Após as migrations anteriores, o banco deve estar na migration 018:
+
+```text
+supabase/migrations/018_final_operation_patch.sql
+```
+
+A impressão física depende do Print Bridge local conectado às impressoras reais. O código e a fila estão preparados, mas a impressão só deve ser considerada operacional depois de `PRINT_BRIDGE_KEY`, nomes das filas do Windows e uma folha de teste serem validados no computador da pizzaria.
 
 ## Mega Update 07 — Production Final
 
@@ -34,8 +46,8 @@ A versão exige banco na migration 017. A 99Food continua bloqueada por contrato
 - Não existe borda em interface, API, impressão ou banco.
 - Broto aceita somente um sabor.
 - Grande meio a meio custa 50% de cada sabor; nunca usa o sabor mais caro.
-- Premium não combina com Tradicional.
-- Adicionais custam o valor integral, no máximo 2 do mesmo e 5 unidades por pizza.
+- Categorias de pizza servem como filtro; Grande pode combinar meio a meio sabores de categorias diferentes.
+- Adicionais podem ser aplicados na pizza inteira ou em uma metade; na metade custam 50% do adicional, mantendo máximo de 2 do mesmo e 5 unidades por pizza.
 - Estoque rastreia somente bebidas e sobremesas.
 - Fidelidade é interna: delivery próprio, concluído e pago; recompensa com 10 pontos e saldo máximo de 15.
 - Clientes de iFood/99Food não entram no CRM nem na fidelidade.
