@@ -52,7 +52,7 @@ describe("Mega Update 07 - Production Final", () => {
 
   it("mantém o contrato iFood isolado das alterações do MU07", () => {
     const ifood = read("src/lib/integrations/ifood.ts");
-    expect(ifood).toContain("export class IFoodAdapter");
+    expect(ifood).toContain("export class IfoodAdapter");
     expect(ifood).not.toContain("99food");
   });
 });
