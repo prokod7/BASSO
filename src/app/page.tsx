@@ -49,7 +49,7 @@ const pizzaSections: Array<{
   {
     id: "premium",
     title: "Pizzas Premium",
-    subtitle: "11 criações especiais. As categorias ajudam a filtrar; no meio a meio você pode combinar sabores de qualquer categoria.",
+    subtitle: "11 criações especiais. No meio a meio, Premium combina com Premium ou Doce; não combina com Tradicional.",
     scope: "premium",
   },
   {
@@ -263,7 +263,7 @@ export default function HomePage() {
           <MenuSection
             id="combo"
             title="Combos"
-            subtitle="Combos disponíveis hoje. A pizza Grande pode ser inteira ou meio a meio."
+            subtitle="Combos disponíveis hoje. A pizza Grande pode ser inteira ou meio a meio, respeitando as mesmas regras de compatibilidade dos sabores."
           >
             <div className="grid gap-4 lg:grid-cols-2">
               {comboMatches.map(combo => (
@@ -277,7 +277,7 @@ export default function HomePage() {
                     <p className="mt-2 text-sm leading-relaxed text-black/55">{combo.description}</p>
                     <div className="mt-5 flex items-center justify-between gap-4">
                       <strong className="text-xl text-basso-wine">{currency(combo.price)}</strong>
-                      <button className="btn-primary" onClick={() => setSelectedCombo(combo)}>
+                      <button type="button" className="btn-primary" onClick={() => setSelectedCombo(combo)}>
                         Configurar <ChevronRight size={18} />
                       </button>
                     </div>
