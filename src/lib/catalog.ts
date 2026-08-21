@@ -75,8 +75,6 @@ export const categoryImages = {
   combo: "/assets/products/combo-r-79-99-pizza-grande-broto-doce-refrigerante-2-litros.png",
 } as const;
 
-// Somente itens ativos podem aparecer ou ser localizados no catálogo público.
-// Isso mantém desativações operacionais (ex.: Schweppes) fora da compra sem apagar o histórico do cadastro.
 export const allProducts: Product[] = [...catalog.beverages, ...catalog.desserts]
   .filter((product) => product.active)
   .map((product) => ({ ...product, image: productImages[product.id] }));
