@@ -75,7 +75,9 @@ export const categoryImages = {
   combo: "/assets/products/combo-r-79-99-pizza-grande-broto-doce-refrigerante-2-litros.png",
 } as const;
 
-export const allProducts: Product[] = [...catalog.beverages, ...catalog.desserts].map((product) => ({ ...product, image: productImages[product.id] }));
+export const allProducts: Product[] = [...catalog.beverages, ...catalog.desserts]
+  .filter((product) => product.active)
+  .map((product) => ({ ...product, image: productImages[product.id] }));
 export const findFlavor = (id: string) => catalog.flavors.find((flavor) => flavor.id === id);
 export const findAddon = (id: string) => catalog.addons.find((addon) => addon.id === id);
 export const findProduct = (id: string) => allProducts.find((product) => product.id === id);
