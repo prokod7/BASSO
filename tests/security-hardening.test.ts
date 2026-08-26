@@ -22,10 +22,13 @@ describe("production security hardening", () => {
   it("keeps privileged SECURITY DEFINER RPCs closed to browser roles", () => {
     const migration = source("supabase/migrations/020_production_security_and_performance_hardening.sql");
 
+    expect(migration).toContain("create schema if not exists private");
+    expect(migration).toContain("create or replace function private.current_role()");
+    expect(migration).toContain("create or replace function private.can_manage_operation()");
     expect(migration).toContain("revoke execute on function %s from anon");
     expect(migration).toContain("revoke execute on function %s from authenticated");
     expect(migration).toContain("grant execute on function %s to service_role");
-    expect(migration).toContain("grant execute on function public.current_role() to authenticated");
-    expect(migration).toContain("grant execute on function public.can_manage_operation() to authenticated");
+    expect(migration).toContain("alter default privileges for role postgres in schema public revoke execute on functions from authenticated");
+    expect(migration).toContain("alter extension citext set schema extensions");
   });
 });
