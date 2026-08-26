@@ -1,13 +1,103 @@
 -- 020_production_security_and_performance_hardening.sql
--- Hardening de produção: privilégios mínimos de RPC, search_path seguro,
--- RLS mais eficiente e índices de suporte para foreign keys.
+-- Hardening de produção: helpers RLS privados, privilégios mínimos de RPC,
+-- search_path seguro, RLS eficiente e índices de suporte para foreign keys.
 
+-- Helpers usados nas policies não devem permanecer em um schema exposto pela Data API.
+create schema if not exists private;
+revoke all on schema private from public;
+revoke all on schema private from anon;
+grant usage on schema private to authenticated, service_role;
+
+create or replace function private.current_role()
+returns public.app_role
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select role
+  from public.profiles
+  where id = auth.uid() and active
+  limit 1
+$$;
+
+create or replace function private.can_manage_operation()
+returns boolean
+language sql
+stable
+security definer
+set search_path = pg_catalog, public
+as $$
+  select coalesce(private.current_role() in ('manager','counter','kitchen','bar','waiter'), false)
+$$;
+
+revoke execute on function private.current_role() from public, anon;
+revoke execute on function private.can_manage_operation() from public, anon;
+grant execute on function private.current_role() to authenticated, service_role;
+grant execute on function private.can_manage_operation() to authenticated, service_role;
+
+-- Reescreve policies existentes para usar os helpers privados e, portanto,
+-- retirar a necessidade de executar helpers SECURITY DEFINER do schema public.
+do $$
+declare
+  r record;
+  v_using text;
+  v_check text;
+  v_sql text;
+begin
+  for r in
+    select schemaname, tablename, policyname, qual, with_check
+    from pg_policies
+    where schemaname = 'public'
+      and (
+        coalesce(qual, '') ilike '%current_role%'
+        or coalesce(with_check, '') ilike '%current_role%'
+        or coalesce(qual, '') ilike '%can_manage_operation%'
+        or coalesce(with_check, '') ilike '%can_manage_operation%'
+      )
+  loop
+    v_using := r.qual;
+    v_check := r.with_check;
+
+    if v_using is not null then
+      v_using := replace(v_using, 'private.can_manage_operation()', '__PRIVATE_CAN_MANAGE__');
+      v_using := replace(v_using, '"current_role"()', '(select private.current_role())');
+      v_using := replace(v_using, 'can_manage_operation()', '(select private.can_manage_operation())');
+      v_using := replace(v_using, '__PRIVATE_CAN_MANAGE__', 'private.can_manage_operation()');
+    end if;
+
+    if v_check is not null then
+      v_check := replace(v_check, 'private.can_manage_operation()', '__PRIVATE_CAN_MANAGE__');
+      v_check := replace(v_check, '"current_role"()', '(select private.current_role())');
+      v_check := replace(v_check, 'can_manage_operation()', '(select private.can_manage_operation())');
+      v_check := replace(v_check, '__PRIVATE_CAN_MANAGE__', 'private.can_manage_operation()');
+    end if;
+
+    v_sql := format('alter policy %I on %I.%I', r.policyname, r.schemaname, r.tablename);
+    if v_using is not null then
+      v_sql := v_sql || format(' using (%s)', v_using);
+    end if;
+    if v_check is not null then
+      v_sql := v_sql || format(' with check (%s)', v_check);
+    end if;
+    execute v_sql;
+  end loop;
+end
+$$;
+
+-- Policies apontadas pelo advisor por reavaliar auth.uid() a cada linha.
+alter policy profiles_self_select on public.profiles
+  using ((id = (select auth.uid())) or ((select private.current_role()) = 'manager'::public.app_role));
+
+alter policy internal_notifications_read on public.internal_notifications
+  using ((recipient_id = (select auth.uid())) or recipient_id is null or audience_role = (select private.current_role()));
+
+-- Search path explícito nas funções apontadas pelo advisor.
 alter function public.audit_immutable() set search_path = pg_catalog, public;
 alter function public.assign_order_number() set search_path = pg_catalog, public;
 
--- Funções SECURITY DEFINER não devem ser endpoints RPC públicos por padrão.
--- As rotas Next.js internas já autenticam/autorizam o usuário e executam as
--- operações privilegiadas através do service_role no servidor.
+-- Funções SECURITY DEFINER no schema público não devem ser endpoints RPC de navegador.
+-- As rotas Next.js autenticam/autorizam e executam as operações privilegiadas via service_role.
 do $$
 declare
   r record;
@@ -26,21 +116,27 @@ begin
 end
 $$;
 
--- Estes dois helpers são chamados por policies RLS de usuários autenticados.
--- Eles permanecem como exceções intencionais e não são liberados para anon.
-grant execute on function public.current_role() to authenticated;
-grant execute on function public.can_manage_operation() to authenticated;
+-- Evita que novas funções voltem a herdar EXECUTE para papéis de navegador.
+alter default privileges for role postgres in schema public revoke execute on functions from public;
+alter default privileges for role postgres in schema public revoke execute on functions from anon;
+alter default privileges for role postgres in schema public revoke execute on functions from authenticated;
 
--- Evita reavaliar auth.uid() para cada linha nas policies mais acessadas.
-alter policy profiles_self_select on public.profiles
-  using ((id = (select auth.uid())) or (public.current_role() = 'manager'::public.app_role));
+-- O schema extensions já faz parte do search_path do projeto. Remove o aviso de
+-- extensão instalada em public sem alterar os OIDs/tipos já usados pelas tabelas.
+do $$
+begin
+  if exists (
+    select 1
+    from pg_extension e
+    join pg_namespace n on n.oid = e.extnamespace
+    where e.extname = 'citext' and n.nspname = 'public'
+  ) then
+    alter extension citext set schema extensions;
+  end if;
+end
+$$;
 
-alter policy internal_notifications_read on public.internal_notifications
-  using ((recipient_id = (select auth.uid())) or recipient_id is null or audience_role = public.current_role());
-
--- Cria índices de suporte somente para foreign keys que ainda não possuem um
--- índice válido cobrindo as colunas da relação. O nome inclui hash para evitar
--- colisões no limite de 63 caracteres do PostgreSQL.
+-- Cria índices de suporte somente para foreign keys sem índice de cobertura.
 do $$
 declare
   r record;
