@@ -10,6 +10,10 @@ type CookieToSet = {
   options: CookieOptions;
 };
 
+function isDevelopmentDemoMode() {
+  return process.env.NODE_ENV !== "production" && process.env.DEMO_MODE === "true";
+}
+
 export async function middleware(request: NextRequest) {
   // Webhook oficial da 99Food precisa ser público para os servidores da plataforma.
   // A própria rota faz a validação criptográfica/autenticidade conforme o contrato oficial.
@@ -17,7 +21,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (process.env.NEXT_PUBLIC_DEMO_MODE !== "false") {
+  // Nunca permita bypass de autenticação em produção.
+  if (isDevelopmentDemoMode()) {
     return NextResponse.next();
   }
 
