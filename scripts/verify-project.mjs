@@ -42,7 +42,7 @@ const requiredRoutes = [
   "src/app/painel/clientes/page.tsx","src/app/painel/fidelidade/page.tsx","src/app/painel/estoque/page.tsx","src/app/painel/caixa/page.tsx",
   "src/app/painel/financeiro/page.tsx","src/app/painel/relatorios/page.tsx","src/app/painel/impressao/page.tsx","src/app/painel/integracoes/page.tsx",
   "src/app/painel/configuracoes/page.tsx","src/app/painel/cardapio/page.tsx","src/app/painel/auditoria/page.tsx","src/app/painel/diagnostico/page.tsx",
-  "src/app/mesa/[number]/page.tsx","src/app/meus-pedidos/page.tsx","src/app/imprimir/[id]/page.tsx"
+  "src/app/mesa/[number]/page.tsx","src/app/meus-pedidos/page.tsx","src/app/imprimir/[id]/page.tsx","src/app/api/delivery/areas/route.ts"
 ];
 check("Telas públicas e operacionais críticas presentes", requiredRoutes.every(exists), requiredRoutes.filter(x => !exists(x)).join(", "));
 
@@ -55,7 +55,7 @@ check("Validação explícita contra bordas", /Bordas não existem neste sistema
 
 const sqlFiles = fs.readdirSync(path.join(root,"supabase/migrations")).filter(x => x.endsWith(".sql")).sort();
 const sql = sqlFiles.map(x => read(`supabase/migrations/${x}`)).join("\n");
-check("Migrações SQL 001–026 presentes", sqlFiles.length >= 26 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("025")) && sqlFiles.some(x => x.startsWith("026")), sqlFiles.join(", "));
+check("Migrações SQL 001–028 presentes", sqlFiles.length >= 28 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("025")) && sqlFiles.some(x => x.startsWith("026")) && sqlFiles.some(x => x.startsWith("027")) && sqlFiles.some(x => x.startsWith("028")), sqlFiles.join(", "));
 check("RLS habilitado", /enable row level security/i.test(sql));
 check("Auditoria imutável", /audit_no_update/i.test(sql));
 check("Idempotência persistente", /idempotency_keys/i.test(sql));
@@ -67,14 +67,21 @@ check("RPC de impressão fechado a browser roles", /revoke execute on function p
 check("MU14 cria arquivamento sem destruir histórico", /alter table public\.products add column if not exists deleted_at/i.test(sql) && /alter table public\.categories add column if not exists deleted_at/i.test(sql) && /alter table public\.delivery_zones add column if not exists deleted_at/i.test(sql));
 check("MU14 cria bucket de imagens", /product-images/i.test(sql) && /5242880/.test(sql));
 check("Produto vinculado à categoria", /products_category_fkey/i.test(sql));
+check("MU16 torna cidade explícita na cobertura", /add column if not exists city text/i.test(sql) && /alter column city set not null/i.test(sql) && /delivery_zones_city_active_idx/i.test(sql));
 
 const publicOrderApi = read("src/app/api/orders/route.ts");
 const checkoutSource = read("src/app/checkout/page.tsx");
+const publicAreas = read("src/app/api/delivery/areas/route.ts");
+const serverQuote = read("src/lib/server-quote.ts");
 check("Checkout mantém idempotência", /checkoutKeyRef/.test(checkoutSource) && /Idempotency-Key/.test(checkoutSource));
 check("API pública limita canais", /own_delivery.*pickup.*table_qr/.test(publicOrderApi) && /Canal não permitido no checkout público/.test(publicOrderApi));
 check("Pedido público valida agenda oficial", /manual_override/.test(publicOrderApi) && /storeStatus\(\)/.test(publicOrderApi));
 check("Delivery público bloqueia cobertura ausente", /bairros e taxas ainda não foram configurados/i.test(publicOrderApi));
 check("Recompensa pública bloqueada", /Recompensas são lançadas exclusivamente/.test(publicOrderApi));
+check("Checkout oferece cidade e bairro dependentes", /api\/delivery\/areas/.test(checkoutSource) && /Cidade atendida/.test(checkoutSource) && /Bairro atendido/.test(checkoutSource) && /Selecione a cidade primeiro/.test(checkoutSource));
+check("GPS tenta casar localização com cobertura", /matchCoverage/.test(checkoutSource) && /normalizeCityName/.test(checkoutSource) && /normalizeDistrictName/.test(checkoutSource));
+check("Frete autoritativo usa cidade + bairro", /city: supplied\.address\?\.city/.test(publicOrderApi) && /findDeliveryZone\(zones, district, city\)/.test(serverQuote));
+check("Endpoint público expõe somente cobertura ativa", /\.eq\("active", true\)/.test(publicAreas) && /\.is\("deleted_at", null\)/.test(publicAreas));
 
 const mu14Files = [
   "supabase/migrations/024_catalog_admin_and_product_media.sql",
@@ -107,13 +114,14 @@ const pdv = read("src/app/painel/pdv/page.tsx");
 check("PDV oferece Entrega explicitamente", /label="Entrega"/.test(pdv) && /own_delivery/.test(pdv));
 check("PDV usa cardápio runtime", /api\/menu\/availability/.test(pdv) && /runtimeProducts/.test(pdv));
 check("PDV calcula taxa de entrega antes de finalizar", /api\/quote/.test(pdv) && /deliveryQuote/.test(pdv) && /Taxa de entrega/.test(pdv));
-check("PDV exige endereço para entrega", /Preencha telefone e endereço completo para entrega/.test(pdv));
+check("PDV exige cidade, bairro e endereço para entrega", /Preencha telefone, cidade, bairro e endereço completo para entrega/.test(pdv));
+check("PDV usa cobertura cidade + bairro", /api\/delivery\/areas/.test(pdv) && /selectedCity/.test(pdv) && /selectedDistrict/.test(pdv));
 check("PDV finaliza pelo backend autoritativo", /api\/internal-orders/.test(pdv));
 
 const settingsPage = read("src/app/painel/configuracoes/page.tsx");
 const zonesApi = read("src/app/api/settings/delivery-zones/[id]/route.ts");
-check("Bairros podem ser adicionados", /Adicionar zona/.test(settingsPage));
-check("Bairros podem ser editados", /Editar bairro\/zona/.test(settingsPage));
+check("Cidades e bairros podem ser adicionados", /Adicionar cidade\/bairro/.test(settingsPage) && /zoneCity/.test(settingsPage));
+check("Cidades e bairros podem ser editados", /Editar cidade\/bairro/.test(settingsPage));
 check("Bairros podem ser pausados e reativados", /Pausar/.test(settingsPage) && /Reativar/.test(settingsPage));
 check("Bairros podem ser arquivados", /DELIVERY_ZONE_ARCHIVED/.test(zonesApi) && /deleted_at/.test(zonesApi));
 
@@ -150,7 +158,7 @@ check("Pagamento na entrega passa pela transação oficial", /record_order_payme
 check("PWA mantém GPS durante entrega", /watchPosition/.test(driverPwa) && /api\/drivers\/\$\{driverId\}\/location/.test(driverPwa));
 
 const diagnosticsSource = read("src/app/api/system/diagnostics/route.ts");
-check("Diagnóstico alinhado ao MU15 / migration 26", /const REQUIRED_MIGRATION = 26/.test(diagnosticsSource) && /const APP_VERSION = "MU15"/.test(diagnosticsSource));
+check("Diagnóstico alinhado ao MU16 / migration 28", /const REQUIRED_MIGRATION = 28/.test(diagnosticsSource) && /const APP_VERSION = "MU16"/.test(diagnosticsSource));
 check("Diagnóstico valida Print Bridge real", /heartbeatFresh/.test(diagnosticsSource) && /bridgeOnline/.test(diagnosticsSource));
 
 check("Controle de concorrência de pedidos", /order_edit_locks/.test(sql) && /ORDER_VERSION_CONFLICT/.test(read("src/app/api/orders/[id]/status/route.ts")));
