@@ -42,7 +42,7 @@ const requiredRoutes = [
   "src/app/painel/clientes/page.tsx","src/app/painel/fidelidade/page.tsx","src/app/painel/estoque/page.tsx","src/app/painel/caixa/page.tsx",
   "src/app/painel/financeiro/page.tsx","src/app/painel/relatorios/page.tsx","src/app/painel/impressao/page.tsx","src/app/painel/integracoes/page.tsx",
   "src/app/painel/configuracoes/page.tsx","src/app/painel/cardapio/page.tsx","src/app/painel/auditoria/page.tsx","src/app/painel/diagnostico/page.tsx",
-  "src/app/mesa/[number]/page.tsx","src/app/meus-pedidos/page.tsx"
+  "src/app/mesa/[number]/page.tsx","src/app/meus-pedidos/page.tsx","src/app/imprimir/[id]/page.tsx"
 ];
 check("Telas públicas e operacionais críticas presentes", requiredRoutes.every(exists), requiredRoutes.filter(x => !exists(x)).join(", "));
 
@@ -94,7 +94,7 @@ const publicHome = read("src/app/page.tsx");
 const imageApi = read("src/app/api/menu/images/route.ts");
 check("Admin cria produtos", /Novo produto/.test(menuAdmin) && /api\/menu\/products/.test(menuAdmin));
 check("Admin cria categorias", /Nova categoria/.test(menuAdmin) && /api\/menu\/categories/.test(menuAdmin));
-check("Admin pausa e remove sem apagar histórico", /Pausar/.test(menuAdmin) && /Remover/.test(menuAdmin) && /ARCHIVED/.test(read("src/app/api/menu/products/[id]/route.ts")));
+check("Admin pausa e remove sem apagar histórico", /Pausar|Pausado/.test(menuAdmin) && /Remover/.test(menuAdmin) && /ARCHIVED/.test(read("src/app/api/menu/products/[id]/route.ts")));
 check("Upload por arquivo substitui URL manual", /Escolher imagem/.test(menuAdmin) && /type="file"/.test(menuAdmin) && /Não precisa colar URL/.test(menuAdmin));
 check("Upload limitado e server-side", /MAX_SIZE = 5 \* 1024 \* 1024/.test(imageApi) && /requireOperationalRole\(\["manager"\]/.test(imageApi) && /createAdminClient/.test(imageApi));
 check("Upload aceita formatos seguros", /image\/jpeg/.test(imageApi) && /image\/png/.test(imageApi) && /image\/webp/.test(imageApi) && /image\/avif/.test(imageApi));
@@ -117,6 +117,12 @@ check("Bairros podem ser editados", /Editar bairro\/zona/.test(settingsPage));
 check("Bairros podem ser pausados e reativados", /Pausar/.test(settingsPage) && /Reativar/.test(settingsPage));
 check("Bairros podem ser arquivados", /DELIVERY_ZONE_ARCHIVED/.test(zonesApi) && /deleted_at/.test(zonesApi));
 
+const browserPrintMode = read("src/components/internal/BrowserPrintMode.tsx");
+const browserPrintPage = read("src/app/imprimir/[id]/page.tsx");
+check("Impressão manual usa diálogo padrão do navegador", /window\.open\(printUrl/.test(browserPrintMode) && /window\.print\(\)/.test(browserPrintPage));
+check("Comprovante térmico possui layout de 80 mm", /80mm/.test(browserPrintPage) && /@page/.test(browserPrintPage));
+check("Print Bridge permanece opcional", exists("bridge/print-bridge.mjs") && exists("bridge/config.example.json"));
+
 const diagnosticsSource = read("src/app/api/system/diagnostics/route.ts");
 check("Diagnóstico alinhado ao MU14 / migration 24", /const REQUIRED_MIGRATION = 24/.test(diagnosticsSource) && /const APP_VERSION = "MU14"/.test(diagnosticsSource));
 check("Diagnóstico valida Print Bridge real", /heartbeatFresh/.test(diagnosticsSource) && /bridgeOnline/.test(diagnosticsSource));
@@ -125,13 +131,22 @@ check("Controle de concorrência de pedidos", /order_edit_locks/.test(sql) && /O
 check("Inventário assistido", /inventory_counts/.test(sql) && exists("src/app/painel/inventario/page.tsx"));
 check("Troca obrigatória de senha", /must_change_password/.test(sql) && /trocar-senha/.test(read("src/components/internal/AdminShell.tsx")));
 check("Feature flags persistentes", /feature_flags/.test(sql) && exists("src/app/api/feature-flags/route.ts"));
-check("99Food sem endpoints inventados", !/x-99food-signature|x-99-signature|\/oauth\/token|\/order\/accept/i.test(sourceText));
+const food99Source = [
+  "src/lib/integrations/food99.ts",
+  "src/lib/integrations/food99/config.ts",
+  "src/lib/integrations/food99/official-contract.ts",
+  "src/lib/integrations/food99/webhook.ts",
+  "src/lib/integrations/food99/orders.ts",
+  "src/lib/integrations/food99/status.ts",
+  "src/lib/integrations/food99/cancellation.ts",
+  "src/lib/integrations/food99/mapper.ts",
+].filter(exists).map(read).join("\n");
+check("99Food sem endpoints inventados", !/x-99food-signature|x-99-signature|\/oauth\/token|\/order\/accept/i.test(food99Source));
 check("Gate de qualidade executa typecheck e build", /npm run typecheck/.test(read(".github/workflows/quality.yml")) && /npm run build/.test(read(".github/workflows/quality.yml")));
 
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
 check("PWA com ícones 192 e 512", manifest.icons?.some(x => x.sizes === "192x192") && manifest.icons?.some(x => x.sizes === "512x512"));
 check("Service worker presente", exists("public/sw.js"));
-check("Print Bridge presente", exists("bridge/print-bridge.mjs") && exists("bridge/config.example.json"));
 const cronFile = exists("vercel.json") ? "vercel.json" : exists("vercel.pro.json") ? "vercel.pro.json" : null;
 check("Cron de filas preservado", Boolean(cronFile) && /process-queues/.test(read(cronFile)));
 
