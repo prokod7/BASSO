@@ -168,9 +168,9 @@ export default function KdsPage() {
           body: JSON.stringify({ sector, reason: `Impressão manual solicitada no KDS ${sector}` }),
         });
       }
-      setMessage(`Pedido #${order.number} enviado para a fila de ${sector === "bar" ? "bar" : "cozinha"}. A impressão física depende do Print Bridge.`);
+      setMessage(`Comanda ${sector === "bar" ? "do bar" : "da cozinha"} do pedido #${order.number} aberta na impressão padrão do navegador.`);
     } catch (error) {
-      setMessage(formatApiError(error, "Falha ao enviar impressão."));
+      setMessage(formatApiError(error, "Falha ao abrir a impressão."));
     } finally {
       setWorking(null);
     }
@@ -187,11 +187,7 @@ export default function KdsPage() {
       } else {
         await apiJson(`/api/orders/${order.id}/status`, {
           method: "PATCH",
-          body: JSON.stringify({
-            status: next,
-            expectedVersion: order.version,
-            reason: `Avanço pelo KDS ${sector === "bar" ? "Bar" : "Cozinha"}`,
-          }),
+          body: JSON.stringify({ status: next, expectedVersion: order.version, reason: `Avanço pelo KDS ${sector === "bar" ? "Bar" : "Cozinha"}` }),
         });
         requestOperationalRefresh();
       }
@@ -205,24 +201,9 @@ export default function KdsPage() {
   }
 
   return <>
-    <PageHeader
-      title="Cozinha e produção"
-      icon={ChefHat}
-      description="KDS resiliente por setor, com Realtime, cronômetros, meio a meio, adicionais por metade e impressão auditada."
-      actions={<>
-        <button className="btn-secondary" onClick={() => requestOperationalRefresh()}><RefreshCw size={16} />Atualizar</button>
-        <button className="btn-secondary" onClick={toggleFullscreen}>{fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}Modo monitor</button>
-        <button className="btn-secondary" onClick={() => { setSound((value) => !value); if (!sound) beep(); }}>{sound ? <BellRing size={16} /> : <BellOff size={16} />}Som {sound ? "ativo" : "desativado"}</button>
-      </>}
-    />
+    <PageHeader title="Cozinha e produção" icon={ChefHat} description="KDS por setor, com Realtime, cronômetros, meio a meio, adicionais por metade e comanda térmica pelo navegador." actions={<><button className="btn-secondary" onClick={() => requestOperationalRefresh()}><RefreshCw size={16} />Atualizar</button><button className="btn-secondary" onClick={toggleFullscreen}>{fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}Modo monitor</button><button className="btn-secondary" onClick={() => { setSound((value) => !value); if (!sound) beep(); }}>{sound ? <BellRing size={16} /> : <BellOff size={16} />}Som {sound ? "ativo" : "desativado"}</button></>} />
 
-    <div className="mb-4 flex flex-col gap-3 rounded-2xl border bg-white p-3 sm:flex-row sm:items-center">
-      <div className="flex rounded-xl border bg-white p-1">
-        <button className={`btn-ghost min-h-9 flex-1 ${sector === "kitchen" ? "bg-basso-wine text-white hover:text-white" : ""}`} onClick={() => setSector("kitchen")}><ChefHat size={16} />Cozinha</button>
-        <button className={`btn-ghost min-h-9 flex-1 ${sector === "bar" ? "bg-basso-wine text-white hover:text-white" : ""}`} onClick={() => setSector("bar")}><GlassWater size={16} />Bar</button>
-      </div>
-      <input className="input sm:ml-auto sm:max-w-xs" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar pedido, mesa ou código" />
-    </div>
+    <div className="mb-4 flex flex-col gap-3 rounded-2xl border bg-white p-3 sm:flex-row sm:items-center"><div className="flex rounded-xl border bg-white p-1"><button className={`btn-ghost min-h-9 flex-1 ${sector === "kitchen" ? "bg-basso-wine text-white hover:text-white" : ""}`} onClick={() => setSector("kitchen")}><ChefHat size={16} />Cozinha</button><button className={`btn-ghost min-h-9 flex-1 ${sector === "bar" ? "bg-basso-wine text-white hover:text-white" : ""}`} onClick={() => setSector("bar")}><GlassWater size={16} />Bar</button></div><input className="input sm:ml-auto sm:max-w-xs" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar pedido, mesa ou código" /></div>
 
     {message && <p className="mb-4 rounded-xl bg-blue-50 p-3 text-sm font-semibold text-blue-800">{message}</p>}
 
@@ -238,30 +219,8 @@ export default function KdsPage() {
               const busy = working === `status_${order.id}`;
               const badge = channelBadge(order);
               return <article key={order.id} className={`surface overflow-hidden ${minutes >= 45 ? "border-red-300 ring-1 ring-red-200" : minutes >= 30 ? "border-amber-300" : ""}`}>
-                <div className="flex items-center justify-between bg-basso-black px-4 py-3 text-white">
-                  <div className="flex min-w-0 items-center gap-2"><strong>#{order.number}</strong><span className={`max-w-40 truncate rounded-full px-2 py-1 text-[9px] font-black ${badge.className}`}>{badge.label}</span></div>
-                  <span className={`flex items-center gap-1 text-xs ${minutes >= 45 ? "font-black text-red-300" : minutes >= 30 ? "font-black text-amber-300" : "text-white/55"}`}><Clock3 size={13} />{minutes} min</span>
-                </div>
-                <div className="p-4">
-                  <p className="font-bold">{order.customerName || "Cliente"}</p>
-                  {order.notes && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs font-bold text-amber-900">OBS PEDIDO: {order.notes}</p>}
-                  <div className="mt-3 space-y-2">
-                    {(order.items || []).map((item) => <div key={item.id} className="rounded-xl bg-basso-paper p-3">
-                      <p className="text-sm"><strong>{item.quantity}×</strong> {item.name || "Item"}</p>
-                      {removalLines(item).map((line) => <p key={line} className="mt-1 text-xs font-black text-red-700">{line}</p>)}
-                      {addonLines(item).map((line) => <p key={line} className="mt-1 text-xs font-black text-emerald-800">+ {line}</p>)}
-                      {item.selection && "notes" in item.selection && typeof item.selection.notes === "string" && item.selection.notes && <p className="mt-1 text-xs font-bold text-amber-800">OBS: {item.selection.notes}</p>}
-                    </div>)}
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button className="btn-secondary min-h-9 flex-1 text-xs" disabled={working === `print_${order.id}` || busy} onClick={() => print(order)}>{working === `print_${order.id}` ? <Loader2 className="animate-spin" size={14} /> : <Printer size={14} />}Imprimir</button>
-                    {target
-                      ? <button className="btn-primary min-h-9 flex-1 text-xs" disabled={busy || working === `print_${order.id}`} onClick={() => advance(order)}>{busy ? <Loader2 className="animate-spin" size={14} /> : null}{statusLabel[target]}</button>
-                      : order.status === "received"
-                        ? <span className="flex flex-1 items-center justify-center rounded-xl bg-amber-50 px-2 text-center text-[11px] font-bold text-amber-800">Aguardando confirmação</span>
-                        : <span className="flex flex-1 items-center justify-center rounded-xl bg-emerald-50 px-2 text-center text-[11px] font-bold text-emerald-800">Aguardando expedição</span>}
-                  </div>
-                </div>
+                <div className="flex items-center justify-between bg-basso-black px-4 py-3 text-white"><div className="flex min-w-0 items-center gap-2"><strong>#{order.number}</strong><span className={`max-w-40 truncate rounded-full px-2 py-1 text-[9px] font-black ${badge.className}`}>{badge.label}</span></div><span className={`flex items-center gap-1 text-xs ${minutes >= 45 ? "font-black text-red-300" : minutes >= 30 ? "font-black text-amber-300" : "text-white/55"}`}><Clock3 size={13} />{minutes} min</span></div>
+                <div className="p-4"><p className="font-bold">{order.customerName || "Cliente"}</p>{order.notes && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs font-bold text-amber-900">OBS PEDIDO: {order.notes}</p>}<div className="mt-3 space-y-2">{(order.items || []).map((item) => <div key={item.id} className="rounded-xl bg-basso-paper p-3"><p className="text-sm"><strong>{item.quantity}×</strong> {item.name || "Item"}</p>{removalLines(item).map((line) => <p key={line} className="mt-1 text-xs font-black text-red-700">{line}</p>)}{addonLines(item).map((line) => <p key={line} className="mt-1 text-xs font-black text-emerald-800">+ {line}</p>)}{item.selection && "notes" in item.selection && typeof item.selection.notes === "string" && item.selection.notes && <p className="mt-1 text-xs font-bold text-amber-800">OBS: {item.selection.notes}</p>}</div>)}</div><div className="mt-3 flex gap-2"><button className="btn-secondary min-h-9 flex-1 text-xs" disabled={working === `print_${order.id}` || busy} onClick={() => print(order)}>{working === `print_${order.id}` ? <Loader2 className="animate-spin" size={14} /> : <Printer size={14} />}Imprimir</button>{target ? <button className="btn-primary min-h-9 flex-1 text-xs" disabled={busy || working === `print_${order.id}`} onClick={() => advance(order)}>{busy ? <Loader2 className="animate-spin" size={14} /> : null}{statusLabel[target]}</button> : order.status === "received" ? <span className="flex flex-1 items-center justify-center rounded-xl bg-amber-50 px-2 text-center text-[11px] font-bold text-amber-800">Aguardando confirmação</span> : <span className="flex flex-1 items-center justify-center rounded-xl bg-emerald-50 px-2 text-center text-[11px] font-bold text-emerald-800">Aguardando expedição</span>}</div></div>
               </article>;
             })}
             {!columnOrders.length && <div className="rounded-2xl border border-dashed border-black/10 bg-white/60 p-6 text-center text-xs text-black/40">Nenhum pedido nesta etapa.</div>}
@@ -269,6 +228,6 @@ export default function KdsPage() {
         </section>;
       })}
     </div>
-    <div className="mt-5 flex items-center gap-2 rounded-2xl border border-basso-gold/30 bg-basso-gold/10 p-4 text-sm"><BellRing className="shrink-0 text-basso-wine" /><span>Uma mudança só é considerada concluída depois da confirmação do servidor. A fila de impressão não confirma a saída física do papel.</span></div>
+    <div className="mt-5 flex items-center gap-2 rounded-2xl border border-basso-gold/30 bg-basso-gold/10 p-4 text-sm"><BellRing className="shrink-0 text-basso-wine" /><span>O botão Imprimir abre a comanda térmica da cozinha no diálogo padrão do navegador. Impressão automática pelo Print Bridge é opcional.</span></div>
   </>;
 }
