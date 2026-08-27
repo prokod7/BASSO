@@ -93,6 +93,7 @@ export interface Order {
   version?: number;
   paidAmount?: number;
   balanceDue?: number;
+  deliveryCode?: string;
 }
 export interface DemoTable { number: number; capacity: number; status: "free" | "occupied" | "cleaning" | "partial"; people?: number; openedAt?: string; groupId?: string; tabs: DemoTab[]; }
 export interface DemoTab { id: string; name: string; items: CartItem[]; paidCents: number; totalCents: number; serviceChargeRate?: number; serviceChargeApplied?: boolean; serviceChargeCents?: number; waiter: string; status: "open" | "partial" | "closed" | "cancelled"; }
