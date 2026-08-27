@@ -31,4 +31,13 @@ describe("production security hardening", () => {
     expect(migration).toContain("alter default privileges for role postgres in schema public revoke execute on functions from authenticated");
     expect(migration).toContain("alter extension citext set schema extensions");
   });
+
+  it("closes the MU12 print enqueue RPC again after it is recreated", () => {
+    const migration = source("supabase/migrations/023_operational_consistency_and_security.sql");
+
+    expect(migration).toContain("revoke execute on function public.enqueue_order_print_jobs(text) from public");
+    expect(migration).toContain("revoke execute on function public.enqueue_order_print_jobs(text) from anon");
+    expect(migration).toContain("revoke execute on function public.enqueue_order_print_jobs(text) from authenticated");
+    expect(migration).toContain("grant execute on function public.enqueue_order_print_jobs(text) to service_role");
+  });
 });
