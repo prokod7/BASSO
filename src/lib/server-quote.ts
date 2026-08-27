@@ -21,7 +21,7 @@ export async function quoteCommercialTerms(input: { items: CartItem[]; channel: 
   let deliveryFee=0;
   let coverageConfigurationPending=false;
   if(input.channel==="own_delivery"){
-    const {data:zones,error}=await db.from("delivery_zones").select("name,districts,fee_cents,minimum_order_cents,active").eq("active",true);
+    const {data:zones,error}=await db.from("delivery_zones").select("name,districts,fee_cents,minimum_order_cents,active").eq("active",true).is("deleted_at",null);
     if(error)throw error;
     if(!zones?.length){
       coverageConfigurationPending=true;
