@@ -13,20 +13,19 @@ export async function GET(request: NextRequest) {
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
 
     const menu = await loadRuntimeMenu(db);
+    const activeCategories = new Set(menu.categories.filter(category => category.active).map(category => category.id));
     const allowed = (item: { active: boolean; availableChannels?: string[]; availableSchedule?: unknown }) =>
       item.active &&
       (!item.availableChannels?.length || item.availableChannels.includes(channel)) &&
       scheduleAllows(item.availableSchedule);
 
     const visibleProducts = menu.products.filter(
-      product => allowed(product) && product.stockAvailable,
+      product => allowed(product) && product.stockAvailable && activeCategories.has(product.category),
     );
     const availableBeverageIds = new Set(
       visibleProducts.filter(product => product.category === "beverages").map(product => product.id),
     );
 
-    // Combos que exigem bebida só podem aparecer se pelo menos uma das opções
-    // configuradas estiver realmente disponível no estoque para o canal atual.
     const products = visibleProducts.flatMap(product => {
       if (product.category !== "combo") return [product];
       const config = product.config && typeof product.config === "object" ? product.config : {};
@@ -44,7 +43,8 @@ export async function GET(request: NextRequest) {
       {
         channel,
         generatedAt: new Date().toISOString(),
-        flavors: menu.flavors.filter(allowed),
+        categories: menu.categories.filter(category => category.active),
+        flavors: menu.flavors.filter(flavor => allowed(flavor) && activeCategories.has(flavor.category)),
         addons: menu.addons.filter(addon => addon.active),
         products,
       },
