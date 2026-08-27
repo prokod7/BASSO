@@ -15,15 +15,16 @@ import {
 import { EnhancedPizzaBuilder } from "@/components/public/EnhancedPizzaBuilder";
 import { ComboBuilder, type ComboOffer } from "@/components/public/ComboBuilder";
 import { ProductCard } from "@/components/public/ProductCard";
-import { allProducts, catalog, categoryImages } from "@/lib/catalog";
+import { catalog, categoryImages } from "@/lib/catalog";
 import { currency, normalizeSearchText } from "@/lib/utils";
+import type { Product } from "@/types";
 
 const categoryNav = [
   ["mais-pedidas", "Mais pedidas"],
   ["tradicionais", "Tradicionais"],
   ["premium", "Premium"],
   ["doces", "Doces"],
-  ["combo", "Combo"],
+  ["combo", "Promoção"],
   ["bebidas", "Bebidas"],
   ["sobremesas", "Sobremesas"],
 ];
@@ -43,30 +44,57 @@ const pizzaSections: Array<{
   {
     id: "tradicionais",
     title: "Pizzas Tradicionais",
-    subtitle: "42 sabores clássicos. As categorias ajudam a encontrar o sabor; não limitam o meio a meio.",
+    subtitle: "Sabores clássicos disponíveis agora. As categorias ajudam a encontrar o sabor; não limitam o meio a meio.",
     scope: "traditional",
   },
   {
     id: "premium",
     title: "Pizzas Premium",
-    subtitle: "11 criações especiais. No meio a meio, você pode combinar sabores de qualquer categoria.",
+    subtitle: "Criações especiais disponíveis agora. No meio a meio, você pode combinar sabores compatíveis.",
     scope: "premium",
   },
   {
     id: "doces",
     title: "Pizzas Doces",
-    subtitle: "11 sabores doces disponíveis nos tamanhos Grande e Broto.",
+    subtitle: "Sabores doces disponíveis agora nos tamanhos Grande e Broto.",
     scope: "sweet",
   },
 ];
 
+type RuntimeProduct = {
+  id: string;
+  name: string;
+  description?: string;
+  category: string;
+  price: number;
+  active?: boolean;
+  stockTracked?: boolean;
+  image?: string;
+  variant?: string;
+  config?: ComboOffer["config"];
+};
+
+type RuntimeMenuResponse = {
+  flavors?: Array<{ id: string }>;
+  addons?: Array<{ id: string }>;
+  products?: RuntimeProduct[];
+};
+
+type StoreStatusResponse = {
+  deliveryAvailable?: boolean;
+};
+
 export default function HomePage() {
-  const [mode, setMode] = useState<"delivery" | "pickup">("delivery");
+  const [mode, setMode] = useState<"delivery" | "pickup">("pickup");
+  const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [tableNumber, setTableNumber] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [selectedPizza, setSelectedPizza] = useState<PizzaMenuEntry | null>(null);
   const [selectedCombo, setSelectedCombo] = useState<ComboOffer | null>(null);
-  const [runtimeCombos, setRuntimeCombos] = useState<ComboOffer[]>([catalog.combo as unknown as ComboOffer]);
+  const [runtimeCombos, setRuntimeCombos] = useState<ComboOffer[]>([]);
+  const [runtimeProducts, setRuntimeProducts] = useState<Product[]>([]);
+  const [menuReady, setMenuReady] = useState(false);
+  const [menuError, setMenuError] = useState("");
 
   useEffect(() => {
     const table = Number(new URLSearchParams(window.location.search).get("mesa"));
@@ -74,32 +102,100 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const channel = tableNumber ? "table_qr" : mode === "delivery" ? "own_delivery" : "pickup";
-    const controller = new AbortController();
-    fetch(`/api/menu/public?channel=${channel}`, { cache: "no-store", signal: controller.signal })
+    let mounted = true;
+    fetch("/api/store-status", { cache: "no-store" })
       .then(async response => {
-        if (!response.ok) throw new Error("Falha ao carregar combos ativos.");
-        return response.json() as Promise<{ products?: Array<{ id:string; name:string; description:string; category:string; price:number; config?:ComboOffer["config"] }> }>;
+        if (!response.ok) throw new Error("Não foi possível consultar a cobertura de entrega.");
+        return response.json() as Promise<StoreStatusResponse>;
       })
       .then(body => {
-        const combos = (body.products || [])
-          .filter(product => product.category === "combo")
-          .map(product => ({ id: product.id, name: product.name, description: product.description, price: product.price, config: product.config }));
-        if (combos.length) setRuntimeCombos(combos);
+        if (!mounted) return;
+        const available = body.deliveryAvailable === true;
+        setDeliveryAvailable(available);
+        if (!available) setMode("pickup");
       })
-      .catch(error => { if ((error as Error).name !== "AbortError") setRuntimeCombos([catalog.combo as unknown as ComboOffer]); });
+      .catch(() => {
+        if (!mounted) return;
+        setDeliveryAvailable(false);
+        setMode("pickup");
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const channel = tableNumber ? "table_qr" : mode === "delivery" ? "own_delivery" : "pickup";
+    const controller = new AbortController();
+    setMenuReady(false);
+    setMenuError("");
+
+    fetch(`/api/menu/public?channel=${channel}`, { cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error("Não foi possível carregar o cardápio disponível agora.");
+        return response.json() as Promise<RuntimeMenuResponse>;
+      })
+      .then(body => {
+        const products = body.products || [];
+        const combos = products
+          .filter(product => product.category === "combo")
+          .map(product => ({
+            id: product.id,
+            name: product.name,
+            description: product.description || "",
+            price: Number(product.price || 0),
+            config: product.config,
+          }));
+
+        const sellableProducts = products
+          .filter(product => product.category === "beverages" || product.category === "desserts")
+          .map(product => ({
+            id: product.id,
+            name: product.name,
+            description: product.description || "",
+            category: product.category as Product["category"],
+            price: Number(product.price || 0),
+            active: product.active !== false,
+            stockTracked: product.stockTracked === true,
+            image: product.image,
+            variant: product.variant,
+          }));
+
+        // PizzaBuilder usa o catálogo estático para a experiência de montagem.
+        // Atualizamos apenas a disponibilidade em memória com a resposta do servidor,
+        // mantendo nomes/imagens locais e impedindo sabores/add-ons desativados de aparecer.
+        const availableFlavorIds = new Set((body.flavors || []).map(flavor => flavor.id));
+        const availableAddonIds = new Set((body.addons || []).map(addon => addon.id));
+        for (const flavor of catalog.flavors) flavor.active = availableFlavorIds.has(flavor.id);
+        for (const addon of catalog.addons) addon.active = availableAddonIds.has(addon.id);
+
+        setRuntimeCombos(combos);
+        setRuntimeProducts(sellableProducts);
+        setMenuReady(true);
+      })
+      .catch(error => {
+        if ((error as Error).name === "AbortError") return;
+        // Falha segura: não reutiliza catálogo estático potencialmente desatualizado.
+        for (const flavor of catalog.flavors) flavor.active = false;
+        for (const addon of catalog.addons) addon.active = false;
+        setRuntimeCombos([]);
+        setRuntimeProducts([]);
+        setMenuError(error instanceof Error ? error.message : "Cardápio temporariamente indisponível.");
+        setMenuReady(true);
+      });
+
     return () => controller.abort();
   }, [mode, tableNumber]);
 
   const normalized = normalizeSearchText(query);
   const products = useMemo(
     () =>
-      allProducts.filter(
-        (product) =>
+      runtimeProducts.filter(
+        product =>
           !normalized ||
           normalizeSearchText(`${product.name} ${product.description}`).includes(normalized),
       ),
-    [normalized],
+    [normalized, runtimeProducts],
   );
 
   const comboMatches = useMemo(
@@ -110,15 +206,13 @@ export default function HomePage() {
   const matchingCount = (entry: PizzaMenuEntry) => {
     const source = flavorsForEntry(entry);
     if (!normalized) return source.length;
-    return source.filter((flavor) =>
+    return source.filter(flavor =>
       normalizeSearchText(`${flavor.name} ${flavor.description}`).includes(normalized),
     ).length;
   };
 
-  const hasPizzaResult = pizzaSections.some((section) =>
-    (["grande", "broto"] as const).some(
-      (size) => matchingCount({ scope: section.scope, size }) > 0,
-    ),
+  const hasPizzaResult = pizzaSections.some(section =>
+    (["grande", "broto"] as const).some(size => matchingCount({ scope: section.scope, size }) > 0),
   );
 
   return (
@@ -158,9 +252,7 @@ export default function HomePage() {
           <div className="self-end">
             {tableNumber ? (
               <div className="rounded-2xl border border-basso-gold/35 bg-black/45 p-4 text-center backdrop-blur sm:p-5">
-                <p className="text-xs font-black uppercase tracking-[.18em] text-basso-goldLight">
-                  Pedido pelo QR Code
-                </p>
+                <p className="text-xs font-black uppercase tracking-[.18em] text-basso-goldLight">Pedido pelo QR Code</p>
                 <p className="mt-2 font-display text-3xl font-bold">Mesa {tableNumber}</p>
                 <p className="mt-2 text-xs leading-relaxed text-white/65">
                   Monte o pedido normalmente. No checkout, identifique sua comanda ou participante. O pagamento continua sob controle da equipe.
@@ -168,9 +260,11 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                <DeliveryModeSelector mode={mode} onChange={setMode} />
+                <DeliveryModeSelector mode={mode} onChange={setMode} deliveryAvailable={deliveryAvailable} />
                 <p className="mt-2 text-center text-[11px] text-white/55 sm:text-xs">
-                  Taxa e disponibilidade são calculadas no checkout conforme a região configurada.
+                  {deliveryAvailable
+                    ? "Taxa e disponibilidade são calculadas no checkout conforme a região configurada."
+                    : "Entrega temporariamente indisponível. Retirada continua disponível."}
                 </p>
               </>
             )}
@@ -181,24 +275,17 @@ export default function HomePage() {
       <div className="sticky top-16 z-30 border-b border-black/5 bg-basso-paper/95 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 py-2.5 md:px-6 md:py-3">
           <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-black/35"
-              size={18}
-            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/35" size={18} />
             <input
               className="input h-12 pl-10"
               placeholder="Buscar sabores, bebidas e sobremesas"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={event => setQuery(event.target.value)}
             />
           </div>
           <nav className="scrollbar-none mt-2.5 flex gap-2 overflow-x-auto pb-1 md:mt-3">
             {categoryNav.map(([id, label]) => (
-              <a
-                key={id}
-                href={`#${id}`}
-                className="chip shrink-0 hover:border-basso-gold hover:text-basso-wine"
-              >
+              <a key={id} href={`#${id}`} className="chip shrink-0 hover:border-basso-gold hover:text-basso-wine">
                 {label}
               </a>
             ))}
@@ -209,35 +296,31 @@ export default function HomePage() {
       <div className="mx-auto max-w-7xl space-y-10 px-4 py-6 md:space-y-14 md:px-6 md:py-12">
         {!normalized && !tableNumber && (
           <section className="grid gap-3 md:grid-cols-2 md:gap-4">
-            <ImageCard
-              src="/assets/brand/banner-entrega.png"
-              title="Entrega"
-              text="Peça pelo cardápio próprio e acompanhe o status."
-            />
-            <ImageCard
-              src="/assets/brand/banner-retirada.png"
-              title="Retirada"
-              text="Faça seu pedido e retire quando estiver pronto."
-            />
+            {deliveryAvailable && (
+              <ImageCard src="/assets/brand/banner-entrega.png" title="Entrega" text="Peça pelo cardápio próprio e acompanhe o status." />
+            )}
+            <ImageCard src="/assets/brand/banner-retirada.png" title="Retirada" text="Faça seu pedido e retire quando estiver pronto." />
           </section>
         )}
 
-        {pizzaSections.map((section) => {
+        {menuError && (
+          <div className="surface border border-amber-200 bg-amber-50 p-5 text-center">
+            <p className="font-bold text-amber-900">Cardápio temporariamente indisponível</p>
+            <p className="mt-1 text-sm text-amber-800/70">{menuError} Tente novamente em instantes.</p>
+          </div>
+        )}
+
+        {menuReady && !menuError && pizzaSections.map(section => {
           const entries = (["grande", "broto"] as const)
-            .map((size) => ({ scope: section.scope, size }))
-            .filter((entry) => matchingCount(entry) > 0);
+            .map(size => ({ scope: section.scope, size }))
+            .filter(entry => matchingCount(entry) > 0);
 
           if (!entries.length) return null;
 
           return (
-            <MenuSection
-              key={section.id}
-              id={section.id}
-              title={section.title}
-              subtitle={section.subtitle}
-            >
+            <MenuSection key={section.id} id={section.id} title={section.title} subtitle={section.subtitle}>
               <div className="grid gap-3 md:grid-cols-2 md:gap-4">
-                {entries.map((entry) => (
+                {entries.map(entry => (
                   <PizzaMenuCard
                     key={`${entry.scope}-${entry.size}`}
                     entry={entry}
@@ -263,7 +346,7 @@ export default function HomePage() {
           <MenuSection
             id="combo"
             title="Promoção"
-            subtitle="Pizza Grande de Calabresa Tradicional ou Mozzarella + Broto Brigadeiro + Refrigerante 2 L por R$ 79,99. A Grande pode ser meio a meio entre os dois sabores."
+            subtitle="Promoções aparecem somente quando todos os componentes obrigatórios possuem opção disponível no estoque."
           >
             <div className="grid gap-4 lg:grid-cols-2">
               {comboMatches.map(combo => (
@@ -288,39 +371,31 @@ export default function HomePage() {
           </MenuSection>
         )}
 
-        {products.some((product) => product.category === "beverages") && (
+        {products.some(product => product.category === "beverages") && (
           <MenuSection
             id="bebidas"
             title="Bebidas"
-            subtitle={`${products.filter((product) => product.category === "beverages").length} bebidas disponíveis. O estoque é controlado somente para bebidas e sobremesas.`}
+            subtitle={`${products.filter(product => product.category === "beverages").length} bebida(s) disponível(is) agora.`}
           >
             <div className="grid gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
-              {products
-                .filter((product) => product.category === "beverages")
-                .map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+              {products.filter(product => product.category === "beverages").map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
             </div>
           </MenuSection>
         )}
 
-        {products.some((product) => product.category === "desserts") && (
-          <MenuSection
-            id="sobremesas"
-            title="Sobremesas"
-            subtitle="Pudim no Copo Americano, 180 ml."
-          >
+        {products.some(product => product.category === "desserts") && (
+          <MenuSection id="sobremesas" title="Sobremesas" subtitle="Sobremesas disponíveis agora.">
             <div className="grid gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
-              {products
-                .filter((product) => product.category === "desserts")
-                .map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+              {products.filter(product => product.category === "desserts").map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
             </div>
           </MenuSection>
         )}
 
-        {normalized && !hasPizzaResult && products.length === 0 && comboMatches.length === 0 && (
+        {menuReady && !menuError && normalized && !hasPizzaResult && products.length === 0 && comboMatches.length === 0 && (
           <div className="surface p-10 text-center">
             <p className="font-display text-2xl font-bold">Nenhum item encontrado</p>
             <p className="mt-2 text-sm text-black/50">Tente buscar por outro nome ou ingrediente.</p>
@@ -331,26 +406,15 @@ export default function HomePage() {
       <footer className="border-t border-white/10 bg-basso-black text-white">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 md:grid-cols-3 md:px-6">
           <div>
-            <Image
-              src="/assets/brand/logo.png"
-              alt=""
-              width={72}
-              height={72}
-              className="rounded-full"
-            />
+            <Image src="/assets/brand/logo.png" alt="" width={72} height={72} className="rounded-full" />
             <p className="mt-3 font-display text-xl font-bold">La Forneria Basso</p>
             <p className="mt-2 text-sm text-white/55">Pizzaria artesanal • massa de longa fermentação.</p>
           </div>
           <div>
             <p className="font-bold">Contato</p>
             <p className="mt-3 text-sm text-white/60">(11) 97235-6751</p>
-            <p className="mt-1 text-sm text-white/60">
-              Rua do Progresso, 407, Centro, Rio Grande da Serra/SP
-            </p>
-            <a
-              href="https://instagram.com/laforneriabasso"
-              className="mt-3 inline-flex items-center gap-2 text-sm text-basso-goldLight"
-            >
+            <p className="mt-1 text-sm text-white/60">Rua do Progresso, 407, Centro, Rio Grande da Serra/SP</p>
+            <a href="https://instagram.com/laforneriabasso" className="mt-3 inline-flex items-center gap-2 text-sm text-basso-goldLight">
               <Instagram size={16} /> @laforneriabasso
             </a>
           </div>
@@ -365,11 +429,7 @@ export default function HomePage() {
         </div>
       </footer>
 
-      <EnhancedPizzaBuilder
-        entry={selectedPizza}
-        open={Boolean(selectedPizza)}
-        onClose={() => setSelectedPizza(null)}
-      />
+      <EnhancedPizzaBuilder entry={selectedPizza} open={Boolean(selectedPizza)} onClose={() => setSelectedPizza(null)} />
       <ComboBuilder open={Boolean(selectedCombo)} onClose={() => setSelectedCombo(null)} combo={selectedCombo || undefined} />
       <CartDrawer />
     </main>
