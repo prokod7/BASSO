@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Check, ChevronLeft, KeyRound, MessageCircle, PackageCheck, RefreshCw, ShieldCheck } from "lucide-react";
+import { Check, ChevronLeft, KeyRound, MapPin, MessageCircle, Navigation, PackageCheck, RefreshCw, ShieldCheck } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Suspense, useEffect, useState } from "react";
@@ -65,7 +65,9 @@ function OrderTrackingContent() {
         <div className="p-6 text-center"><p className="text-sm text-black/55">Informe este código ao motoboy somente quando o pedido chegar até você.</p><p className="mt-4 font-mono text-4xl font-black tracking-[.24em] text-basso-wine">{order.deliveryCode}</p><div className="mx-auto mt-4 flex max-w-md items-start gap-2 rounded-xl bg-basso-paper p-3 text-left text-xs text-black/55"><ShieldCheck className="mt-0.5 shrink-0 text-basso-wine" size={16} /><p>O motoboy não recebe este código pelo sistema. A entrega só pode ser concluída depois da sua confirmação.</p></div></div>
       </section>}
 
-      {order.status === "out_for_delivery" && <section className="surface overflow-hidden p-3"><OperationalMap points={typeof order.address?.latitude === "number" && typeof order.address?.longitude === "number" ? [{ id: `destination-${order.id}`, latitude: order.address.latitude, longitude: order.address.longitude, label: `Destino do pedido #${order.number}`, kind: "destination" }] : []} className="h-72" /><div className="p-3 text-xs text-black/50">A posição do motoboy é disponibilizada pelo link temporário de rastreio durante a rota. O acesso é encerrado ao concluir a entrega.</div></section>}
+      {order.status === "out_for_delivery" && order.trackingToken && <Link href={`/acompanhar/${encodeURIComponent(order.trackingToken)}`} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-basso-wine px-5 py-4 text-center font-bold text-white shadow-sm transition hover:brightness-110"><Navigation size={20} />Acompanhar motoboy no mapa</Link>}
+
+      {order.status === "out_for_delivery" && <section className="surface overflow-hidden p-3"><OperationalMap points={typeof order.address?.latitude === "number" && typeof order.address?.longitude === "number" ? [{ id: `destination-${order.id}`, latitude: order.address.latitude, longitude: order.address.longitude, label: `Destino do pedido #${order.number}`, kind: "destination" }] : []} className="h-72" /><div className="flex items-start gap-2 p-3 text-xs text-black/50"><MapPin className="mt-0.5 shrink-0" size={15} /><p>O botão acima abre o rastreamento temporário com a posição do motoboy. O acesso é encerrado assim que a entrega for confirmada.</p></div></section>}
 
       <section className="surface p-5"><h2 className="font-display text-xl font-bold">Resumo</h2><div className="mt-4 space-y-3">{order.items.map(item => <div key={item.id} className="flex justify-between gap-4 text-sm"><span><strong>{item.quantity}×</strong> {item.name}</span><strong>{currency(item.unitPrice * item.quantity)}</strong></div>)}</div><div className="mt-4 flex justify-between border-t pt-4"><strong>Total</strong><strong className="text-lg text-basso-wine">{currency(order.total)}</strong></div></section>
 
