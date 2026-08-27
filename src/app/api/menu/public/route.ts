@@ -5,17 +5,6 @@ import type { OrderChannel } from "@/types";
 
 const publicChannels: OrderChannel[] = ["own_delivery", "pickup", "table_qr"];
 
-type RuntimeProduct = {
-  id: string;
-  category?: string;
-  active?: boolean;
-  availableChannels?: string[];
-  availableSchedule?: unknown;
-  stockAvailable?: boolean;
-  config?: Record<string, unknown>;
-  [key: string]: unknown;
-};
-
 export async function GET(request: NextRequest) {
   try {
     const rawChannel = request.nextUrl.searchParams.get("channel") as OrderChannel | null;
@@ -24,12 +13,12 @@ export async function GET(request: NextRequest) {
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
 
     const menu = await loadRuntimeMenu(db);
-    const allowed = (item: any) =>
+    const allowed = (item: { active: boolean; availableChannels?: string[]; availableSchedule?: unknown }) =>
       item.active &&
       (!item.availableChannels?.length || item.availableChannels.includes(channel)) &&
       scheduleAllows(item.availableSchedule);
 
-    const visibleProducts = (menu.products as RuntimeProduct[]).filter(
+    const visibleProducts = menu.products.filter(
       product => allowed(product) && product.stockAvailable,
     );
     const availableBeverageIds = new Set(
