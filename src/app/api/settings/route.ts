@@ -26,7 +26,7 @@ export async function GET() {
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const [settingsResult, zonesResult] = await Promise.all([
       db.from("business_settings").select("*").order("created_at").limit(1).single(),
-      db.from("delivery_zones").select("*").order("name")
+      db.from("delivery_zones").select("*").is("deleted_at", null).order("name")
     ]);
     if (settingsResult.error) throw settingsResult.error;
     if (zonesResult.error) throw zonesResult.error;
