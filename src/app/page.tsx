@@ -8,11 +8,11 @@ import { PublicHeader, DeliveryModeSelector } from "@/components/public/PublicHe
 import { CartDrawer } from "@/components/public/CartDrawer";
 import {
   flavorsForEntry,
-  PizzaBuilder,
   PizzaMenuCard,
   type PizzaMenuEntry,
   type PizzaMenuScope,
 } from "@/components/public/PizzaBuilder";
+import { EnhancedPizzaBuilder } from "@/components/public/EnhancedPizzaBuilder";
 import { ComboBuilder, type ComboOffer } from "@/components/public/ComboBuilder";
 import { ProductCard } from "@/components/public/ProductCard";
 import { allProducts, catalog, categoryImages } from "@/lib/catalog";
@@ -251,7 +251,7 @@ export default function HomePage() {
                   <strong>Base adicional: Creme de Avelã Zero</strong>
                   <span className="ml-2 text-basso-wine">{currency(2500)}</span>
                   <p className="mt-1 text-xs text-black/55">
-                    Opção indicada no cardápio para pessoas com restrições alimentares e para quem faz dieta.
+                    A base pode ser selecionada ao finalizar a pizza. Pizzas doces vão sem corte por padrão para evitar vazamento do recheio, mas o cliente pode pedir para cortar.
                   </p>
                 </div>
               )}
@@ -262,8 +262,8 @@ export default function HomePage() {
         {comboMatches.length > 0 && (
           <MenuSection
             id="combo"
-            title="Combos"
-            subtitle="Combos disponíveis hoje. A pizza Grande pode ser inteira ou meio a meio, inclusive com sabores de categorias diferentes."
+            title="Promoção"
+            subtitle="Pizza Grande de Calabresa Tradicional ou Mozzarella + Broto Brigadeiro + Refrigerante 2 L por R$ 79,99. A Grande pode ser meio a meio entre os dois sabores."
           >
             <div className="grid gap-4 lg:grid-cols-2">
               {comboMatches.map(combo => (
@@ -272,7 +272,7 @@ export default function HomePage() {
                     <Image src={categoryImages.combo} alt={combo.name} fill className="object-cover" />
                   </div>
                   <div className="flex flex-col justify-center p-4 sm:p-5">
-                    <p className="text-xs font-black uppercase tracking-[.18em] text-basso-gold">Combo</p>
+                    <p className="text-xs font-black uppercase tracking-[.18em] text-basso-gold">Promoção</p>
                     <h3 className="mt-2 font-display text-xl font-bold sm:text-2xl">{combo.name}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-black/55">{combo.description}</p>
                     <div className="mt-4 flex items-center justify-between gap-4 sm:mt-5">
@@ -365,7 +365,7 @@ export default function HomePage() {
         </div>
       </footer>
 
-      <PizzaBuilder
+      <EnhancedPizzaBuilder
         entry={selectedPizza}
         open={Boolean(selectedPizza)}
         onClose={() => setSelectedPizza(null)}
