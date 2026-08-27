@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { parseIncomingOrder } from "@/lib/server-orders";
 import { quoteCommercialTerms } from "@/lib/server-quote";
 import { requireOperationalRole } from "@/lib/authz";
+import { storeStatus } from "@/lib/opening-hours";
 import { createHash, randomBytes } from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -19,12 +20,46 @@ export async function POST(request: NextRequest) {
     if (!db) return NextResponse.json({ error: "Supabase não configurado no servidor." }, { status: 503 });
     const { data: existing } = await db.from("idempotency_keys").select("response_body,status_code").eq("key", key).maybeSingle();
     if (existing) return NextResponse.json(existing.response_body, { status: existing.status_code || 200 });
-    const { data: runtime, error: runtimeError } = await db.from("store_runtime_status").select("operational_status,accepting_orders,pause_reason").eq("id", true).maybeSingle();
+
+    const { data: runtime, error: runtimeError } = await db
+      .from("store_runtime_status")
+      .select("operational_status,accepting_orders,pause_reason,manual_override")
+      .eq("id", true)
+      .maybeSingle();
     if (runtimeError) throw runtimeError;
-    if (runtime && !runtime.accepting_orders) {
-      const detail = runtime.operational_status === "paused" ? (runtime.pause_reason || "Pedidos temporariamente pausados.") : "A loja está fechada no momento.";
-      return NextResponse.json({ error: detail, operationalStatus: runtime.operational_status }, { status: 409 });
+
+    let effectiveStatus = runtime?.operational_status || "closed";
+    let effectiveAccepting = Boolean(runtime?.accepting_orders);
+
+    // Quando não existe override manual, a agenda oficial é autoritativa também
+    // na criação do pedido. Assim uma chamada direta à API não depende de o
+    // navegador ter consultado /api/store-status antes.
+    if (runtime && runtime.manual_override === false) {
+      const schedule = storeStatus();
+      effectiveStatus = schedule.open ? "open" : "closed";
+      effectiveAccepting = schedule.open;
+
+      if (runtime.operational_status !== effectiveStatus || runtime.accepting_orders !== effectiveAccepting) {
+        await db
+          .from("store_runtime_status")
+          .update({
+            operational_status: effectiveStatus,
+            accepting_orders: effectiveAccepting,
+            pause_reason: null,
+            temporary_until: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", true);
+      }
     }
+
+    if (!effectiveAccepting) {
+      const detail = effectiveStatus === "paused"
+        ? (runtime?.pause_reason || "Pedidos temporariamente pausados.")
+        : "A loja está fechada no momento.";
+      return NextResponse.json({ error: detail, operationalStatus: effectiveStatus }, { status: 409 });
+    }
+
     const quote = await quoteCommercialTerms({ items: supplied.items, channel: supplied.channel, couponCode: supplied.couponCode, district: supplied.address?.district });
     if (supplied.channel === "own_delivery" && quote.coverageConfigurationPending) {
       return NextResponse.json({ error: "A entrega está temporariamente indisponível porque os bairros e taxas ainda não foram configurados. Escolha retirada ou fale com a pizzaria." }, { status: 409 });
