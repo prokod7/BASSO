@@ -23,12 +23,13 @@ const flavors: Flavor[] = source.flavors.map((flavor) => flavor.id === "salame" 
   ingredients: flavor.ingredients.filter((ingredient) => ingredient.toLocaleLowerCase("pt-BR") !== "salsa"),
   description: "Massa de longa fermentação, passata di pomodoro, mozzarella, salame e azeitonas pretas.",
 } : flavor);
-const allFlavorIds = flavors.filter((flavor) => flavor.active).map((flavor) => flavor.id);
 const combo = {
   ...source.combo,
   options: {
     ...source.combo.options,
-    grandeFlavors: allFlavorIds,
+    // A promoção oficial aceita somente Calabresa Tradicional e Mozzarella.
+    // Mantemos os IDs do catálogo mestre; não ampliar para todos os sabores ativos.
+    grandeFlavors: [...source.combo.options.grandeFlavors],
     masses: ["traditional", "integral"],
     allowHalfHalf: true,
     allowAddonPlacement: true,
