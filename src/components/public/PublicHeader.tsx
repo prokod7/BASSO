@@ -21,15 +21,18 @@ export function PublicHeader() {
         const response = await fetch("/api/store-status", { cache: "no-store" });
         const body = await response.json();
         if (!response.ok || !mounted) return;
+
         const open = Boolean(body.acceptingOrders && body.operationalStatus === "open");
-        setStatus({
-          open,
-          label: open
-            ? schedule.label
-            : body.operationalStatus === "paused"
-              ? body.pauseReason || "Pedidos pausados"
-              : schedule.label,
-        });
+        let label = schedule.label;
+        if (open) {
+          label = schedule.open ? schedule.label : "Pedidos abertos";
+        } else if (body.operationalStatus === "paused") {
+          label = body.pauseReason || "Pedidos pausados";
+        } else if (schedule.open) {
+          label = body.publicMessage || "Loja fechada no momento";
+        }
+
+        setStatus({ open, label });
       } catch {
         // Mantém o horário local conhecido quando a rede falhar.
       }
@@ -107,16 +110,21 @@ export function PublicHeader() {
 export function DeliveryModeSelector({
   mode,
   onChange,
+  deliveryAvailable = true,
 }: {
   mode: "delivery" | "pickup";
   onChange: (value: "delivery" | "pickup") => void;
+  deliveryAvailable?: boolean;
 }) {
   return (
     <div className="grid grid-cols-2 gap-1 rounded-2xl border border-black/5 bg-white p-1 shadow-sm sm:gap-2 sm:p-1.5">
       <button
         type="button"
-        className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition ${mode === "delivery" ? "bg-basso-wine text-white shadow" : "text-black/55 hover:bg-black/5"}`}
-        onClick={() => onChange("delivery")}
+        disabled={!deliveryAvailable}
+        aria-disabled={!deliveryAvailable}
+        title={deliveryAvailable ? "Receber por entrega" : "Entrega temporariamente indisponível"}
+        className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${mode === "delivery" && deliveryAvailable ? "bg-basso-wine text-white shadow" : "text-black/55 hover:bg-black/5"}`}
+        onClick={() => deliveryAvailable && onChange("delivery")}
       >
         <MapPin size={17} /> Entrega
       </button>
