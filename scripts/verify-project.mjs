@@ -55,7 +55,7 @@ check("Validação explícita contra bordas", /Bordas não existem neste sistema
 
 const sqlFiles = fs.readdirSync(path.join(root,"supabase/migrations")).filter(x => x.endsWith(".sql")).sort();
 const sql = sqlFiles.map(x => read(`supabase/migrations/${x}`)).join("\n");
-check("Migrações SQL 001–024 presentes", sqlFiles.length >= 24 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("024")), sqlFiles.join(", "));
+check("Migrações SQL 001–026 presentes", sqlFiles.length >= 26 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("025")) && sqlFiles.some(x => x.startsWith("026")), sqlFiles.join(", "));
 check("RLS habilitado", /enable row level security/i.test(sql));
 check("Auditoria imutável", /audit_no_update/i.test(sql));
 check("Idempotência persistente", /idempotency_keys/i.test(sql));
@@ -121,10 +121,36 @@ const browserPrintMode = read("src/components/internal/BrowserPrintMode.tsx");
 const browserPrintPage = read("src/app/imprimir/[id]/page.tsx");
 check("Impressão manual usa diálogo padrão do navegador", /window\.open\(printUrl/.test(browserPrintMode) && /window\.print\(\)/.test(browserPrintPage));
 check("Comprovante térmico possui layout de 80 mm", /80mm/.test(browserPrintPage) && /@page/.test(browserPrintPage));
+check("Comanda de entrega replica estrutura operacional", /CNPJ: 62\.332\.415\/0001-10/.test(browserPrintPage) && /Qt\. Descrição/.test(browserPrintPage) && /Forma de pagamento/.test(browserPrintPage) && /RETIRADA DO MOTOBOY/.test(browserPrintPage));
+check("Comanda da cozinha é separada e sem financeiro", /printType === "cozinha"/.test(browserPrintPage) && /CÓDIGO DE RETIRADA/.test(browserPrintPage) && /safeNote/.test(browserPrintPage));
+check("Comanda imprime QR de retirada", /QRCodeSVG/.test(browserPrintPage) && /pickupUrl/.test(browserPrintPage));
 check("Print Bridge permanece opcional", exists("bridge/print-bridge.mjs") && exists("bridge/config.example.json"));
 
+const mu15Files = [
+  "supabase/migrations/025_delivery_handoff_tracking_and_print.sql",
+  "supabase/migrations/026_customer_tracking_link.sql",
+  "src/app/api/delivery/verification/[id]/route.ts",
+  "src/app/api/delivery/verification/[id]/pickup/route.ts",
+  "src/app/api/delivery/verification/[id]/complete/route.ts",
+];
+check("MU15 de rastreio e validação presente", mu15Files.every(exists), mu15Files.filter(file => !exists(file)).join(", "));
+const pickupApi = read("src/app/api/delivery/verification/[id]/pickup/route.ts");
+const completeApi = read("src/app/api/delivery/verification/[id]/complete/route.ts");
+const driverPwa = read("src/app/painel/motoboy/page.tsx");
+const customerOrder = read("src/app/pedido/[id]/page.tsx");
+const deliveryAssign = read("src/app/api/delivery/assign/route.ts");
+const statusApi = read("src/app/api/orders/[id]/status/route.ts");
+check("Retirada exige QR ou código e motoboy atribuído", /verify_delivery_pickup/.test(sql) && /pickupToken/.test(driverPwa) && /pickupCode/.test(driverPwa) && /verify_delivery_pickup/.test(pickupApi));
+check("Entrega exige código privado do cliente", /confirm_delivery_with_code/.test(sql) && /deliveryCode/.test(customerOrder) && /confirm_delivery_with_code/.test(completeApi));
+check("Motoboy não pode pular validações", /Valide a retirada pelo QR Code/.test(statusApi) && /código de confirmação do cliente/.test(statusApi));
+check("Tentativas inválidas possuem bloqueio", /pickup_attempts\+1>=5/.test(sql) && /delivery_attempts\+1>=5/.test(sql) && /interval '5 minutes'/.test(sql));
+check("Token de rastreio é preservado fora do navegador", /token_value/.test(sql) && /token_value: token/.test(deliveryAssign));
+check("Tracking token não tem SELECT direto para browser", /revoke all on table public\.tracking_tokens from anon, authenticated/i.test(sql));
+check("Pagamento na entrega passa pela transação oficial", /record_order_payment_transaction/.test(completeApi) && /paymentReceived/.test(driverPwa));
+check("PWA mantém GPS durante entrega", /watchPosition/.test(driverPwa) && /api\/drivers\/\$\{driverId\}\/location/.test(driverPwa));
+
 const diagnosticsSource = read("src/app/api/system/diagnostics/route.ts");
-check("Diagnóstico alinhado ao MU14 / migration 24", /const REQUIRED_MIGRATION = 24/.test(diagnosticsSource) && /const APP_VERSION = "MU14"/.test(diagnosticsSource));
+check("Diagnóstico alinhado ao MU15 / migration 26", /const REQUIRED_MIGRATION = 26/.test(diagnosticsSource) && /const APP_VERSION = "MU15"/.test(diagnosticsSource));
 check("Diagnóstico valida Print Bridge real", /heartbeatFresh/.test(diagnosticsSource) && /bridgeOnline/.test(diagnosticsSource));
 
 check("Controle de concorrência de pedidos", /order_edit_locks/.test(sql) && /ORDER_VERSION_CONFLICT/.test(read("src/app/api/orders/[id]/status/route.ts")));
