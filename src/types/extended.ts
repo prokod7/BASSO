@@ -1,4 +1,4 @@
-import type { StoreRuntimeStatus } from "./index";
+import type { ChecklistPhase, StoreRuntimeStatus } from "./index";
 
 export type ChecklistItemStatus = "pending" | "done" | "skipped" | "blocked";
 export type OperationTaskStatus = "open" | "in_progress" | "blocked" | "completed" | "cancelled";
@@ -6,7 +6,6 @@ export type ApprovalStatus = "pending" | "approved" | "rejected" | "expired" | "
 export type NotificationPriority = "low" | "normal" | "high" | "urgent";
 export type SystemHealthStatus = "operational" | "warning" | "error" | "unknown";
 export type ExpeditionStatus = "pending" | "checking" | "approved" | "returned";
-export type ChecklistPhase = "opening" | "closing";
 
 export interface ExtendedStoreRuntimeStatus extends StoreRuntimeStatus {
   activeChannels: Array<"own_delivery" | "pickup" | "counter" | "dine_in" | "table_qr">;
