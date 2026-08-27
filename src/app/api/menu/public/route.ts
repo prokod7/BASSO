@@ -5,22 +5,66 @@ import type { OrderChannel } from "@/types";
 
 const publicChannels: OrderChannel[] = ["own_delivery", "pickup", "table_qr"];
 
+type RuntimeProduct = {
+  id: string;
+  category?: string;
+  active?: boolean;
+  availableChannels?: string[];
+  availableSchedule?: unknown;
+  stockAvailable?: boolean;
+  config?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
 export async function GET(request: NextRequest) {
   try {
     const rawChannel = request.nextUrl.searchParams.get("channel") as OrderChannel | null;
     const channel = rawChannel && publicChannels.includes(rawChannel) ? rawChannel : "own_delivery";
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
+
     const menu = await loadRuntimeMenu(db);
-    const allowed = (item: any) => item.active && (!item.availableChannels?.length || item.availableChannels.includes(channel)) && scheduleAllows(item.availableSchedule);
-    return NextResponse.json({
-      channel,
-      generatedAt: new Date().toISOString(),
-      flavors: menu.flavors.filter(allowed),
-      addons: menu.addons.filter(addon => addon.active),
-      products: menu.products.filter(product => allowed(product) && product.stockAvailable)
-    }, { headers: { "Cache-Control": "public, max-age=30, stale-while-revalidate=60" } });
+    const allowed = (item: any) =>
+      item.active &&
+      (!item.availableChannels?.length || item.availableChannels.includes(channel)) &&
+      scheduleAllows(item.availableSchedule);
+
+    const visibleProducts = (menu.products as RuntimeProduct[]).filter(
+      product => allowed(product) && product.stockAvailable,
+    );
+    const availableBeverageIds = new Set(
+      visibleProducts.filter(product => product.category === "beverages").map(product => product.id),
+    );
+
+    // Combos que exigem bebida só podem aparecer se pelo menos uma das opções
+    // configuradas estiver realmente disponível no estoque para o canal atual.
+    const products = visibleProducts.flatMap(product => {
+      if (product.category !== "combo") return [product];
+      const config = product.config && typeof product.config === "object" ? product.config : {};
+      const configuredBeverages = Array.isArray(config.beverages)
+        ? config.beverages.filter((id): id is string => typeof id === "string")
+        : [];
+      if (!configuredBeverages.length) return [product];
+
+      const beverages = configuredBeverages.filter(id => availableBeverageIds.has(id));
+      if (!beverages.length) return [];
+      return [{ ...product, config: { ...config, beverages } }];
+    });
+
+    return NextResponse.json(
+      {
+        channel,
+        generatedAt: new Date().toISOString(),
+        flavors: menu.flavors.filter(allowed),
+        addons: menu.addons.filter(addon => addon.active),
+        products,
+      },
+      { headers: { "Cache-Control": "public, max-age=15, stale-while-revalidate=30" } },
+    );
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao carregar cardápio." }, { status: 400 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Falha ao carregar cardápio." },
+      { status: 400 },
+    );
   }
 }
