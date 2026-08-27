@@ -31,9 +31,6 @@ export async function POST(request: NextRequest) {
     let effectiveStatus = runtime?.operational_status || "closed";
     let effectiveAccepting = Boolean(runtime?.accepting_orders);
 
-    // Quando não existe override manual, a agenda oficial é autoritativa também
-    // na criação do pedido. Assim uma chamada direta à API não depende de o
-    // navegador ter consultado /api/store-status antes.
     if (runtime && runtime.manual_override === false) {
       const schedule = storeStatus();
       effectiveStatus = schedule.open ? "open" : "closed";
@@ -60,7 +57,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: detail, operationalStatus: effectiveStatus }, { status: 409 });
     }
 
-    const quote = await quoteCommercialTerms({ items: supplied.items, channel: supplied.channel, couponCode: supplied.couponCode, district: supplied.address?.district });
+    const quote = await quoteCommercialTerms({
+      items: supplied.items,
+      channel: supplied.channel,
+      couponCode: supplied.couponCode,
+      city: supplied.address?.city,
+      district: supplied.address?.district,
+    });
     if (supplied.channel === "own_delivery" && quote.coverageConfigurationPending) {
       return NextResponse.json({ error: "A entrega está temporariamente indisponível porque os bairros e taxas ainda não foram configurados. Escolha retirada ou fale com a pizzaria." }, { status: 409 });
     }
