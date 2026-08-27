@@ -66,7 +66,7 @@ check("Validação explícita contra bordas", /Bordas não existem neste sistema
 
 const sqlFiles = fs.readdirSync(path.join(root,"supabase/migrations")).filter(x => x.endsWith(".sql")).sort();
 const sql = sqlFiles.map(x => read(`supabase/migrations/${x}`)).join("\n");
-check("Migrações SQL 001–019 presentes", sqlFiles.length >= 19 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("019")), sqlFiles.join(", "));
+check("Migrações SQL 001–023 presentes", sqlFiles.length >= 23 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("023")), sqlFiles.join(", "));
 check("RLS habilitado", /enable row level security/i.test(sql));
 check("Auditoria imutável", /audit_no_update/i.test(sql));
 check("Chaves de idempotência", /idempotency_keys/i.test(sql));
@@ -228,7 +228,7 @@ check("KDS, salão e motoboy usam mutações server-first", /api\/orders\/\$\{or
 check("Checklist da expedição persiste e é validado no banco", /expedition_checklist/.test(productionMigration) && /save_order_expedition_checklist/.test(productionMigration) && /set_order_expedition_status_v2/.test(productionMigration) && /action: "checklist"/.test(expeditionFinal));
 
 const diagnosticsSource = read("src/app/api/system/diagnostics/route.ts");
-check("App e diagnóstico alinhados na versão 9 / migration 19", JSON.parse(read("package.json")).version === "9.0.0" && /requiredMigration:\s*19/.test(diagnosticsSource) && /appVersion:\s*"9\.0\.0"/.test(diagnosticsSource));
+check("App e diagnóstico alinhados no MU13 / migration 23", JSON.parse(read("package.json")).version === "9.0.0" && /const REQUIRED_MIGRATION = 23/.test(diagnosticsSource) && /const APP_VERSION = "MU13"/.test(diagnosticsSource));
 
 const finalHomologationFiles = [
   "supabase/migrations/019_final_homologation.sql",
