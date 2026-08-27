@@ -1,6 +1,6 @@
 import { catalog } from "@/lib/catalog";
 import { addonPrice, comboTotal, pizzaTotal, validatePizzaSelection } from "@/lib/pricing";
-import type { Addon, CartItem, Flavor, OrderChannel, PizzaSelection, ComboSelection } from "@/types";
+import type { Addon, CartItem, Flavor, MenuCategory, OrderChannel, PizzaSelection, ComboSelection } from "@/types";
 
 const OFFICIAL_PROMO_FLAVORS = ["calabresa-tradicional", "mozzarella"] as const;
 
@@ -17,7 +17,7 @@ interface RuntimeProduct {
   id: string;
   name: string;
   description: string;
-  category: "beverages" | "desserts" | "combo";
+  category: string;
   price: number;
   active: boolean;
   stockTracked: boolean;
@@ -31,6 +31,7 @@ interface RuntimeProduct {
 }
 
 export interface RuntimeMenu {
+  categories: MenuCategory[];
   flavors: Flavor[];
   addons: Addon[];
   products: RuntimeProduct[];
@@ -64,16 +65,25 @@ export function scheduleAllows(schedule: unknown, date = new Date()): boolean {
 }
 
 export async function loadRuntimeMenu(db: any): Promise<RuntimeMenu> {
-  const [flavorsResult, addonsResult, productsResult, inventoryResult] = await Promise.all([
+  const [categoriesResult, flavorsResult, addonsResult, productsResult, inventoryResult] = await Promise.all([
+    db.from("categories").select("id,name,kind,sort_order,active,image_url").is("deleted_at", null).order("sort_order").order("name"),
     db.from("pizza_flavors").select("id,name,category,price_grande_cents,price_broto_cents,ingredients,description,featured,active,available_channels,available_schedule,allergens"),
     db.from("addons").select("id,name,price_cents,max_quantity,active"),
-    db.from("products").select("id,name,category,description,variant,price_cents,image_url,allergens,stock_tracked,active,available_channels,available_schedule,config"),
+    db.from("products").select("id,name,category,description,variant,price_cents,image_url,allergens,stock_tracked,active,available_channels,available_schedule,config").is("deleted_at", null),
     db.from("inventory_items").select("product_id,quantity,allow_negative")
   ]);
-  const failed = [flavorsResult, addonsResult, productsResult, inventoryResult].find(result => result.error);
+  const failed = [categoriesResult, flavorsResult, addonsResult, productsResult, inventoryResult].find(result => result.error);
   if (failed?.error) throw failed.error;
   const inventory = new Map((inventoryResult.data || []).map((row: any) => [row.product_id, row]));
   return {
+    categories: (categoriesResult.data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      kind: row.kind,
+      sortOrder: Number(row.sort_order || 0),
+      active: Boolean(row.active),
+      image: row.image_url || undefined,
+    })),
     flavors: (flavorsResult.data || []).map((row: any) => ({
       id: row.id,
       name: row.name,
@@ -103,9 +113,10 @@ function channelAvailable(item: { active: boolean; availableChannels?: OrderChan
 
 export async function priceItemsWithRuntime(db: any, items: CartItem[], channel: OrderChannel, allowReward = false): Promise<{ items: CartItem[]; subtotal: number; menu: RuntimeMenu }> {
   const menu = await loadRuntimeMenu(db);
-  const flavors = menu.flavors.map(flavor => ({ ...flavor, active: channelAvailable(flavor as any, channel) }));
+  const activeCategories = new Set(menu.categories.filter(category => category.active).map(category => category.id));
+  const flavors = menu.flavors.map(flavor => ({ ...flavor, active: channelAvailable(flavor as any, channel) && activeCategories.has(flavor.category) }));
   const addons = menu.addons;
-  const products = menu.products.map(product => ({ ...product, active: channelAvailable(product, channel) && product.stockAvailable }));
+  const products = menu.products.map(product => ({ ...product, active: channelAvailable(product, channel) && product.stockAvailable && activeCategories.has(product.category) }));
   const normalized: CartItem[] = [];
   let subtotal = 0;
 
