@@ -14,54 +14,21 @@ import {
 } from "@/lib/order-detail";
 
 const addressSchema = z.object({
-  cep: z.string().max(12),
-  street: z.string().min(2).max(180),
-  number: z.string().min(1).max(30),
-  district: z.string().min(2).max(120),
-  complement: z.string().max(160).optional(),
-  reference: z.string().max(200).optional(),
-  city: z.string().min(2).max(120),
-  state: z.string().length(2),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
+  cep: z.string().max(12), street: z.string().min(2).max(180), number: z.string().min(1).max(30), district: z.string().min(2).max(120),
+  complement: z.string().max(160).optional(), reference: z.string().max(200).optional(), city: z.string().min(2).max(120), state: z.string().length(2),
+  latitude: z.number().optional(), longitude: z.number().optional(),
 });
 
 const patchSchema = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("update_order"),
-    customerName: z.string().trim().min(2).max(120).optional(),
-    customerPhone: z.string().max(20).optional(),
-    address: addressSchema.nullable().optional(),
-    notes: z.string().max(500).nullable().optional(),
-    internalSummary: z.string().max(1000).nullable().optional(),
-    priority: z.enum(["normal", "high", "urgent"]).optional(),
-    estimatedReadyAt: z.string().datetime().nullable().optional(),
-    discount: z.number().int().nonnegative().optional(),
-    deliveryFee: z.number().int().nonnegative().optional(),
-    reason: z.string().trim().min(2).max(500),
-  }),
+  z.object({ action: z.literal("update_order"), customerName: z.string().trim().min(2).max(120).optional(), customerPhone: z.string().max(20).optional(), address: addressSchema.nullable().optional(), notes: z.string().max(500).nullable().optional(), internalSummary: z.string().max(1000).nullable().optional(), priority: z.enum(["normal", "high", "urgent"]).optional(), estimatedReadyAt: z.string().datetime().nullable().optional(), discount: z.number().int().nonnegative().optional(), deliveryFee: z.number().int().nonnegative().optional(), reason: z.string().trim().min(2).max(500) }),
   z.object({ action: z.literal("mark_viewed") }),
-  z.object({
-    action: z.literal("add_note"),
-    body: z.string().trim().min(1).max(1000),
-    pinned: z.boolean().default(false),
-  }),
-  z.object({
-    action: z.literal("add_incident"),
-    category: z.enum(["customer", "address", "payment", "production", "delivery", "quality", "other"]),
-    severity: z.enum(["low", "medium", "high", "critical"]),
-    title: z.string().trim().min(2).max(160),
-    description: z.string().max(2000).default(""),
-  }),
-  z.object({
-    action: z.literal("resolve_incident"),
-    incidentId: z.string().uuid(),
-    resolution: z.string().trim().min(2).max(2000),
-  }),
+  z.object({ action: z.literal("add_note"), body: z.string().trim().min(1).max(1000), pinned: z.boolean().default(false) }),
+  z.object({ action: z.literal("add_incident"), category: z.enum(["customer", "address", "payment", "production", "delivery", "quality", "other"]), severity: z.enum(["low", "medium", "high", "critical"]), title: z.string().trim().min(2).max(160), description: z.string().max(2000).default("") }),
+  z.object({ action: z.literal("resolve_incident"), incidentId: z.string().uuid(), resolution: z.string().trim().min(2).max(2000) }),
 ]);
 
 async function loadDetail(db: NonNullable<ReturnType<typeof createAdminClient>>, id: string) {
-  const [orderR, itemsR, historyR, paymentsR, notesR, incidentsR, communicationsR, printR] = await Promise.all([
+  const [orderR, itemsR, historyR, paymentsR, notesR, incidentsR, communicationsR, printR, trackingR] = await Promise.all([
     db.from("orders").select("*").eq("id", id).is("deleted_at", null).single(),
     db.from("order_items").select("*").eq("order_id", id).order("created_at"),
     db.from("order_status_history").select("*").eq("order_id", id).order("created_at", { ascending: false }),
@@ -70,8 +37,9 @@ async function loadDetail(db: NonNullable<ReturnType<typeof createAdminClient>>,
     db.from("order_incidents").select("*").eq("order_id", id).order("created_at", { ascending: false }),
     db.from("order_communication_logs").select("*").eq("order_id", id).order("created_at", { ascending: false }),
     db.from("print_jobs").select("*").eq("order_id", id).order("created_at", { ascending: false }),
+    db.from("tracking_tokens").select("token_value,expires_at,revoked_at,customer_visible").eq("order_id", id).maybeSingle(),
   ]);
-  const failed = [orderR, itemsR, historyR, paymentsR, notesR, incidentsR, communicationsR, printR].find((result) => result.error);
+  const failed = [orderR, itemsR, historyR, paymentsR, notesR, incidentsR, communicationsR, printR, trackingR].find(result => result.error);
   if (failed?.error) throw failed.error;
   const detail = mapOrderRow(orderR.data as Record<string, any>, (itemsR.data || []).map(mapManagedItem));
   detail.timeline = (historyR.data || []).map(mapTimeline);
@@ -80,8 +48,12 @@ async function loadDetail(db: NonNullable<ReturnType<typeof createAdminClient>>,
   detail.incidents = (incidentsR.data || []).map(mapIncident);
   detail.communications = (communicationsR.data || []).map(mapCommunication);
   detail.printJobs = (printR.data || []).map(mapPrintJob);
-  detail.paidAmount = detail.payments.filter((payment) => payment.status === "paid").reduce((sum, payment) => sum + payment.amount, 0);
+  detail.paidAmount = detail.payments.filter(payment => payment.status === "paid").reduce((sum, payment) => sum + payment.amount, 0);
   detail.balanceDue = Math.max(0, detail.total - detail.paidAmount);
+  const tracking = trackingR.data;
+  if (tracking?.token_value && !tracking.revoked_at && tracking.customer_visible && new Date(tracking.expires_at).getTime() > Date.now()) {
+    detail.trackingToken = tracking.token_value;
+  }
   return detail;
 }
 
@@ -114,12 +86,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (body.action === "update_order") {
       const { data: before, error: readError } = await db.from("orders").select("*").eq("id", id).single();
       if (readError) throw readError;
-      if (["ifood", "99food"].includes(before.channel) && (body.customerName || body.customerPhone || body.address !== undefined)) {
-        throw new Error("Dados pessoais de pedidos de marketplace não podem formar cadastro próprio nem ser alterados pelo CRM.");
-      }
-      if ((body.discount !== undefined || body.deliveryFee !== undefined) && auth.role !== "manager") {
-        throw new Error("Somente o gestor pode alterar desconto ou taxa de entrega.");
-      }
+      if (["ifood", "99food"].includes(before.channel) && (body.customerName || body.customerPhone || body.address !== undefined)) throw new Error("Dados pessoais de pedidos de marketplace não podem formar cadastro próprio nem ser alterados pelo CRM.");
+      if ((body.discount !== undefined || body.deliveryFee !== undefined) && auth.role !== "manager") throw new Error("Somente o gestor pode alterar desconto ou taxa de entrega.");
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString(), updated_by: actorId, version: Number(before.version || 1) + 1 };
       if (body.customerName !== undefined) patch.customer_name = body.customerName;
       if (body.customerPhone !== undefined) patch.customer_phone = body.customerPhone.replace(/\D/g, "");
@@ -137,16 +105,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
       const { data: after, error } = await db.from("orders").update(patch).eq("id", id).select("*").single();
       if (error) throw error;
-      await db.from("audit_logs").insert({
-        actor_id: actorId,
-        actor_label: auth.displayName,
-        action: "ORDER_UPDATED",
-        entity_type: "order",
-        entity_id: id,
-        reason: body.reason,
-        before_data: before,
-        after_data: after,
-      });
+      await db.from("audit_logs").insert({ actor_id: actorId, actor_label: auth.displayName, action: "ORDER_UPDATED", entity_type: "order", entity_id: id, reason: body.reason, before_data: before, after_data: after });
     }
 
     if (body.action === "add_note") {
