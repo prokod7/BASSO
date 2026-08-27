@@ -9,11 +9,12 @@ import { useCart } from "@/context/CartContext";
 import { useDemoState, demoActions } from "@/lib/demo-store";
 import { checkoutSchema } from "@/lib/order-validation";
 import { currency, isDemoMode, normalizePhone, uid } from "@/lib/utils";
+import { normalizeCityName, normalizeDistrictName } from "@/lib/delivery-zones";
 import type { Address, Order, OrderChannel, PaymentMethod } from "@/types";
 import { customerDeviceActions } from "@/lib/customer-device-store";
 
 const LocationPicker = dynamic(() => import("@/components/maps/LocationPicker").then(module => module.LocationPicker), { ssr: false });
-const emptyAddress: Address = { cep: "", street: "", number: "", district: "", complement: "", reference: "", city: "Rio Grande da Serra", state: "SP" };
+const emptyAddress: Address = { cep: "", street: "", number: "", district: "", complement: "", reference: "", city: "", state: "SP" };
 const tableTabKey = (table: number) => `lfb-table-tab-v31-${table}`;
 const tableNameKey = (table: number) => `lfb-table-name-v31-${table}`;
 
@@ -27,6 +28,9 @@ type CheckoutQuote = {
 };
 
 type ReverseAddressResponse = Partial<Address> & { displayName?: string; error?: string };
+type DeliveryDistrict = { name: string; aliases: string[]; fee: number; minimumOrder: number };
+type DeliveryCity = { name: string; districts: DeliveryDistrict[] };
+type DeliveryAreasResponse = { cities?: DeliveryCity[]; error?: string };
 
 export default function CheckoutPage() {
   const cart = useCart();
@@ -52,6 +56,9 @@ export default function CheckoutPage() {
   const [serverQuote, setServerQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState("");
   const [quoting, setQuoting] = useState(false);
+  const [deliveryCities, setDeliveryCities] = useState<DeliveryCity[]>([]);
+  const [areasLoading, setAreasLoading] = useState(true);
+  const [areasError, setAreasError] = useState("");
   const checkoutKeyRef = useRef(uid("checkout"));
 
   useEffect(() => {
@@ -66,8 +73,46 @@ export default function CheckoutPage() {
     setName(storedName);
   }, []);
 
+  async function fetchDeliveryCities(): Promise<DeliveryCity[]> {
+    if (deliveryCities.length) return deliveryCities;
+    const response = await fetch("/api/delivery/areas", { cache: "no-store" });
+    const body = await response.json().catch(() => null) as DeliveryAreasResponse | null;
+    if (!response.ok || !body) throw new Error(body?.error || "Não foi possível carregar as cidades atendidas.");
+    const cities = body.cities || [];
+    setDeliveryCities(cities);
+    return cities;
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAreas() {
+      setAreasLoading(true);
+      setAreasError("");
+      try {
+        const response = await fetch("/api/delivery/areas", { cache: "no-store" });
+        const body = await response.json().catch(() => null) as DeliveryAreasResponse | null;
+        if (!response.ok || !body) throw new Error(body?.error || "Não foi possível carregar a área de entrega.");
+        if (!cancelled) setDeliveryCities(body.cities || []);
+      } catch (areaFailure) {
+        if (!cancelled) setAreasError(areaFailure instanceof Error ? areaFailure.message : "Não foi possível carregar a área de entrega.");
+      } finally {
+        if (!cancelled) setAreasLoading(false);
+      }
+    }
+    void loadAreas();
+    return () => { cancelled = true; };
+  }, []);
+
   const isTableOrder = channel === "table_qr";
   const backHref = tableNumber ? `/?mesa=${tableNumber}` : "/";
+  const selectedCity = useMemo(
+    () => deliveryCities.find(city => normalizeCityName(city.name) === normalizeCityName(address.city || "")),
+    [deliveryCities, address.city],
+  );
+  const selectedDistrict = useMemo(
+    () => selectedCity?.districts.find(district => district.aliases.some(alias => normalizeDistrictName(alias) === normalizeDistrictName(address.district || ""))),
+    [selectedCity, address.district],
+  );
   const coupon = useMemo(() => coupons.find(c => c.active && c.code.toUpperCase() === couponCode.trim().toUpperCase() && (c.totalLimit == null || c.uses < c.totalLimit) && c.channels.includes(channel)), [coupons, couponCode, channel]);
   const discount = useMemo(() => {
     if (!coupon || (coupon.minimum && cart.subtotal < coupon.minimum)) return 0;
@@ -82,7 +127,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (isDemoMode() || !cart.items.length) return;
-    if (channel === "own_delivery" && !address.district.trim()) {
+    if (channel === "own_delivery" && (!address.city.trim() || !address.district.trim())) {
       setServerQuote(null);
       setQuoteError("");
       return;
@@ -100,6 +145,7 @@ export default function CheckoutPage() {
             items: cart.items,
             channel,
             couponCode: couponCode.trim() || undefined,
+            city: channel === "own_delivery" ? address.city.trim() : undefined,
             district: channel === "own_delivery" ? address.district.trim() : undefined,
           }),
         });
@@ -114,32 +160,52 @@ export default function CheckoutPage() {
       } finally {
         if (!cancelled) setQuoting(false);
       }
-    }, 550);
+    }, 350);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [address.district, cart.items, channel, couponCode]);
+  }, [address.city, address.district, cart.items, channel, couponCode]);
+
+  function matchCoverage(cities: DeliveryCity[], detectedCity?: string, detectedDistrict?: string) {
+    const city = cities.find(candidate => normalizeCityName(candidate.name) === normalizeCityName(detectedCity || ""));
+    if (!city) return { city: undefined, district: undefined };
+    const district = city.districts.find(candidate =>
+      candidate.aliases.some(alias => normalizeDistrictName(alias) === normalizeDistrictName(detectedDistrict || "")),
+    );
+    return { city, district };
+  }
 
   async function fillAddressFromCoordinates(latitude: number, longitude: number) {
     setAddress(current => ({ ...current, latitude, longitude }));
-    const response = await fetch("/api/geocode/reverse", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ latitude, longitude }),
-    });
+    const [response, cities] = await Promise.all([
+      fetch("/api/geocode/reverse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ latitude, longitude }),
+      }),
+      fetchDeliveryCities(),
+    ]);
     const body = await response.json().catch(() => null) as ReverseAddressResponse | null;
     if (!response.ok || !body) throw new Error(body?.error || "Não foi possível identificar o endereço desta localização.");
 
+    const coverage = matchCoverage(cities, body.city, body.district);
     setAddress(current => ({
       ...current,
       cep: body.cep || current.cep,
       street: body.street || current.street,
       number: body.number || current.number,
-      district: body.district || current.district,
-      city: body.city || current.city,
-      state: body.state || current.state,
+      city: coverage.city?.name || "",
+      district: coverage.district?.name || "",
+      state: body.state || current.state || "SP",
       latitude,
       longitude,
     }));
-    setLocationMessage("Endereço preenchido pela sua localização. Confira o número e o complemento antes de continuar.");
+
+    if (!coverage.city) {
+      setLocationMessage(`Localização encontrada${body.city ? ` em ${body.city}` : ""}, mas a cidade não foi reconhecida na área atendida. Se o GPS estiver impreciso, selecione a cidade manualmente.`);
+    } else if (!coverage.district) {
+      setLocationMessage(`Cidade identificada: ${coverage.city.name}. A rua e o CEP foram preenchidos; agora escolha o bairro atendido na lista.`);
+    } else {
+      setLocationMessage(`Localização identificada em ${coverage.district.name}, ${coverage.city.name}. Confira o número e o complemento antes de continuar.`);
+    }
   }
 
   const useLocation = () => {
@@ -173,9 +239,31 @@ export default function CheckoutPage() {
     }
   };
 
+  const chooseCity = (cityName: string) => {
+    const city = deliveryCities.find(candidate => candidate.name === cityName);
+    setAddress(current => {
+      const districtStillValid = city?.districts.some(district =>
+        district.aliases.some(alias => normalizeDistrictName(alias) === normalizeDistrictName(current.district || "")),
+      );
+      return { ...current, city: cityName, district: districtStillValid ? current.district : "" };
+    });
+    setLocationMessage("");
+    setQuoteError("");
+  };
+
+  const chooseDistrict = (districtName: string) => {
+    setAddress(current => ({ ...current, district: districtName }));
+    setLocationMessage("");
+    setQuoteError("");
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError("");
     if (!cart.items.length) { setError("Seu carrinho está vazio."); return; }
+    if (channel === "own_delivery" && (!selectedCity || !selectedDistrict)) {
+      setError("Selecione uma cidade e um bairro atendidos para calcular a entrega.");
+      return;
+    }
     const customerName = isTableOrder ? (tabName.trim() || name.trim()) : name.trim();
     const parsed = checkoutSchema.safeParse({
       customerName,
@@ -201,7 +289,17 @@ export default function CheckoutPage() {
       let finalTotal = localTotal;
       let finalCoupon = coupon?.code;
       if (!isDemoMode()) {
-        const quoteResponse = await fetch("/api/quote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: cart.items, channel, couponCode: couponCode || undefined, district: channel === "own_delivery" ? parsed.data.address?.district : undefined }) });
+        const quoteResponse = await fetch("/api/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: cart.items,
+            channel,
+            couponCode: couponCode || undefined,
+            city: channel === "own_delivery" ? parsed.data.address?.city : undefined,
+            district: channel === "own_delivery" ? parsed.data.address?.district : undefined,
+          }),
+        });
         const quoteBody = await quoteResponse.json();
         if (!quoteResponse.ok) throw new Error(quoteBody.error || "Não foi possível validar entrega, taxa e descontos.");
         finalSubtotal = quoteBody.subtotal;
@@ -299,7 +397,7 @@ export default function CheckoutPage() {
           <Section title="Dados do cliente"><div className="grid gap-4 sm:grid-cols-2"><Field label="Nome completo"><input className="input" value={name} onChange={e => setName(e.target.value)} autoComplete="name"/></Field><Field label="Telefone / WhatsApp"><input className="input" value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999"/></Field></div></Section>
         </>}
 
-        {channel === "own_delivery" && <Section title="Endereço de entrega"><button type="button" className="btn-secondary mb-4" onClick={useLocation} disabled={locating}>{locating ? <Loader2 className="animate-spin" size={17}/> : <Crosshair size={17}/>} {locating ? "Localizando e preenchendo..." : "Usar minha localização"}</button>{locationMessage && <p className="mb-3 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">{locationMessage}</p>}<div className="grid gap-4 sm:grid-cols-6"><Field label="CEP" className="sm:col-span-2"><input className="input" value={address.cep} onChange={e => setAddress(a => ({ ...a, cep: e.target.value }))} inputMode="numeric" autoComplete="postal-code"/></Field><Field label="Rua" className="sm:col-span-4"><input className="input" value={address.street} onChange={e => setAddress(a => ({ ...a, street: e.target.value }))} autoComplete="street-address"/></Field><Field label="Número" className="sm:col-span-2"><input className="input" value={address.number} onChange={e => setAddress(a => ({ ...a, number: e.target.value }))}/></Field><Field label="Bairro" className="sm:col-span-4"><input className="input" value={address.district} onChange={e => setAddress(a => ({ ...a, district: e.target.value }))}/></Field><Field label="Complemento" className="sm:col-span-3"><input className="input" value={address.complement} onChange={e => setAddress(a => ({ ...a, complement: e.target.value }))}/></Field><Field label="Referência" className="sm:col-span-3"><input className="input" value={address.reference} onChange={e => setAddress(a => ({ ...a, reference: e.target.value }))}/></Field><Field label="Cidade" className="sm:col-span-4"><input className="input" value={address.city} onChange={e => setAddress(a => ({ ...a, city: e.target.value }))} autoComplete="address-level2"/></Field><Field label="UF" className="sm:col-span-2"><input className="input" value={address.state} maxLength={2} onChange={e => setAddress(a => ({ ...a, state: e.target.value.toUpperCase() }))} autoComplete="address-level1"/></Field></div>{typeof address.latitude === "number" && typeof address.longitude === "number" && <LocationPicker latitude={address.latitude} longitude={address.longitude} onChange={(latitude, longitude) => void adjustLocation(latitude, longitude)}/>}<p className="mt-3 text-xs text-black/45">Ao localizar ou mover o pino, o endereço é preenchido automaticamente e a taxa é recalculada pelo bairro cadastrado.</p>{quoteError && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">{quoteError}</p>}</Section>}
+        {channel === "own_delivery" && <Section title="Endereço de entrega"><button type="button" className="btn-secondary mb-4" onClick={useLocation} disabled={locating || areasLoading}>{locating ? <Loader2 className="animate-spin" size={17}/> : <Crosshair size={17}/>} {locating ? "Localizando e preenchendo..." : areasLoading ? "Carregando área de entrega..." : "Usar minha localização"}</button>{areasError && <p className="mb-3 rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-700">{areasError}</p>}{locationMessage && <p className="mb-3 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">{locationMessage}</p>}<div className="grid gap-4 sm:grid-cols-6"><Field label="CEP" className="sm:col-span-2"><input className="input" value={address.cep} onChange={e => setAddress(a => ({ ...a, cep: e.target.value }))} inputMode="numeric" autoComplete="postal-code"/></Field><Field label="Rua" className="sm:col-span-4"><input className="input" value={address.street} onChange={e => setAddress(a => ({ ...a, street: e.target.value }))} autoComplete="street-address"/></Field><Field label="Número" className="sm:col-span-2"><input className="input" value={address.number} onChange={e => setAddress(a => ({ ...a, number: e.target.value }))}/></Field><Field label="Cidade atendida" className="sm:col-span-4"><select className="input" value={address.city} onChange={e => chooseCity(e.target.value)} disabled={areasLoading}><option value="">Selecione a cidade</option>{deliveryCities.map(city => <option key={city.name} value={city.name}>{city.name}</option>)}</select></Field><Field label="Bairro atendido" className="sm:col-span-4"><select className="input" value={selectedDistrict?.name || ""} onChange={e => chooseDistrict(e.target.value)} disabled={!selectedCity || areasLoading}><option value="">{selectedCity ? "Selecione o bairro" : "Selecione a cidade primeiro"}</option>{selectedCity?.districts.map(district => <option key={district.name} value={district.name}>{district.name} — {currency(district.fee)}</option>)}</select></Field><Field label="UF" className="sm:col-span-2"><input className="input" value={address.state} maxLength={2} onChange={e => setAddress(a => ({ ...a, state: e.target.value.toUpperCase() }))} autoComplete="address-level1"/></Field><Field label="Complemento" className="sm:col-span-3"><input className="input" value={address.complement} onChange={e => setAddress(a => ({ ...a, complement: e.target.value }))}/></Field><Field label="Referência" className="sm:col-span-3"><input className="input" value={address.reference} onChange={e => setAddress(a => ({ ...a, reference: e.target.value }))}/></Field></div>{typeof address.latitude === "number" && typeof address.longitude === "number" && <LocationPicker latitude={address.latitude} longitude={address.longitude} onChange={(latitude, longitude) => void adjustLocation(latitude, longitude)}/>}<p className="mt-3 text-xs text-black/45">A localização tenta selecionar automaticamente cidade e bairro. Se o GPS não identificar exatamente, escolha nas listas acima. A taxa é sempre validada pela combinação cidade + bairro.</p>{selectedDistrict && !serverQuote && !quoteError && <p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs font-semibold text-blue-800">Taxa cadastrada para {selectedDistrict.name}: {currency(selectedDistrict.fee)}. Validando o total...</p>}{quoteError && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">{quoteError}</p>}</Section>}
 
         {!isTableOrder && <Section title="Pagamento"><div className="grid gap-2 sm:grid-cols-3">{([["pix","Pix"],["cash","Dinheiro"],["debit","Débito"],["credit","Crédito"],["meal_voucher","Refeição"],["food_voucher","Alimentação"]] as [PaymentMethod,string][]).map(([id,label]) => <Choice key={id} active={payment === id} onClick={() => setPayment(id)} label={label}/>)}</div>{payment === "cash" && <Field label="Troco para quanto?" className="mt-4"><input className="input" value={changeFor} onChange={e => setChangeFor(e.target.value)} inputMode="decimal" placeholder="Ex.: 100,00"/></Field>}<p className="mt-3 text-xs text-black/45">Pagamentos em cartão são confirmados presencialmente. Dados de cartão e CVV não são armazenados.</p></Section>}
         {isTableOrder && <Section title="Pagamento"><p className="rounded-2xl bg-basso-black p-4 text-sm font-semibold text-white">O pagamento será realizado no fechamento da comanda com a equipe. Nenhuma cobrança é feita pelo QR Code.</p></Section>}
@@ -307,7 +405,7 @@ export default function CheckoutPage() {
         <Section title="Cupom e observações"><div className="grid gap-4 sm:grid-cols-2"><Field label="Cupom"><input className="input uppercase" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="Código do cupom"/></Field><Field label="Observações gerais"><textarea className="textarea min-h-20" value={notes} onChange={e => setNotes(e.target.value)} maxLength={500}/></Field></div>{couponCode && <p className={`mt-2 text-xs font-semibold ${quoting ? "text-black/45" : (!isDemoMode() ? serverQuote?.couponCode : coupon?.code) ? "text-emerald-700" : "text-red-600"}`}>{quoting ? "Validando cupom e valores..." : (!isDemoMode() ? serverQuote?.couponCode : coupon?.code) ? `Cupom ${(!isDemoMode() ? serverQuote?.couponCode : coupon?.code) || couponCode} aplicado.` : quoteError || "Cupom não encontrado ou indisponível."}</p>}</Section>
       </div>
 
-      <aside className="lg:sticky lg:top-5 lg:self-start"><div className="surface overflow-hidden"><div className="bg-basso-black p-5 text-white"><h2 className="font-display text-2xl font-bold">Resumo</h2><p className="mt-1 text-xs text-white/55">Confira os itens antes de enviar.</p></div><div className="max-h-72 space-y-3 overflow-y-auto p-5">{cart.items.map(i => <div key={i.id} className="flex justify-between gap-4 text-sm"><div><strong>{i.quantity}× {i.name}</strong></div><span className="shrink-0 font-semibold">{currency(i.unitPrice * i.quantity)}</span></div>)}</div><div className="space-y-2 border-t border-black/5 p-5 text-sm"><Line label="Subtotal" value={currency(displaySubtotal)}/>{displayDiscount > 0 && <Line label="Desconto" value={`− ${currency(displayDiscount)}`} good/>}<Line label="Taxa de entrega" value={channel === "own_delivery" ? (serverQuote ? currency(displayDeliveryFee) : quoting ? "Calculando..." : quoteError ? "Indisponível" : "Informe o bairro") : currency(0)}/>{isTableOrder && <Line label="Destino" value={`Mesa ${tableNumber}`}/>}<div className="my-3 border-t border-dashed border-black/10"/><div className="flex items-center justify-between text-lg"><strong>Total</strong><strong className="text-basso-wine">{currency(total)}</strong></div><button type="submit" className="btn-primary mt-4 w-full py-3.5" disabled={loading || quoting || (channel === "own_delivery" && (!serverQuote || serverQuote.coverageConfigurationPending))}>{loading ? <Loader2 className="animate-spin"/> : <LockKeyhole size={18}/>} {isTableOrder ? "Enviar para a comanda" : "Confirmar pedido"}</button><p className="text-center text-[11px] text-black/40">Ao confirmar, você concorda com os termos e a política de privacidade.</p></div></div>{error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}</aside>
+      <aside className="lg:sticky lg:top-5 lg:self-start"><div className="surface overflow-hidden"><div className="bg-basso-black p-5 text-white"><h2 className="font-display text-2xl font-bold">Resumo</h2><p className="mt-1 text-xs text-white/55">Confira os itens antes de enviar.</p></div><div className="max-h-72 space-y-3 overflow-y-auto p-5">{cart.items.map(i => <div key={i.id} className="flex justify-between gap-4 text-sm"><div><strong>{i.quantity}× {i.name}</strong></div><span className="shrink-0 font-semibold">{currency(i.unitPrice * i.quantity)}</span></div>)}</div><div className="space-y-2 border-t border-black/5 p-5 text-sm"><Line label="Subtotal" value={currency(displaySubtotal)}/>{displayDiscount > 0 && <Line label="Desconto" value={`− ${currency(displayDiscount)}`} good/>}<Line label="Taxa de entrega" value={channel === "own_delivery" ? (serverQuote ? currency(displayDeliveryFee) : quoting ? "Calculando..." : quoteError ? "Indisponível" : !address.city ? "Selecione a cidade" : !address.district ? "Selecione o bairro" : "Validando...") : currency(0)}/>{isTableOrder && <Line label="Destino" value={`Mesa ${tableNumber}`}/>}<div className="my-3 border-t border-dashed border-black/10"/><div className="flex items-center justify-between text-lg"><strong>Total</strong><strong className="text-basso-wine">{currency(total)}</strong></div><button type="submit" className="btn-primary mt-4 w-full py-3.5" disabled={loading || quoting || areasLoading || (channel === "own_delivery" && (!serverQuote || !selectedCity || !selectedDistrict || serverQuote.coverageConfigurationPending))}>{loading ? <Loader2 className="animate-spin"/> : <LockKeyhole size={18}/>} {isTableOrder ? "Enviar para a comanda" : "Confirmar pedido"}</button><p className="text-center text-[11px] text-black/40">Ao confirmar, você concorda com os termos e a política de privacidade.</p></div></div>{error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}</aside>
     </form>
   </main>;
 }
