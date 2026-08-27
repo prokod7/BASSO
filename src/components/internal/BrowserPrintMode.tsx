@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-type ManualPrint = { orderId: string; type: "entrega" | "cozinha" };
+type ManualPrint = { orderId: string; type: "entrega" | "cozinha"; source: "order_detail" | "kds" };
 
 function extractManualOrderPrint(input: RequestInfo | URL, init?: RequestInit): ManualPrint | null {
   const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -25,12 +25,14 @@ function extractManualOrderPrint(input: RequestInfo | URL, init?: RequestInit): 
     }
   }
 
-  // Somente ações manuais do painel viram diálogo do navegador. Filas automáticas,
-  // testes e integrações server-side permanecem independentes.
-  if (!/(central da comanda|impressão manual solicitada no kds)/i.test(reason)) return null;
+  const fromOrderDetail = /central da comanda/i.test(reason);
+  const fromKds = /impressão manual solicitada no kds/i.test(reason);
+  if (!fromOrderDetail && !fromKds) return null;
+
   return {
     orderId: decodeURIComponent(match[1]),
     type: sector === "kitchen" || sector === "bar" ? "cozinha" : "entrega",
+    source: fromKds ? "kds" : "order_detail",
   };
 }
 
@@ -50,6 +52,15 @@ export function BrowserPrintMode() {
           headers: { "Content-Type": "application/json" },
         });
       }
+
+      // A impressão pelo navegador não cria job para o Print Bridge, mas mantém
+      // trilha de auditoria separada para o gestor saber quem abriu cada via.
+      void originalFetch(`/api/orders/${encodeURIComponent(manual.orderId)}/print-browser`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: manual.type, source: manual.source }),
+        keepalive: true,
+      }).catch(() => undefined);
 
       return new Response(JSON.stringify({ ok: true, browserPrint: true, printUrl, type: manual.type }), {
         status: 200,
