@@ -26,7 +26,14 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await db.from("idempotency_keys").select("response_body,status_code").eq("key", key).maybeSingle();
     if (existing) return NextResponse.json(existing.response_body, { status: existing.status_code || 200 });
 
-    const quote = await quoteCommercialTerms({ items: supplied.items, channel: supplied.channel, couponCode: supplied.couponCode, district: supplied.address?.district, allowReward: hasReward });
+    const quote = await quoteCommercialTerms({
+      items: supplied.items,
+      channel: supplied.channel,
+      couponCode: supplied.couponCode,
+      city: supplied.address?.city,
+      district: supplied.address?.district,
+      allowReward: hasReward,
+    });
     const discount = supplied.couponCode ? quote.discount : Math.min(quote.subtotal, supplied.discount);
     const order = parseIncomingOrder({ ...supplied, items: quote.items, subtotal: quote.subtotal, discount, deliveryFee: quote.deliveryFee, total: Math.max(0, quote.subtotal - discount + quote.deliveryFee), couponCode: quote.couponCode });
     const { error } = await db.rpc("create_internal_order_transaction", { p_order: order, p_reward_token: metadata.rewardAuthorizationToken || null, p_actor_id: auth.userId === "demo" ? null : auth.userId, p_discount_reason: metadata.discountReason || null });
