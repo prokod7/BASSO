@@ -5,8 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { healthLabels, mapHealthCheck } from "@/lib/admin-control";
 import type { SystemHealthCheck } from "@/types";
 
-const REQUIRED_MIGRATION = 19;
-const APP_VERSION = "9.0.0";
+const REQUIRED_MIGRATION = 23;
+const APP_VERSION = "MU13";
 const actionSchema = z.object({ action: z.enum(["run_all", "run_one"]), key: z.string().max(80).optional() });
 type CheckResult = Omit<SystemHealthCheck, "label">;
 type DiagnosticErrorRow = Record<string, unknown> & { source: "client" | "audit"; created_at?: unknown };
@@ -43,22 +43,51 @@ async function runQueueCheck(db: NonNullable<ReturnType<typeof createAdminClient
 }
 
 async function runPrintCheck(db: NonNullable<ReturnType<typeof createAdminClient>>): Promise<CheckResult> {
-  const [profiles, failed] = await Promise.all([
+  const [profiles, failed, connection] = await Promise.all([
     db.from("print_profiles").select("key,active,auto_print"),
     db.from("print_jobs").select("id", { count: "exact", head: true }).eq("status", "failed"),
+    db.from("integration_connections").select("active,last_health_at,last_health_status,last_error_message").eq("provider", "printer").maybeSingle(),
   ]);
-  const error = profiles.error || failed.error;
+  const error = profiles.error || failed.error || connection.error;
   const activeProfiles = (profiles.data || []).filter((profile: { active?: boolean }) => profile.active).length;
   const failures = failed.count || 0;
-  return { key: "print_bridge", status: error ? "error" : failures > 0 || activeProfiles === 0 ? "warning" : "operational", detail: error ? error.message : `${activeProfiles} perfil(is) ativo(s) e ${failures} falha(s) na fila. O agente local precisa confirmar o equipamento físico.`, checkedAt: new Date().toISOString(), metadata: { activeProfiles, failures } };
+  const lastHealthAt = connection.data?.last_health_at ? Date.parse(connection.data.last_health_at) : 0;
+  const heartbeatFresh = Boolean(lastHealthAt && Date.now() - lastHealthAt < 60_000);
+  const bridgeOnline = Boolean(
+    connection.data?.active &&
+    heartbeatFresh &&
+    ["ok", "operational", "healthy"].includes(String(connection.data?.last_health_status || "").toLowerCase()),
+  );
+
+  const status = error ? "error" : failures > 0 || activeProfiles === 0 || !bridgeOnline ? "warning" : "operational";
+  const detail = error
+    ? error.message
+    : bridgeOnline
+      ? `${activeProfiles} perfil(is) ativo(s), ${failures} falha(s) na fila e Print Bridge com heartbeat recente.`
+      : `${activeProfiles} perfil(is) ativo(s) e ${failures} falha(s) na fila. Impressão automática aguardando conexão real do Print Bridge local.`;
+
+  return {
+    key: "print_bridge",
+    status,
+    detail,
+    checkedAt: new Date().toISOString(),
+    metadata: {
+      activeProfiles,
+      failures,
+      bridgeOnline,
+      lastHealthAt: connection.data?.last_health_at || null,
+      connectionStatus: connection.data?.last_health_status || null,
+      lastError: connection.data?.last_error_message || null,
+    },
+  };
 }
 
 async function runIntegrationsCheck(db: NonNullable<ReturnType<typeof createAdminClient>>): Promise<CheckResult> {
   const { data, error } = await db.from("integration_connections").select("provider,active,last_health_at,last_health_status");
   if (error) return { key: "integrations", status: "error", detail: error.message, checkedAt: new Date().toISOString() };
   const rows = (data || []) as Array<{ provider: string; active: boolean; last_health_at?: string | null; last_health_status?: string | null }>;
-  const active = rows.filter((row) => row.active);
-  const failed = active.filter((row) => row.last_health_status && !["ok", "operational", "healthy"].includes(row.last_health_status.toLowerCase()));
+  const active = rows.filter(row => row.active);
+  const failed = active.filter(row => row.last_health_status && !["ok", "operational", "healthy"].includes(row.last_health_status.toLowerCase()));
   return { key: "integrations", status: failed.length ? "warning" : "operational", detail: active.length ? `${active.length} integração(ões) ativa(s); ${failed.length} com alerta.` : "Integrações externas ainda não foram ativadas. A operação manual continua disponível.", checkedAt: new Date().toISOString(), metadata: { providers: rows } };
 }
 
@@ -79,9 +108,14 @@ async function runStorageCheck(db: NonNullable<ReturnType<typeof createAdminClie
 
 async function executeCheck(key: string, db: NonNullable<ReturnType<typeof createAdminClient>>): Promise<CheckResult> {
   const runners: Record<string, () => Promise<CheckResult>> = {
-    database: () => runDatabaseCheck(db), authentication: () => runAuthenticationCheck(db), realtime: () => runRealtimeCheck(db),
-    print_bridge: () => runPrintCheck(db), queues: () => runQueueCheck(db), migrations: () => runMigrationsCheck(db),
-    storage: () => runStorageCheck(db), integrations: () => runIntegrationsCheck(db),
+    database: () => runDatabaseCheck(db),
+    authentication: () => runAuthenticationCheck(db),
+    realtime: () => runRealtimeCheck(db),
+    print_bridge: () => runPrintCheck(db),
+    queues: () => runQueueCheck(db),
+    migrations: () => runMigrationsCheck(db),
+    storage: () => runStorageCheck(db),
+    integrations: () => runIntegrationsCheck(db),
   };
   const runner = runners[key];
   if (!runner) throw new Error("Diagnóstico desconhecido.");
@@ -109,8 +143,8 @@ export async function GET() {
       checks: (checksResult.data || []).map((row: Record<string, unknown>) => mapHealthCheck(row)),
       migrations: migrationsResult.data || [],
       recentErrors: recentErrors.slice(0, 25),
-      requiredMigration: 19,
-      appVersion: "9.0.0",
+      requiredMigration: REQUIRED_MIGRATION,
+      appVersion: APP_VERSION,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao consultar diagnóstico." }, { status: 400 });
