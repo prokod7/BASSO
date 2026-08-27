@@ -37,6 +37,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }, { status: 409 });
     }
 
+    // No delivery próprio, o motoboy não pode contornar a validação de retirada
+    // nem concluir sem o código que está somente com o cliente. Gestor/balcão
+    // continuam com capacidade de contingência administrativa auditada.
+    if (order.channel === "own_delivery" && auth.role === "driver" && body.status === "out_for_delivery") {
+      throw new Error("Valide a retirada pelo QR Code ou código de 6 dígitos da comanda.");
+    }
+    if (order.channel === "own_delivery" && auth.role === "driver" && body.status === "completed") {
+      throw new Error("Informe o código de confirmação do cliente para concluir a entrega.");
+    }
+
     if (body.status === "cancelled" && auth.role !== "manager" && auth.permissions["orders.cancel"] !== true) {
       throw new Error("Seu usuário não possui autorização para cancelar pedidos.");
     }
