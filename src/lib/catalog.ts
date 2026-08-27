@@ -37,7 +37,7 @@ const combo = {
 };
 export const catalog: BaseCatalog = { ...source, flavors, beverages: [...beverages, ...delValle], combo };
 
-const productImages: Record<string, string> = {
+export const productImages: Record<string, string> = {
   "agua-tonica-fys-lata-350-ml": "/assets/products/agua-tonica-fys-lata-350ml.jpg",
   "agua-tonica-schweppes-lata-350-ml": "/assets/products/agua-tonica-schweppes-lata-350ml.jpg",
   "h2oh-limoneto-500-ml": "/assets/products/h2oh-limoneto-500ml.jpg",
@@ -48,6 +48,7 @@ const productImages: Record<string, string> = {
   "guarana-antarctica-zero-lata-350-ml": "/assets/products/guarana-antarctica-zero-lata-350ml.webp",
   "fanta-laranja-lata-350-ml": "/assets/products/fanta-laranja-lata-350ml.webp",
   "fanta-uva-lata-350-ml": "/assets/products/fanta-uva-lata-350ml.webp",
+  "suco-del-valle-lata-290-ml": "/assets/products/sucos-del-valle-290ml-lata.jpg",
   "suco-del-valle-uva-lata-290-ml": "/assets/products/sucos-del-valle-290ml-lata.jpg",
   "suco-del-valle-pessego-lata-290-ml": "/assets/products/sucos-del-valle-290ml-lata.jpg",
   "suco-del-valle-goiaba-lata-290-ml": "/assets/products/sucos-del-valle-290ml-lata.jpg",
@@ -66,6 +67,7 @@ const productImages: Record<string, string> = {
   "sprite-zero-2-l": "/assets/products/sprite-2l-zero.png",
   "pudim-tradicional": "/assets/products/sobremesa-perfeita-para-completar-a-sua-experiencia-pudim-no-copo-americano.png",
   "pudim-frutas-vermelhas": "/assets/products/sobremesa-perfeita-para-completar-a-sua-experiencia-pudim-no-copo-americano.png",
+  "combo-grande-broto-refri": "/assets/products/combo-r-79-99-pizza-grande-broto-doce-refrigerante-2-litros.png",
 };
 
 export const categoryImages = {
