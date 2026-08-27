@@ -5,8 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { healthLabels, mapHealthCheck } from "@/lib/admin-control";
 import type { SystemHealthCheck } from "@/types";
 
-const REQUIRED_MIGRATION = 26;
-const APP_VERSION = "MU15";
+const REQUIRED_MIGRATION = 28;
+const APP_VERSION = "MU16";
 const actionSchema = z.object({ action: z.enum(["run_all", "run_one"]), key: z.string().max(80).optional() });
 type CheckResult = Omit<SystemHealthCheck, "label">;
 type DiagnosticErrorRow = Record<string, unknown> & { source: "client" | "audit"; created_at?: unknown };
