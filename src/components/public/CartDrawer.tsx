@@ -6,9 +6,14 @@ import { Copy, Minus, Pencil, Plus, ShoppingBag, Trash2, X } from "lucide-react"
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { catalog, findFlavor } from "@/lib/catalog";
-import { PizzaBuilder } from "@/components/public/PizzaBuilder";
+import { EnhancedPizzaBuilder } from "@/components/public/EnhancedPizzaBuilder";
 import { currency } from "@/lib/utils";
 import type { CartItem, PizzaSelection } from "@/types";
+
+type SweetPizzaSelection = PizzaSelection & {
+  sweetBase?: "standard" | "hazelnut-zero";
+  cutPreference?: "uncut" | "cut";
+};
 
 export function CartDrawer() {
   const cart = useCart();
@@ -96,7 +101,7 @@ export function CartDrawer() {
         )}
       </aside>
       {editing && isPizzaSelection(editing.selection) && (
-        <PizzaBuilder
+        <EnhancedPizzaBuilder
           flavor={findFlavor(editing.selection.flavorA) || null}
           open
           initialSelection={editing.selection}
@@ -117,9 +122,10 @@ function isPizzaSelection(selection: CartItem["selection"]): selection is PizzaS
 
 function CartItemDetails({ item }: { item: CartItem }) {
   if (!isPizzaSelection(item.selection)) return null;
-  const selection = item.selection;
+  const selection = item.selection as SweetPizzaSelection;
   const first = findFlavor(selection.flavorA);
   const second = selection.flavorB ? findFlavor(selection.flavorB) : undefined;
+  const hasSweetFlavor = first?.category === "sweet" || second?.category === "sweet";
   const addons = Object.entries(selection.addons)
     .filter(([, quantity]) => quantity > 0)
     .map(([id, quantity]) => `${quantity}× ${catalog.addons.find((addon) => addon.id === id)?.name || id}`);
@@ -131,6 +137,8 @@ function CartItemDetails({ item }: { item: CartItem }) {
   return (
     <div className="mt-1 space-y-0.5 text-[11px] leading-relaxed text-black/48">
       <p>{selection.size === "grande" ? "Grande" : "Broto"} • {first?.name || selection.flavorA}{second ? ` + ${second.name}` : ""}</p>
+      {hasSweetFlavor && <p className="font-bold text-basso-wine">Corte: {selection.cutPreference === "cut" ? "Cortar" : "Não cortar"}</p>}
+      {hasSweetFlavor && selection.sweetBase === "hazelnut-zero" && <p className="font-bold text-basso-wine">Base: Creme de Avelã Zero (+ R$ 25,00)</p>}
       {addons.length > 0 && <p className="text-emerald-700">+ {addons.join(" • ")}</p>}
       {removals.length > 0 && <p className="text-red-700">{removals.join(" • ")}</p>}
       {selection.notes && <p className="line-clamp-2 italic">Obs.: {selection.notes}</p>}
