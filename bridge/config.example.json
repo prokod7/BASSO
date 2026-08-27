@@ -1,5 +1,5 @@
 {
-  "baseUrl": "https://basso-seven.vercel.app",
+  "baseUrl": "https://basso-pedido-pro.vercel.app",
   "apiKey": "USE-A-MESMA-PRINT_BRIDGE_KEY-DA-VERCEL",
   "pollIntervalMs": 2500,
   "batchSize": 3,

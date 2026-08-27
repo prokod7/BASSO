@@ -26,6 +26,8 @@ type CheckoutQuote = {
   coverageConfigurationPending?: boolean;
 };
 
+type ReverseAddressResponse = Partial<Address> & { displayName?: string; error?: string };
+
 export default function CheckoutPage() {
   const cart = useCart();
   const router = useRouter();
@@ -46,6 +48,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState("");
   const [serverQuote, setServerQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState("");
   const [quoting, setQuoting] = useState(false);
@@ -103,10 +106,10 @@ export default function CheckoutPage() {
         const body = await response.json().catch(() => null) as CheckoutQuote & { error?: string } | null;
         if (!response.ok) throw new Error(body?.error || "Não foi possível atualizar o total.");
         if (!cancelled && body) setServerQuote(body);
-      } catch (error) {
+      } catch (quoteFailure) {
         if (!cancelled) {
           setServerQuote(null);
-          setQuoteError(error instanceof Error ? error.message : "Não foi possível atualizar o total.");
+          setQuoteError(quoteFailure instanceof Error ? quoteFailure.message : "Não foi possível atualizar o total.");
         }
       } finally {
         if (!cancelled) setQuoting(false);
@@ -115,16 +118,59 @@ export default function CheckoutPage() {
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [address.district, cart.items, channel, couponCode]);
 
+  async function fillAddressFromCoordinates(latitude: number, longitude: number) {
+    setAddress(current => ({ ...current, latitude, longitude }));
+    const response = await fetch("/api/geocode/reverse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ latitude, longitude }),
+    });
+    const body = await response.json().catch(() => null) as ReverseAddressResponse | null;
+    if (!response.ok || !body) throw new Error(body?.error || "Não foi possível identificar o endereço desta localização.");
+
+    setAddress(current => ({
+      ...current,
+      cep: body.cep || current.cep,
+      street: body.street || current.street,
+      number: body.number || current.number,
+      district: body.district || current.district,
+      city: body.city || current.city,
+      state: body.state || current.state,
+      latitude,
+      longitude,
+    }));
+    setLocationMessage("Endereço preenchido pela sua localização. Confira o número e o complemento antes de continuar.");
+  }
+
   const useLocation = () => {
     if (!navigator.geolocation) { setError("Geolocalização não está disponível neste aparelho."); return; }
-    setLocating(true); setError("");
-    navigator.geolocation.getCurrentPosition(pos => {
-      setAddress(a => ({ ...a, latitude: pos.coords.latitude, longitude: pos.coords.longitude }));
-      setLocating(false);
+    setLocating(true); setError(""); setLocationMessage("");
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude, longitude } = pos.coords;
+      try {
+        await fillAddressFromCoordinates(latitude, longitude);
+      } catch (locationError) {
+        setAddress(current => ({ ...current, latitude, longitude }));
+        setError(locationError instanceof Error ? `${locationError.message} As coordenadas foram salvas; complete o endereço manualmente.` : "Localização encontrada, mas não foi possível preencher o endereço automaticamente.");
+      } finally {
+        setLocating(false);
+      }
     }, () => {
       setError("Não foi possível obter sua localização. Confirme a permissão do navegador.");
       setLocating(false);
-    }, { enableHighAccuracy: true, timeout: 12000 });
+    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30_000 });
+  };
+
+  const adjustLocation = async (latitude: number, longitude: number) => {
+    setError("");
+    setLocationMessage("Atualizando endereço a partir do novo ponto...");
+    try {
+      await fillAddressFromCoordinates(latitude, longitude);
+    } catch (locationError) {
+      setAddress(current => ({ ...current, latitude, longitude }));
+      setLocationMessage("");
+      setError(locationError instanceof Error ? locationError.message : "Não foi possível atualizar o endereço pelo mapa.");
+    }
   };
 
   const submit = async (event: FormEvent) => {
@@ -253,15 +299,15 @@ export default function CheckoutPage() {
           <Section title="Dados do cliente"><div className="grid gap-4 sm:grid-cols-2"><Field label="Nome completo"><input className="input" value={name} onChange={e => setName(e.target.value)} autoComplete="name"/></Field><Field label="Telefone / WhatsApp"><input className="input" value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="(11) 99999-9999"/></Field></div></Section>
         </>}
 
-        {channel === "own_delivery" && <Section title="Endereço de entrega"><button type="button" className="btn-secondary mb-4" onClick={useLocation} disabled={locating}>{locating ? <Loader2 className="animate-spin" size={17}/> : <Crosshair size={17}/>} Usar minha localização</button>{address.latitude && <p className="mb-3 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">Coordenadas salvas. O pino poderá ser ajustado pela operação antes do despacho.</p>}<div className="grid gap-4 sm:grid-cols-6"><Field label="CEP" className="sm:col-span-2"><input className="input" value={address.cep} onChange={e => setAddress(a => ({ ...a, cep: e.target.value }))} inputMode="numeric"/></Field><Field label="Rua" className="sm:col-span-4"><input className="input" value={address.street} onChange={e => setAddress(a => ({ ...a, street: e.target.value }))}/></Field><Field label="Número" className="sm:col-span-2"><input className="input" value={address.number} onChange={e => setAddress(a => ({ ...a, number: e.target.value }))}/></Field><Field label="Bairro" className="sm:col-span-4"><input className="input" value={address.district} onChange={e => setAddress(a => ({ ...a, district: e.target.value }))}/></Field><Field label="Complemento" className="sm:col-span-3"><input className="input" value={address.complement} onChange={e => setAddress(a => ({ ...a, complement: e.target.value }))}/></Field><Field label="Referência" className="sm:col-span-3"><input className="input" value={address.reference} onChange={e => setAddress(a => ({ ...a, reference: e.target.value }))}/></Field><Field label="Cidade" className="sm:col-span-4"><input className="input" value={address.city} onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}/></Field><Field label="UF" className="sm:col-span-2"><input className="input" value={address.state} maxLength={2} onChange={e => setAddress(a => ({ ...a, state: e.target.value.toUpperCase() }))}/></Field></div>{typeof address.latitude === "number" && typeof address.longitude === "number" && <LocationPicker latitude={address.latitude} longitude={address.longitude} onChange={(latitude, longitude) => setAddress(current => ({ ...current, latitude, longitude }))}/>}<p className="mt-3 text-xs text-black/45">Cobertura e taxa serão validadas pela tabela configurada no painel. Nenhum valor de mockup é utilizado.</p></Section>}
+        {channel === "own_delivery" && <Section title="Endereço de entrega"><button type="button" className="btn-secondary mb-4" onClick={useLocation} disabled={locating}>{locating ? <Loader2 className="animate-spin" size={17}/> : <Crosshair size={17}/>} {locating ? "Localizando e preenchendo..." : "Usar minha localização"}</button>{locationMessage && <p className="mb-3 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">{locationMessage}</p>}<div className="grid gap-4 sm:grid-cols-6"><Field label="CEP" className="sm:col-span-2"><input className="input" value={address.cep} onChange={e => setAddress(a => ({ ...a, cep: e.target.value }))} inputMode="numeric" autoComplete="postal-code"/></Field><Field label="Rua" className="sm:col-span-4"><input className="input" value={address.street} onChange={e => setAddress(a => ({ ...a, street: e.target.value }))} autoComplete="street-address"/></Field><Field label="Número" className="sm:col-span-2"><input className="input" value={address.number} onChange={e => setAddress(a => ({ ...a, number: e.target.value }))}/></Field><Field label="Bairro" className="sm:col-span-4"><input className="input" value={address.district} onChange={e => setAddress(a => ({ ...a, district: e.target.value }))}/></Field><Field label="Complemento" className="sm:col-span-3"><input className="input" value={address.complement} onChange={e => setAddress(a => ({ ...a, complement: e.target.value }))}/></Field><Field label="Referência" className="sm:col-span-3"><input className="input" value={address.reference} onChange={e => setAddress(a => ({ ...a, reference: e.target.value }))}/></Field><Field label="Cidade" className="sm:col-span-4"><input className="input" value={address.city} onChange={e => setAddress(a => ({ ...a, city: e.target.value }))} autoComplete="address-level2"/></Field><Field label="UF" className="sm:col-span-2"><input className="input" value={address.state} maxLength={2} onChange={e => setAddress(a => ({ ...a, state: e.target.value.toUpperCase() }))} autoComplete="address-level1"/></Field></div>{typeof address.latitude === "number" && typeof address.longitude === "number" && <LocationPicker latitude={address.latitude} longitude={address.longitude} onChange={(latitude, longitude) => void adjustLocation(latitude, longitude)}/>}<p className="mt-3 text-xs text-black/45">Ao localizar ou mover o pino, o endereço é preenchido automaticamente e a taxa é recalculada pelo bairro cadastrado.</p>{quoteError && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">{quoteError}</p>}</Section>}
 
         {!isTableOrder && <Section title="Pagamento"><div className="grid gap-2 sm:grid-cols-3">{([["pix","Pix"],["cash","Dinheiro"],["debit","Débito"],["credit","Crédito"],["meal_voucher","Refeição"],["food_voucher","Alimentação"]] as [PaymentMethod,string][]).map(([id,label]) => <Choice key={id} active={payment === id} onClick={() => setPayment(id)} label={label}/>)}</div>{payment === "cash" && <Field label="Troco para quanto?" className="mt-4"><input className="input" value={changeFor} onChange={e => setChangeFor(e.target.value)} inputMode="decimal" placeholder="Ex.: 100,00"/></Field>}<p className="mt-3 text-xs text-black/45">Pagamentos em cartão são confirmados presencialmente. Dados de cartão e CVV não são armazenados.</p></Section>}
         {isTableOrder && <Section title="Pagamento"><p className="rounded-2xl bg-basso-black p-4 text-sm font-semibold text-white">O pagamento será realizado no fechamento da comanda com a equipe. Nenhuma cobrança é feita pelo QR Code.</p></Section>}
 
-        <Section title="Cupom e observações"><div className="grid gap-4 sm:grid-cols-2"><Field label="Cupom"><input className="input uppercase" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="Código do cupom"/></Field><Field label="Observações gerais"><textarea className="textarea min-h-20" value={notes} onChange={e => setNotes(e.target.value)} maxLength={500}/></Field></div>{couponCode && <p className={`mt-2 text-xs font-semibold ${quoting ? "text-black/45" : (!isDemoMode() ? serverQuote?.couponCode : coupon?.code) ? "text-emerald-700" : "text-red-600"}`}>{quoting ? "Validando cupom e valores..." : (!isDemoMode() ? serverQuote?.couponCode : coupon?.code) ? `Cupom ${(!isDemoMode() ? serverQuote?.couponCode : coupon?.code) || couponCode} aplicado.` : quoteError || "Cupom não encontrado ou indisponível."}</p>}{!couponCode && quoteError && <p className="mt-2 text-xs font-semibold text-amber-700">{quoteError}</p>}</Section>
+        <Section title="Cupom e observações"><div className="grid gap-4 sm:grid-cols-2"><Field label="Cupom"><input className="input uppercase" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} placeholder="Código do cupom"/></Field><Field label="Observações gerais"><textarea className="textarea min-h-20" value={notes} onChange={e => setNotes(e.target.value)} maxLength={500}/></Field></div>{couponCode && <p className={`mt-2 text-xs font-semibold ${quoting ? "text-black/45" : (!isDemoMode() ? serverQuote?.couponCode : coupon?.code) ? "text-emerald-700" : "text-red-600"}`}>{quoting ? "Validando cupom e valores..." : (!isDemoMode() ? serverQuote?.couponCode : coupon?.code) ? `Cupom ${(!isDemoMode() ? serverQuote?.couponCode : coupon?.code) || couponCode} aplicado.` : quoteError || "Cupom não encontrado ou indisponível."}</p>}</Section>
       </div>
 
-      <aside className="lg:sticky lg:top-5 lg:self-start"><div className="surface overflow-hidden"><div className="bg-basso-black p-5 text-white"><h2 className="font-display text-2xl font-bold">Resumo</h2><p className="mt-1 text-xs text-white/55">Confira os itens antes de enviar.</p></div><div className="max-h-72 space-y-3 overflow-y-auto p-5">{cart.items.map(i => <div key={i.id} className="flex justify-between gap-4 text-sm"><div><strong>{i.quantity}× {i.name}</strong></div><span className="shrink-0 font-semibold">{currency(i.unitPrice * i.quantity)}</span></div>)}</div><div className="space-y-2 border-t border-black/5 p-5 text-sm"><Line label="Subtotal" value={currency(displaySubtotal)}/>{displayDiscount > 0 && <Line label="Desconto" value={`− ${currency(displayDiscount)}`} good/>}<Line label="Taxa de entrega" value={channel === "own_delivery" ? (serverQuote ? currency(displayDeliveryFee) : quoting ? "Calculando..." : "Informe o bairro") : currency(0)}/>{isTableOrder && <Line label="Destino" value={`Mesa ${tableNumber}`}/>} {serverQuote?.coverageConfigurationPending && channel === "own_delivery" && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">A tabela de cobertura ainda não está configurada; a operação deverá revisar a taxa antes do despacho.</p>}<div className="my-3 border-t border-dashed border-black/10"/><div className="flex items-center justify-between text-lg"><strong>Total</strong><strong className="text-basso-wine">{currency(total)}</strong></div><button type="submit" className="btn-primary mt-4 w-full py-3.5" disabled={loading || quoting || (channel === "own_delivery" && (!serverQuote || serverQuote.coverageConfigurationPending))}>{loading ? <Loader2 className="animate-spin"/> : <LockKeyhole size={18}/>} {isTableOrder ? "Enviar para a comanda" : "Confirmar pedido"}</button><p className="text-center text-[11px] text-black/40">Ao confirmar, você concorda com os termos e a política de privacidade.</p></div></div>{error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}</aside>
+      <aside className="lg:sticky lg:top-5 lg:self-start"><div className="surface overflow-hidden"><div className="bg-basso-black p-5 text-white"><h2 className="font-display text-2xl font-bold">Resumo</h2><p className="mt-1 text-xs text-white/55">Confira os itens antes de enviar.</p></div><div className="max-h-72 space-y-3 overflow-y-auto p-5">{cart.items.map(i => <div key={i.id} className="flex justify-between gap-4 text-sm"><div><strong>{i.quantity}× {i.name}</strong></div><span className="shrink-0 font-semibold">{currency(i.unitPrice * i.quantity)}</span></div>)}</div><div className="space-y-2 border-t border-black/5 p-5 text-sm"><Line label="Subtotal" value={currency(displaySubtotal)}/>{displayDiscount > 0 && <Line label="Desconto" value={`− ${currency(displayDiscount)}`} good/>}<Line label="Taxa de entrega" value={channel === "own_delivery" ? (serverQuote ? currency(displayDeliveryFee) : quoting ? "Calculando..." : quoteError ? "Indisponível" : "Informe o bairro") : currency(0)}/>{isTableOrder && <Line label="Destino" value={`Mesa ${tableNumber}`}/>}<div className="my-3 border-t border-dashed border-black/10"/><div className="flex items-center justify-between text-lg"><strong>Total</strong><strong className="text-basso-wine">{currency(total)}</strong></div><button type="submit" className="btn-primary mt-4 w-full py-3.5" disabled={loading || quoting || (channel === "own_delivery" && (!serverQuote || serverQuote.coverageConfigurationPending))}>{loading ? <Loader2 className="animate-spin"/> : <LockKeyhole size={18}/>} {isTableOrder ? "Enviar para a comanda" : "Confirmar pedido"}</button><p className="text-center text-[11px] text-black/40">Ao confirmar, você concorda com os termos e a política de privacidade.</p></div></div>{error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}</aside>
     </form>
   </main>;
 }

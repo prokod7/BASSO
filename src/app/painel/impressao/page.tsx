@@ -12,12 +12,36 @@ import {
   Save,
   Settings2,
   TriangleAlert,
-  X,
 } from "lucide-react";
 import { PageHeader } from "@/components/internal/PageHeader";
 import { Modal } from "@/components/ui/Modal";
 import { isDemoMode, shortDateTime } from "@/lib/utils";
 import type { PrintProfile } from "@/types";
+
+type JobPayload = {
+  order?: {
+    id?: string;
+    number?: string | number;
+    channel?: string;
+    customer_name?: string;
+    customer_phone?: string;
+    table_number?: number;
+    subtotal_cents?: number;
+    discount_cents?: number;
+    delivery_fee_cents?: number;
+    total_cents?: number;
+    payment_method?: string;
+    change_for_cents?: number;
+    notes?: string;
+    address?: Record<string, unknown> | null;
+  };
+  items?: Array<{
+    quantity?: number;
+    name_snapshot?: string;
+    unit_price_cents?: number;
+    selection?: Record<string, unknown>;
+  }>;
+};
 
 type Job = {
   id: string;
@@ -31,6 +55,7 @@ type Job = {
   last_error?: string;
   created_at: string;
   processed_at?: string;
+  payload?: JobPayload;
 };
 
 const demoJobs: Job[] = [
@@ -106,6 +131,16 @@ export default function PrintPage() {
     }
   }
 
+  function browserPrint(job: Job) {
+    if (!job.payload) { setMessage("Este job antigo não possui conteúdo disponível para impressão pelo navegador."); return; }
+    const popup = window.open("", "_blank", "width=430,height=760");
+    if (!popup) { setMessage("O navegador bloqueou a janela de impressão. Libere pop-ups para este site e tente novamente."); return; }
+    popup.document.open();
+    popup.document.write(receiptHtml(job));
+    popup.document.close();
+    setMessage("Comprovante aberto no navegador. Escolha a impressora na janela de impressão.");
+  }
+
   async function testPrint(profile: PrintProfile) {
     setWorking(`test:${profile.key}`); setMessage("");
     try {
@@ -114,7 +149,7 @@ export default function PrintPage() {
       const response = await fetch("/api/print/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ printerKey, sector: profile.sector }) });
       const body = await response.json() as { error?: string };
       if (!response.ok) throw new Error(body.error || "Falha ao criar impressão de teste.");
-      setMessage(bridgeOnline ? `Teste enviado para ${profile.name}. Aguarde a saída física.` : "Teste entrou na fila, mas o Print Bridge está offline. Ligue o agente local antes de esperar a impressão física.");
+      setMessage(bridgeOnline ? `Teste enviado para ${profile.name}. Aguarde a saída física.` : "Teste entrou na fila, mas o Print Bridge está offline. Use a impressão pelo navegador ou ligue o agente local.");
       await load();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao testar impressão."); }
     finally { setWorking(null); }
@@ -145,21 +180,21 @@ export default function PrintPage() {
   return (
     <>
       <PageHeader title="Impressão e layout das comandas" icon={Printer} description="Administre equipamentos, largura, conexão, setor, vias, impressão automática, ordem dos blocos, destaques e fila real de reprocessamento." actions={<><button className="btn-secondary" onClick={load}><RefreshCw size={17} />Atualizar</button><button className="btn-primary" onClick={() => setBridgeModal(true)}><Settings2 size={17} />Configurar Print Bridge</button></>} />
-      {message && <p className={`mb-4 rounded-xl p-3 text-sm font-semibold ${/falha|erro/i.test(message) ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-800"}`}>{message}</p>}
+      {message && <p className={`mb-4 rounded-xl p-3 text-sm font-semibold ${/falha|erro|bloqueou/i.test(message) ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-800"}`}>{message}</p>}
       <div className="mb-6 grid gap-4 md:grid-cols-4"><Summary label="Perfis ativos" value={profiles.filter((profile) => profile.active).length} tone="green" /><Summary label="Aguardando impressão" value={queued} tone="amber" /><Summary label="Falhas na fila" value={failed} tone="red" /><Summary label="Print Bridge" value={bridgeOnline ? "Online" : bridge ? "Offline" : "Pendente"} tone={bridgeOnline ? "green" : "amber"} /></div>
 
-      <div className={`mb-6 rounded-2xl border p-4 text-sm ${bridgeOnline ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}><strong>{bridgeOnline ? "Print Bridge conectado" : "Print Bridge sem conexão ativa"}</strong><p className="mt-1 text-xs opacity-75">{bridgeOnline ? `Último heartbeat: ${lastHealthAt ? shortDateTime(lastHealthAt) : "agora"}. Você já pode executar impressão de teste.` : "A fila pode receber jobs, mas nenhuma impressora física será acionada enquanto o agente local não estiver rodando no computador da pizzaria."}</p></div>
+      <div className={`mb-6 rounded-2xl border p-4 text-sm ${bridgeOnline ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}><strong>{bridgeOnline ? "Print Bridge conectado" : "Print Bridge sem conexão ativa"}</strong><p className="mt-1 text-xs opacity-75">{bridgeOnline ? `Último heartbeat: ${lastHealthAt ? shortDateTime(lastHealthAt) : "agora"}. Você já pode executar impressão de teste.` : "A fila recebe os pedidos, mas a USB só é acionada quando o agente local está rodando. Enquanto estiver offline, use “Navegador” na fila para imprimir manualmente pelo computador."}</p></div>
 
       <section className="surface overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5"><div><h2 className="font-display text-2xl font-bold">Perfis das impressoras</h2><p className="text-sm text-black/45">A operação usa uma Epson e uma impressora térmica chinesa; o modelo exato será definido na implantação.</p></div><span className="rounded-full bg-basso-paper px-3 py-1 text-xs font-bold text-black/45">58 mm ou 80 mm</span></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5"><div><h2 className="font-display text-2xl font-bold">Perfis das impressoras</h2><p className="text-sm text-black/45">A operação usa uma Epson e uma impressora térmica chinesa; o modelo exato é configurado no computador da pizzaria.</p></div><span className="rounded-full bg-basso-paper px-3 py-1 text-xs font-bold text-black/45">58 mm ou 80 mm</span></div>
         {loading ? <div className="grid h-48 place-items-center"><Loader2 className="animate-spin" /></div> : <div className="grid gap-4 p-4 lg:grid-cols-2">{profiles.map((profile) => <article key={profile.key} className={`rounded-3xl border p-5 ${profile.active ? "border-black/5 bg-white" : "border-black/5 bg-stone-50 opacity-70"}`}><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-basso-cream text-basso-wine"><Printer size={22} /></span><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${profile.autoPrint ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{profile.autoPrint ? "Automática" : "Manual"}</span></div><h3 className="mt-4 font-display text-xl font-bold">{profile.name}</h3><p className="mt-1 text-sm text-black/45">{profile.manufacturer || "Fabricante não definido"} • {profile.model || "Modelo não definido"}</p><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><Info label="Papel" value={`${profile.widthMm} mm`} /><Info label="Colunas" value={String(profile.paperColumns)} /><Info label="Conexão" value={profile.connectionType} /><Info label="Setor" value={profile.sector} /><Info label="Vias" value={String(profile.copies)} /><Info label="Fonte" value={String(profile.template.fontSize || "normal")} /></div><div className="mt-4 grid grid-cols-3 gap-2"><button className="btn-secondary" onClick={() => setPreview(profile)}><Eye size={16} />Prévia</button><button className="btn-secondary" disabled={working === `test:${profile.key}`} onClick={() => void testPrint(profile)}><Printer size={16} />{working === `test:${profile.key}` ? "Enviando" : "Testar"}</button><button className="btn-primary" onClick={() => setEditing(structuredClone(profile))}><Settings2 size={16} />Editar</button></div></article>)}</div>}
       </section>
 
-      <section className="surface mt-6 overflow-hidden"><div className="flex items-center justify-between border-b p-5"><div><h2 className="font-display text-2xl font-bold">Fila de impressão</h2><p className="text-sm text-black/45">Nenhum trabalho é marcado como impresso sem confirmação do agente local.</p></div><span className="text-xs font-bold text-black/40">{jobs.length} registro(s)</span></div>{loading ? <div className="grid h-48 place-items-center"><Loader2 className="animate-spin" /></div> : <div className="divide-y divide-black/5">{jobs.map((job) => <div key={job.id} className="grid gap-3 p-4 lg:grid-cols-[1fr_.7fr_1fr_1fr_1.4fr_auto] lg:items-center"><strong>{job.order_id ? `Pedido ${job.order_id}` : `Comanda ${job.tab_id || "-"}`}</strong><span className="text-sm capitalize">{job.sector}</span><span className="text-sm text-black/50">{job.printer_key}</span><span className={`flex items-center gap-1 text-xs font-bold ${job.status === "done" ? "text-emerald-700" : job.status === "failed" ? "text-red-700" : "text-amber-700"}`}>{job.status === "done" ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />} {job.status} • {job.attempts}{job.is_reprint ? " • reimpressão" : ""}</span><div><p className="text-xs text-black/40">{shortDateTime(job.created_at)}</p>{job.last_error && <p className="mt-1 text-xs font-semibold text-red-700">{job.last_error}</p>}</div><button className="btn-ghost" disabled={working === job.id} onClick={() => retry(job.id)}>{working === job.id ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}Reprocessar</button></div>)}{!jobs.length && <p className="p-10 text-center text-sm text-black/45">Nenhum trabalho de impressão registrado.</p>}</div>}</section>
+      <section className="surface mt-6 overflow-hidden"><div className="flex items-center justify-between border-b p-5"><div><h2 className="font-display text-2xl font-bold">Fila de impressão</h2><p className="text-sm text-black/45">A impressão automática exige o agente local. A opção Navegador funciona como contingência imediata.</p></div><span className="text-xs font-bold text-black/40">{jobs.length} registro(s)</span></div>{loading ? <div className="grid h-48 place-items-center"><Loader2 className="animate-spin" /></div> : <div className="divide-y divide-black/5">{jobs.map((job) => <div key={job.id} className="grid gap-3 p-4 lg:grid-cols-[1fr_.7fr_1fr_1fr_1.4fr_auto] lg:items-center"><strong>{job.order_id ? `Pedido ${job.order_id}` : `Comanda ${job.tab_id || "-"}`}</strong><span className="text-sm capitalize">{job.sector}</span><span className="text-sm text-black/50">{job.printer_key}</span><span className={`flex items-center gap-1 text-xs font-bold ${job.status === "done" ? "text-emerald-700" : job.status === "failed" ? "text-red-700" : job.status === "cancelled" ? "text-stone-500" : "text-amber-700"}`}>{job.status === "done" ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />} {job.status} • {job.attempts}{job.is_reprint ? " • reimpressão" : ""}</span><div><p className="text-xs text-black/40">{shortDateTime(job.created_at)}</p>{job.last_error && <p className="mt-1 text-xs font-semibold text-red-700">{job.last_error}</p>}</div><div className="flex flex-wrap gap-1"><button className="btn-ghost" disabled={!job.payload} onClick={() => browserPrint(job)}><Printer size={16}/>Navegador</button><button className="btn-ghost" disabled={working === job.id} onClick={() => retry(job.id)}>{working === job.id ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}Reprocessar</button></div></div>)}{!jobs.length && <p className="p-10 text-center text-sm text-black/45">Nenhum trabalho de impressão registrado.</p>}</div>}</section>
 
       <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title="Editar perfil de impressão" className="sm:max-w-4xl">{editing && <ProfileEditor profile={editing} onChange={setEditing} onSave={() => saveProfile(editing)} working={working === editing.key} />}</Modal>
       <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title="Prévia da comanda">{preview && <ReceiptPreview profile={preview} />}</Modal>
-      <Modal open={bridgeModal} onClose={() => setBridgeModal(false)} title="Configuração do Print Bridge"><div className="p-5"><p className="text-sm text-black/55">Execute no computador que permanece ligado junto às impressoras. A mesma chave deve existir na Vercel e no arquivo local.</p><ol className="mt-5 space-y-3 text-sm"><li className="rounded-xl bg-basso-paper p-3"><strong>1.</strong> Configure <code>PRINT_BRIDGE_KEY</code> na Vercel.</li><li className="rounded-xl bg-basso-paper p-3"><strong>2.</strong> Copie <code>bridge/config.example.json</code> para <code>bridge/config.json</code>.</li><li className="rounded-xl bg-basso-paper p-3"><strong>3.</strong> Use a mesma chave e informe a URL do sistema.</li><li className="rounded-xl bg-basso-paper p-3"><strong>4.</strong> Rode <code>node bridge/print-bridge.mjs</code> no computador da pizzaria.</li></ol><button className="btn-secondary mt-5 w-full" onClick={() => navigator.clipboard.writeText("node bridge/print-bridge.mjs")}><Copy size={16} />Copiar comando</button></div></Modal>
+      <Modal open={bridgeModal} onClose={() => setBridgeModal(false)} title="Configuração do Print Bridge"><div className="p-5"><p className="text-sm text-black/55">Execute no computador que permanece ligado junto às impressoras. A mesma chave deve existir na Vercel e no arquivo local.</p><ol className="mt-5 space-y-3 text-sm"><li className="rounded-xl bg-basso-paper p-3"><strong>1.</strong> Configure <code>PRINT_BRIDGE_KEY</code> na Vercel.</li><li className="rounded-xl bg-basso-paper p-3"><strong>2.</strong> Copie <code>bridge/config.example.json</code> para <code>bridge/config.json</code>.</li><li className="rounded-xl bg-basso-paper p-3"><strong>3.</strong> Use a mesma chave, a URL <code>https://basso-pedido-pro.vercel.app</code> e os nomes exatos das impressoras do Windows.</li><li className="rounded-xl bg-basso-paper p-3"><strong>4.</strong> Execute <code>bridge\start-bridge.cmd</code> no computador da pizzaria. O bridge v1.2 envia ESC/POS em modo RAW.</li></ol><button className="btn-secondary mt-5 w-full" onClick={() => navigator.clipboard.writeText("bridge\\start-bridge.cmd")}><Copy size={16} />Copiar comando</button></div></Modal>
     </>
   );
 }
@@ -189,3 +224,26 @@ function ProfileEditor({ profile, onChange, onSave, working }: { profile: PrintP
 }
 
 function ReceiptPreview({ profile, compact = false }: { profile: PrintProfile; compact?: boolean }) { const width = profile.widthMm === 58 ? "max-w-[280px]" : "max-w-[360px]"; const font = profile.template.fontSize === "small" ? "text-[10px]" : profile.template.fontSize === "large" ? "text-sm" : "text-xs"; return <div className={`${compact ? "sticky top-2" : "m-5 mx-auto"} ${width} w-full bg-white p-5 font-mono shadow-xl ${font}`}><div className="border-b border-dashed border-black pb-3 text-center">{profile.template.showLogo && <p className="text-lg font-black">LFB</p>}<p className="font-black">LA FORNERIA BASSO</p><p>Pedido #1048</p><p>{new Date().toLocaleString("pt-BR")}</p></div>{profile.template.showCustomer && <div className="border-b border-dashed border-black py-3"><p><strong>CLIENTE:</strong> Maria Souza</p><p><strong>TELEFONE:</strong> (11) 97000-0000</p></div>}<div className="border-b border-dashed border-black py-3"><p className="font-black">1x PIZZA GRANDE</p><p>1/2 Calabresa Tradicional</p><p>1/2 Mozzarella</p><p>Massa tradicional</p>{profile.template.highlightRemovals && <p className="mt-1 font-black">SEM CEBOLA</p>}<p className="mt-1">+ Bacon</p></div>{profile.template.showPayment && <div className="border-b border-dashed border-black py-3"><p><strong>TOTAL:</strong> R$ 65,00</p><p><strong>PAGAMENTO:</strong> PIX</p></div>}{profile.template.showAddress && <div className="border-b border-dashed border-black py-3"><p>Rua das Flores, 120</p><p>Centro • Casa 2</p></div>}{profile.template.highlightNotes && <div className="pt-3"><p className="font-black">OBSERVAÇÃO:</p><p>Entregar na portaria.</p></div>}<p className="mt-4 text-center">{profile.widthMm} mm • {profile.paperColumns} colunas</p></div>; }
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "").replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char] || char);
+}
+
+function receiptHtml(job: Job) {
+  const payload = job.payload || {};
+  const order = payload.order || {};
+  const items = payload.items || [];
+  const money = (cents: unknown) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(cents || 0) / 100);
+  const rows = items.map(item => {
+    const selection = item.selection || {};
+    const extras: string[] = [];
+    if (selection.size) extras.push(`${escapeHtml(selection.size)} • massa ${escapeHtml(selection.mass || "traditional")}`);
+    if (selection.flavorA) extras.push(`Sabor: ${escapeHtml(selection.flavorA)}${selection.flavorB ? ` / ${escapeHtml(selection.flavorB)}` : ""}`);
+    if (Array.isArray(selection.removedA) && selection.removedA.length) extras.push(`SEM: ${escapeHtml(selection.removedA.join(", "))}`);
+    if (selection.notes) extras.push(`OBS: ${escapeHtml(selection.notes)}`);
+    return `<section class="item"><strong>${escapeHtml(item.quantity || 1)}x ${escapeHtml(item.name_snapshot || "Item")}</strong><span>${money(item.unit_price_cents)}</span>${extras.map(line => `<small>${line}</small>`).join("")}</section>`;
+  }).join("");
+  const address = order.address || {};
+  const addressText = [address.street, address.number, address.district, address.city, address.state].filter(Boolean).map(escapeHtml).join(" • ");
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido ${escapeHtml(order.number || order.id || job.order_id || job.id)}</title><style>@page{margin:4mm}*{box-sizing:border-box}body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:0 auto;padding:4mm;max-width:80mm;color:#000;font-size:12px}.center{text-align:center}.line{border-top:1px dashed #000;margin:8px 0}.item{padding:7px 0;border-bottom:1px dashed #777}.item strong,.item span,.item small{display:block}.item span{margin-top:2px}.item small{margin-top:3px}.total{font-size:16px;font-weight:800}.muted{font-size:10px}@media print{button{display:none}}</style></head><body><div class="center"><strong>LA FORNERIA BASSO</strong><div>${escapeHtml(job.sector).toUpperCase()}${job.is_reprint ? " • REIMPRESSÃO" : ""}</div></div><div class="line"></div><strong>PEDIDO #${escapeHtml(order.number || order.id || job.order_id || "")}</strong><div>Cliente: ${escapeHtml(order.customer_name || "")}</div>${order.customer_phone ? `<div>Telefone: ${escapeHtml(order.customer_phone)}</div>` : ""}${order.table_number ? `<div>Mesa: ${escapeHtml(order.table_number)}</div>` : ""}<div class="line"></div>${rows}<div class="line"></div>${order.subtotal_cents != null ? `<div>Subtotal: ${money(order.subtotal_cents)}</div>` : ""}${Number(order.discount_cents || 0) ? `<div>Desconto: -${money(order.discount_cents)}</div>` : ""}${Number(order.delivery_fee_cents || 0) ? `<div>Entrega: ${money(order.delivery_fee_cents)}</div>` : ""}${order.total_cents != null ? `<div class="total">TOTAL: ${money(order.total_cents)}</div>` : ""}${order.payment_method ? `<div>Pagamento: ${escapeHtml(order.payment_method).toUpperCase()}</div>` : ""}${addressText ? `<div class="line"></div><strong>ENDEREÇO</strong><div>${addressText}</div>${address.cep ? `<div>CEP: ${escapeHtml(address.cep)}</div>` : ""}` : ""}${order.notes ? `<div class="line"></div><strong>OBS:</strong><div>${escapeHtml(order.notes)}</div>` : ""}<div class="line"></div><div class="center muted">${new Date().toLocaleString("pt-BR")}</div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`;
+}

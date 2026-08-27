@@ -3,9 +3,11 @@ import net from "node:net";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
-const configPath = process.argv[2] || process.env.PRINT_BRIDGE_CONFIG || path.join(process.cwd(), "bridge", "config.json");
+const bridgeDir = path.dirname(fileURLToPath(import.meta.url));
+const configPath = process.argv[2] || process.env.PRINT_BRIDGE_CONFIG || path.join(bridgeDir, "config.json");
 const config = JSON.parse(await fs.readFile(configPath, "utf8"));
 if (!config.baseUrl || !config.apiKey) throw new Error("baseUrl e apiKey são obrigatórios no config.json.");
 const intervalMs = Math.max(1500, Number(config.pollIntervalMs || 3000));
@@ -23,6 +25,14 @@ const line = () => "-".repeat(Number(config.paperColumns || 42));
 const money = cents => `R$ ${(Number(cents || 0) / 100).toFixed(2).replace(".", ",")}`;
 const normalize = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E\n]/g, "?");
 
+function addressLines(address) {
+  if (!address || typeof address !== "object") return [];
+  const first = [address.street, address.number].filter(Boolean).join(", ");
+  const second = [address.district, address.city, address.state].filter(Boolean).join(" - ");
+  const third = [address.complement ? `Comp: ${address.complement}` : "", address.reference ? `Ref: ${address.reference}` : ""].filter(Boolean).join(" | ");
+  return [first, second, address.cep ? `CEP: ${address.cep}` : "", third].filter(Boolean);
+}
+
 function render(job) {
   const payload = job.payload || {};
   const order = payload.order || {};
@@ -34,9 +44,11 @@ function render(job) {
     `PEDIDO #${order.number || order.id || job.order_id || ""}`,
     `CANAL: ${order.channel || ""}`,
     `CLIENTE: ${order.customer_name || ""}`,
+    order.customer_phone ? `TEL: ${order.customer_phone}` : "",
     order.table_number ? `MESA: ${order.table_number}` : "",
     line()
   ];
+
   for (const item of items) {
     lines.push(`${item.quantity || 1}x ${item.name_snapshot || item.name || "Item"}`);
     if (item.unit_price_cents != null) lines.push(`   ${money(item.unit_price_cents)}`);
@@ -49,10 +61,22 @@ function render(job) {
     if (selection.notes) lines.push(`   OBS: ${selection.notes}`);
     lines.push("");
   }
+
+  if (job.sector === "counter") {
+    lines.push(line());
+    if (order.subtotal_cents != null) lines.push(`SUBTOTAL: ${money(order.subtotal_cents)}`);
+    if (Number(order.discount_cents || 0) > 0) lines.push(`DESCONTO: -${money(order.discount_cents)}`);
+    if (Number(order.delivery_fee_cents || 0) > 0) lines.push(`ENTREGA: ${money(order.delivery_fee_cents)}`);
+    if (order.total_cents != null) lines.push(`TOTAL: ${money(order.total_cents)}`);
+    if (order.payment_method) lines.push(`PAGAMENTO: ${String(order.payment_method).toUpperCase()}`);
+    if (order.change_for_cents) lines.push(`TROCO PARA: ${money(order.change_for_cents)}`);
+    const deliveryAddress = addressLines(order.address);
+    if (deliveryAddress.length) lines.push(line(), "ENDERECO:", ...deliveryAddress);
+  }
+
   if (order.notes) lines.push(line(), `OBS PEDIDO: ${order.notes}`);
-  lines.push(line(), new Date().toLocaleString("pt-BR"), "", "", "");
+  lines.push(line(), new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }), "", "", "");
   const text = normalize(lines.filter(Boolean).join("\n"));
-  // ESC/POS: initialize, text, feed, partial cut.
   return Buffer.concat([Buffer.from([0x1b, 0x40]), Buffer.from(text, "ascii"), Buffer.from([0x0a, 0x0a, 0x1d, 0x56, 0x01])]);
 }
 
@@ -67,18 +91,19 @@ async function sendTcp(printer, bytes) {
 }
 
 async function sendFile(printer, bytes) {
-  const directory = printer.directory || path.join(process.cwd(), "bridge", "spool");
+  const directory = printer.directory || path.join(bridgeDir, "spool");
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(path.join(directory, `${Date.now()}-${printer.key || "printer"}.bin`), bytes);
 }
 
 async function sendSystem(printer, bytes) {
-  const tmp = path.join(os.tmpdir(), `pedidopro-${Date.now()}.txt`);
+  const tmp = path.join(os.tmpdir(), `pedidopro-${Date.now()}.bin`);
   await fs.writeFile(tmp, bytes);
   try {
     if (process.platform === "win32") {
-      if (!/^[\w .()_-]+$/.test(printer.name || "")) throw new Error("Nome de impressora inválido.");
-      await run("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", `Get-Content -LiteralPath '${tmp.replaceAll("'", "''")}' | Out-Printer -Name '${printer.name.replaceAll("'", "''")}'`]);
+      if (!/^[\w .()_\-À-ÿ]+$/u.test(printer.name || "")) throw new Error("Nome de impressora inválido.");
+      const script = path.join(bridgeDir, "raw-print.ps1");
+      await run("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script, "-PrinterName", printer.name, "-FilePath", tmp]);
     } else {
       await run("lp", printer.name ? ["-d", printer.name, "-o", "raw", tmp] : ["-o", "raw", tmp]);
     }
@@ -117,7 +142,7 @@ async function request(endpoint, body) {
 async function heartbeat() {
   const now = Date.now();
   if (now - lastHeartbeatAt < 20_000) return;
-  await request("/api/print/heartbeat", { bridge: "PedidoPro Print Bridge", hostname: os.hostname(), platform: process.platform, version: "1.1", printers: Object.keys(config.printers || {}) });
+  await request("/api/print/heartbeat", { bridge: "PedidoPro Print Bridge", hostname: os.hostname(), platform: process.platform, version: "1.2", printers: Object.keys(config.printers || {}) });
   lastHeartbeatAt = now;
 }
 
@@ -137,7 +162,7 @@ async function cycle() {
   }
 }
 
-console.log(`PedidoPro Print Bridge ativo: ${config.baseUrl}`);
+console.log(`PedidoPro Print Bridge v1.2 ativo: ${config.baseUrl}`);
 while (!stopped) {
   try { await cycle(); }
   catch (error) { console.error(`[BRIDGE] ${error instanceof Error ? error.message : String(error)}`); }

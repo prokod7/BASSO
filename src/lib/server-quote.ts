@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { priceItemsWithRuntime } from "@/lib/server-menu-pricing";
+import { findDeliveryZone } from "@/lib/delivery-zones";
 import type { CartItem, OrderChannel } from "@/types";
 
 export interface CommercialQuote {
@@ -20,16 +21,18 @@ export async function quoteCommercialTerms(input: { items: CartItem[]; channel: 
   let deliveryFee=0;
   let coverageConfigurationPending=false;
   if(input.channel==="own_delivery"){
-    const {data:zones,error}=await db.from("delivery_zones").select("name,districts,fee_cents,minimum_order_cents").eq("active",true);
+    const {data:zones,error}=await db.from("delivery_zones").select("name,districts,fee_cents,minimum_order_cents,active").eq("active",true);
     if(error)throw error;
-    if(!zones?.length){coverageConfigurationPending=true;}
-    else{
-      const district=(input.district||"").trim().toLocaleLowerCase("pt-BR");
-      const zone=zones.find((row:any)=>(row.districts||[]).some((value:string)=>value.trim().toLocaleLowerCase("pt-BR")===district));
-      if(!zone)throw new Error("Endereço fora da área de entrega configurada.");
-      if(subtotal<(zone.minimum_order_cents||0))throw new Error(`Pedido mínimo da região não atingido: R$ ${((zone.minimum_order_cents||0)/100).toFixed(2).replace(".",",")}.`);
-      deliveryFee=zone.fee_cents;
+    if(!zones?.length){
+      coverageConfigurationPending=true;
+      throw new Error("As taxas de entrega por bairro ainda não foram configuradas. Cadastre os bairros e valores no painel antes de aceitar entregas.");
     }
+    const district=(input.district||"").trim();
+    if(!district) throw new Error("Informe o bairro para calcular a taxa de entrega.");
+    const zone=findDeliveryZone(zones,district);
+    if(!zone)throw new Error(`O bairro “${district}” está fora da área de entrega configurada.`);
+    if(subtotal<(zone.minimum_order_cents||0))throw new Error(`Pedido mínimo da região não atingido: R$ ${((zone.minimum_order_cents||0)/100).toFixed(2).replace(".",",")}.`);
+    deliveryFee=Number(zone.fee_cents||0);
   }
   let discount=0;
   let couponCode: string|undefined;
