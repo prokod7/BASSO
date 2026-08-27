@@ -218,3 +218,5 @@ export interface StoreRuntimeStatus {
 
 export type StoreChannel = "own_delivery" | "pickup" | "counter" | "dine_in" | "table_qr";
 export type ChecklistPhase = "opening" | "closing";
+
+export * from "./extended";
