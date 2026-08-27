@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
   name: z.string().min(2).max(100).optional(),
+  city: z.string().min(2).max(100).optional(),
   districts: z.array(z.string().min(2).max(100)).min(1).optional(),
   fee: z.number().int().nonnegative().optional(),
   minimumOrder: z.number().int().nonnegative().optional(),
@@ -22,7 +23,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { data: before, error: beforeError } = await db.from("delivery_zones").select("*").eq("id", id).is("deleted_at", null).single();
     if (beforeError) throw beforeError;
     const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (body.name !== undefined) payload.name = body.name;
+    if (body.name !== undefined) payload.name = body.name.trim();
+    if (body.city !== undefined) payload.city = body.city.trim();
     if (body.districts !== undefined) payload.districts = body.districts.map(value => value.trim());
     if (body.fee !== undefined) payload.fee_cents = body.fee;
     if (body.minimumOrder !== undefined) payload.minimum_order_cents = body.minimumOrder;
