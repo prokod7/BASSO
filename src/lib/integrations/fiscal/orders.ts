@@ -136,6 +136,13 @@ export function mapFiscalOrder(
 
   if (!items.length) return null;
 
+  // Alguns pedidos históricos de marketplace possuem componentes comerciais
+  // que não foram materializados em order_items (por exemplo, customizações
+  // aninhadas). Não criamos um item sintético e não alteramos o pedido: a
+  // diferença é exposta explicitamente para reconciliação no Basso Fiscal.
+  const itemsSubtotalCents = items.reduce((sum, item) => sum + item.totalCents, 0);
+  const unallocatedSubtotalCents = row.subtotal_cents - itemsSubtotalCents;
+
   const payments = paymentRows.length
     ? paymentRows.map(payment => ({
         method: mapFiscalPaymentMethod(payment.method),
@@ -161,6 +168,8 @@ export function mapFiscalOrder(
     status: row.status,
     paymentStatus: row.payment_status,
     paymentMethod: mapFiscalPaymentMethod(row.payment_method),
+    itemsSubtotalCents,
+    unallocatedSubtotalCents,
     subtotalCents: row.subtotal_cents,
     discountCents: row.discount_cents,
     deliveryFeeCents: row.delivery_fee_cents,
