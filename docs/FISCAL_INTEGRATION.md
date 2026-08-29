@@ -144,18 +144,30 @@ A tabela `payments` suporta múltiplos registros por pedido. A API busca todos o
 
 Se um pedido antigo não possuir linha em `payments`, a API cria **somente na resposta** um fallback a partir do snapshot confiável de `orders.payment_method`, `orders.payment_status` e `orders.total_cents`. Nada é gravado no banco.
 
-## Valores
+## Valores e reconciliação comercial
 
 Todos os valores retornados permanecem inteiros em centavos:
 
 ```json
 {
+  "itemsSubtotalCents": 10790,
+  "unallocatedSubtotalCents": 0,
   "subtotalCents": 10790,
   "discountCents": 0,
   "deliveryFeeCents": 800,
   "totalCents": 11590
 }
 ```
+
+- `itemsSubtotalCents` é a soma de `quantity × unitPriceCents` dos itens ativos realmente persistidos em `order_items`.
+- `unallocatedSubtotalCents` é `subtotalCents - itemsSubtotalCents`.
+- `subtotalCents` continua sendo o snapshot comercial autoritativo do pedido.
+
+Em pedidos normais, `unallocatedSubtotalCents` deve ser `0`.
+
+Foi identificado em um pedido histórico real do iFood que uma customização aninhada de terceiro nível não foi materializada integralmente em `order_items`, apesar de estar contemplada no subtotal autoritativo do pedido. Nesses casos, a API **não inventa item sintético, não altera o pedido e não cria regra fiscal**: ela expõe a diferença em `unallocatedSubtotalCents` para que o Basso Fiscal consiga detectar e tratar a reconciliação comercial de forma explícita.
+
+Esse campo pode ser positivo ou negativo em dados históricos/externos e não representa, por si só, taxa, desconto ou classificação tributária.
 
 Itens também utilizam `unitPriceCents` e `totalCents`. Não há cálculo monetário com ponto flutuante.
 
@@ -167,7 +179,7 @@ A API não interpreta seleção de pizza como regra tributária. `productId`, no
 
 ## Paginação
 
-A listagem é ordenada pelo número interno imutável em ordem decrescente. O número **não é a identidade fiscal**; ele é usado apenas para uma paginação estável e eficiente. `externalId` é sempre `orders.id`.
+A listagem é ordenada pelo número interno único em ordem decrescente. O banco possui constraint `UNIQUE (number)`. O número **não é a identidade fiscal**; ele é usado apenas para uma paginação estável e eficiente. `externalId` é sempre `orders.id`.
 
 Exemplo:
 
@@ -200,6 +212,8 @@ Reenvie o cursor recebido junto dos mesmos filtros para buscar a página seguint
       "status": "completed",
       "paymentStatus": "paid",
       "paymentMethod": "pix",
+      "itemsSubtotalCents": 10790,
+      "unallocatedSubtotalCents": 0,
       "subtotalCents": 10790,
       "discountCents": 0,
       "deliveryFeeCents": 800,

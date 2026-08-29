@@ -176,6 +176,8 @@ describe("Basso Fiscal • API somente leitura", () => {
     expect(Number.isInteger(mapped!.totalCents)).toBe(true);
     expect(mapped!.items[0].unitPriceCents).toBe(10790);
     expect(mapped!.items[0].totalCents).toBe(10790);
+    expect(mapped!.itemsSubtotalCents).toBe(10790);
+    expect(mapped!.unallocatedSubtotalCents).toBe(0);
   });
 
   it("19. desconto participa da consistência exata do total", () => {
@@ -233,5 +235,29 @@ describe("Basso Fiscal • API somente leitura", () => {
     expect(route).toMatch(/export async function GET/);
     expect(route).not.toMatch(/export async function (POST|PUT|PATCH|DELETE)/);
     expect(fiscalLib).not.toMatch(/Focus NFe|NCM|CFOP|CSOSN|CEST|COFINS|DANFC|SEFAZ/i);
+  });
+
+  it("25. divergência histórica entre linhas e subtotal é explícita sem criar item sintético", () => {
+    const marketplaceOrder: FiscalOrderRow = {
+      ...baseOrder,
+      id: "ifood_real_10011",
+      number: 10011,
+      channel: "ifood",
+      order_origin: "marketplace",
+      payment_method: "credit",
+      subtotal_cents: 2100,
+      delivery_fee_cents: 600,
+      total_cents: 2700,
+    };
+    const marketplaceItems: FiscalItemRow[] = [
+      { ...baseItem, id: "ifood_item_1", order_id: marketplaceOrder.id, product_id: null, unit_price_cents: 500, name_snapshot: "Produto 1", sector: "kitchen" },
+      { ...baseItem, id: "ifood_item_2", order_id: marketplaceOrder.id, product_id: null, unit_price_cents: 1300, name_snapshot: "Produto 2", sector: "kitchen" },
+    ];
+    const mapped = mapFiscalOrder(marketplaceOrder, marketplaceItems, []);
+    expect(mapped?.items).toHaveLength(2);
+    expect(mapped?.itemsSubtotalCents).toBe(1800);
+    expect(mapped?.unallocatedSubtotalCents).toBe(300);
+    expect(mapped?.subtotalCents).toBe(2100);
+    expect(mapped?.items.some(item => item.kind === "fiscal_adjustment")).toBe(false);
   });
 });
