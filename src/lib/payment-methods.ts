@@ -1,4 +1,4 @@
-import type { PaymentMethod } from "@/types";
+import type { PaymentMethod, PaymentMethodLiteral } from "@/types";
 
 export const publicPaymentMethods = ["pix", "cash", "debit", "credit"] as const satisfies readonly PaymentMethod[];
 
@@ -18,7 +18,7 @@ export const pdvPaymentMethods = [
 
 export const legacyPaymentMethods = ["meal_voucher", "food_voucher"] as const satisfies readonly PaymentMethod[];
 
-export const paymentMethodLabels: Record<PaymentMethod, string> = {
+export const paymentMethodLabels: Record<PaymentMethodLiteral, string> = {
   pix: "Pix",
   cash: "Dinheiro",
   debit: "Débito",
