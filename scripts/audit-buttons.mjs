@@ -34,6 +34,19 @@ function locate(source, file, node) {
   return `${path.relative(process.cwd(), file)}:${position.line + 1}:${position.character + 1}`;
 }
 
+function enclosingActionableForm(node, source) {
+  let current = node.parent;
+  while (current) {
+    if (ts.isJsxElement(current)) {
+      const opening = current.openingElement;
+      const tag = opening.tagName.getText(source);
+      if (tag === "form") return Boolean(attr(opening.attributes, "onSubmit") || attr(opening.attributes, "action"));
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
 function inspect(file) {
   stats.files += 1;
   const text = fs.readFileSync(file, "utf8");
@@ -45,8 +58,9 @@ function inspect(file) {
       if (tag === "button") {
         stats.buttons += 1;
         const type = literalValue(attr(opening.attributes, "type"));
-        const actionable = Boolean(attr(opening.attributes, "onClick") || attr(opening.attributes, "formAction") || type === "submit" || type === "reset");
-        if (!actionable) findings.push(`${locate(source, file, opening)} botão sem onClick, formAction ou type=submit/reset`);
+        const nativeSubmit = !type && enclosingActionableForm(opening, source);
+        const actionable = Boolean(attr(opening.attributes, "onClick") || attr(opening.attributes, "formAction") || type === "submit" || type === "reset" || nativeSubmit);
+        if (!actionable) findings.push(`${locate(source, file, opening)} botão sem onClick, formAction, submit nativo ou type=submit/reset`);
       }
       if (tag === "a" || tag === "Link") {
         stats.links += 1;
