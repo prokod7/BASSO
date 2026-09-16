@@ -1,6 +1,6 @@
 import type { PaymentMethod, PaymentMethodLiteral } from "@/types";
 
-export const publicPaymentMethods = ["pix", "cash", "debit", "credit"] as const satisfies readonly PaymentMethod[];
+export const publicPaymentMethods = ["pix", "cash", "debit", "credit"] as const satisfies readonly PaymentMethodLiteral[];
 
 export const pdvPaymentMethods = [
   "cash",
@@ -14,11 +14,11 @@ export const pdvPaymentMethods = [
   "alelo_refeicao",
   "ticket_restaurante",
   "voucher",
-] as const satisfies readonly PaymentMethod[];
+] as const satisfies readonly PaymentMethodLiteral[];
 
-export const legacyPaymentMethods = ["meal_voucher", "food_voucher"] as const satisfies readonly PaymentMethod[];
+export const legacyPaymentMethods = ["meal_voucher", "food_voucher"] as const satisfies readonly PaymentMethodLiteral[];
 
-export const paymentMethodLabels: Record<PaymentMethodLiteral, string> = {
+const canonicalPaymentMethodLabels = {
   pix: "Pix",
   cash: "Dinheiro",
   debit: "Débito",
@@ -32,13 +32,17 @@ export const paymentMethodLabels: Record<PaymentMethodLiteral, string> = {
   alelo_refeicao: "Alelo Refeição",
   ticket_restaurante: "Ticket Restaurante",
   voucher: "Voucher",
-};
+} satisfies Record<PaymentMethodLiteral, string>;
 
-export function isPublicPaymentMethod(value: unknown): value is PaymentMethod {
+// Indexável por métodos persistidos/importados; todos os métodos que o app grava
+// continuam obrigatoriamente enumerados no mapa canônico acima.
+export const paymentMethodLabels: Readonly<Record<string, string>> = canonicalPaymentMethodLabels;
+
+export function isPublicPaymentMethod(value: unknown): value is PaymentMethodLiteral {
   return typeof value === "string" && (publicPaymentMethods as readonly string[]).includes(value);
 }
 
-export function isPdvPaymentMethod(value: unknown): value is PaymentMethod {
+export function isPdvPaymentMethod(value: unknown): value is PaymentMethodLiteral {
   return typeof value === "string" && (pdvPaymentMethods as readonly string[]).includes(value);
 }
 
