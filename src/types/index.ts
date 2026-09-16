@@ -2,7 +2,7 @@ export type PizzaCategory = "traditional" | "premium" | "sweet";
 export type OrderChannel = "own_delivery" | "pickup" | "counter" | "dine_in" | "ifood" | "99food" | "table_qr";
 export type OrderStatus = "received" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "completed" | "cancelled";
 export type PaymentStatus = "pending" | "partial" | "paid" | "refunded" | "cancelled";
-export type PaymentMethod =
+export type PaymentMethodLiteral =
   | "pix"
   | "cash"
   | "debit"
@@ -16,6 +16,14 @@ export type PaymentMethod =
   | "alelo_refeicao"
   | "ticket_restaurante"
   | "voucher";
+export type PaymentMethod =
+  | "pix"
+  | "cash"
+  | "debit"
+  | "credit"
+  | "meal_voucher"
+  | "food_voucher"
+  | (("vr_refeicao" | "vr_alimentacao" | "sodexo" | "pluxe" | "alelo_refeicao" | "ticket_restaurante" | "voucher") & { readonly __pdvOnlyPaymentMethod?: never });
 export type OrderPriority = "normal" | "high" | "urgent";
 export type ProductionStatus = "queued" | "preparing" | "ready" | "cancelled";
 
