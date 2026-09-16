@@ -74,7 +74,18 @@ export async function quoteCommercialTerms(input: {
       (coupon.starts_at && Date.parse(coupon.starts_at) > now) ||
       (coupon.ends_at && Date.parse(coupon.ends_at) < now)
     ) throw new Error("Cupom inválido, pausado, esgotado ou indisponível para este pedido.");
-    discount = coupon.discount_type === "percentage" ? Math.round(subtotal * coupon.value / 100) : Math.min(subtotal, coupon.value);
+
+    const couponEligibleSubtotal = priced.items.reduce((sum, item) => {
+      if (item.promotion && !item.promotion.allowCouponStack) return sum;
+      return sum + item.unitPrice * item.quantity;
+    }, 0);
+    if (couponEligibleSubtotal <= 0) {
+      throw new Error("Este cupom não acumula com as promoções já aplicadas ao pedido.");
+    }
+
+    discount = coupon.discount_type === "percentage"
+      ? Math.round(couponEligibleSubtotal * coupon.value / 100)
+      : Math.min(couponEligibleSubtotal, coupon.value);
     couponCode = coupon.code;
   }
 

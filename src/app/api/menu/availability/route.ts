@@ -28,7 +28,8 @@ const schema = z.object({
 
 export async function GET() {
   try {
-    await requireOperationalRole(["manager","counter"], "menu.manage");
+    // Garçom precisa apenas ler o menu runtime; PATCH continua restrito abaixo.
+    await requireOperationalRole(["manager","counter","waiter"], "orders.view");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const menu = await loadRuntimeMenu(db);

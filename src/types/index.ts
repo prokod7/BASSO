@@ -2,7 +2,23 @@ export type PizzaCategory = "traditional" | "premium" | "sweet";
 export type OrderChannel = "own_delivery" | "pickup" | "counter" | "dine_in" | "ifood" | "99food" | "table_qr";
 export type OrderStatus = "received" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "completed" | "cancelled";
 export type PaymentStatus = "pending" | "partial" | "paid" | "refunded" | "cancelled";
-export type PaymentMethod = "pix" | "cash" | "debit" | "credit" | "meal_voucher" | "food_voucher";
+export type PaymentMethodLiteral =
+  | "pix"
+  | "cash"
+  | "debit"
+  | "credit"
+  | "meal_voucher"
+  | "food_voucher"
+  | "vr_refeicao"
+  | "vr_alimentacao"
+  | "sodexo"
+  | "pluxe"
+  | "alelo_refeicao"
+  | "ticket_restaurante"
+  | "voucher";
+// Leitura persistida pode conter valores históricos de integrações. Toda escrita nova
+// usa PaymentMethodLiteral + validação Zod/enum do PostgreSQL.
+export type PaymentMethod = string;
 export type OrderPriority = "normal" | "high" | "urgent";
 export type ProductionStatus = "queued" | "preparing" | "ready" | "cancelled";
 
@@ -42,6 +58,15 @@ export interface ComboSelection {
   addonPlacements?: Record<string, AddonPlacement>;
   notes: string;
 }
+export interface AppliedPromotion {
+  id: string;
+  name: string;
+  badgeText?: string;
+  image?: string;
+  originalUnitPrice: number;
+  promoUnitPrice: number;
+  allowCouponStack: boolean;
+}
 export interface CartItem {
   id: string;
   kind: "pizza" | "product" | "combo" | "reward";
@@ -51,6 +76,7 @@ export interface CartItem {
   image?: string;
   selection?: PizzaSelection | ComboSelection;
   productId?: string;
+  promotion?: AppliedPromotion;
 }
 export interface Address {
   cep: string; street: string; number: string; district: string; complement?: string; reference?: string; city: string; state: string; latitude?: number; longitude?: number;
@@ -113,6 +139,37 @@ export interface Driver {
 }
 export interface InventoryItem { id: string; productId: string; name: string; unit: string; quantity: number; minQuantity: number; allowNegative: boolean; updatedAt: string; }
 export interface Coupon { id: string; code: string; type: "percentage" | "fixed"; value: number; totalLimit: number | null; uses: number; minimum: number | null; channels: OrderChannel[]; active: boolean; startsAt?: string; endsAt?: string; }
+
+export type PromotionRuntimeStatus = "active" | "scheduled" | "paused" | "inactive" | "ended";
+export interface PromotionTarget {
+  id: string;
+  productId?: string;
+  flavorId?: string;
+  label?: string;
+}
+export interface PromotionRecord {
+  id: string;
+  name: string;
+  description: string;
+  badgeText: string;
+  image?: string;
+  promoPrice: number;
+  active: boolean;
+  paused: boolean;
+  channels: OrderChannel[];
+  daysOfWeek: number[];
+  startsOn?: string;
+  endsOn?: string;
+  startTime?: string;
+  endTime?: string;
+  pizzaSize?: "grande" | "broto";
+  allowCouponStack: boolean;
+  sortOrder: number;
+  targets: PromotionTarget[];
+  status?: PromotionRuntimeStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface CashMovement { id: string; kind: "sale" | "supply" | "withdrawal" | "refund" | "adjustment"; amount: number; reason: string; createdAt: string; actor?: string; }
 export interface FinancialEntry { id: string; kind: "income" | "expense"; status: "pending" | "settled" | "cancelled"; description: string; categoryId?: string; categoryName: string; amount: number; dueDate: string; settledAt?: string; paymentMethod?: PaymentMethod; recurring: boolean; notes?: string; createdAt: string; }

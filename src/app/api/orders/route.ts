@@ -6,6 +6,8 @@ import { requireOperationalRole } from "@/lib/authz";
 import { storeStatus } from "@/lib/opening-hours";
 import { createHash, randomBytes } from "crypto";
 
+const PUBLIC_PAYMENT_METHODS = ["pix", "cash", "debit", "credit"] as const;
+
 export async function POST(request: NextRequest) {
   try {
     const key = request.headers.get("idempotency-key");
@@ -15,6 +17,7 @@ export async function POST(request: NextRequest) {
     if (hasReward || raw?.rewardAuthorizationToken) throw new Error("Recompensas são lançadas exclusivamente pela operação interna.");
     const supplied = parseIncomingOrder(raw);
     if (!["own_delivery", "pickup", "table_qr"].includes(supplied.channel)) throw new Error("Canal não permitido no checkout público.");
+    if (!(PUBLIC_PAYMENT_METHODS as readonly string[]).includes(supplied.paymentMethod)) throw new Error("Forma de pagamento disponível somente no PDV interno.");
     if (supplied.sourceIdempotencyKey !== key) return NextResponse.json({ error: "Chave de idempotência divergente." }, { status: 400 });
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado no servidor." }, { status: 503 });
