@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadRuntimeMenu, scheduleAllows } from "@/lib/server-menu-pricing";
 import { loadActivePromotions } from "@/lib/promotions";
-import type { OrderChannel } from "@/types";
+import type { OrderChannel, PromotionTarget } from "@/types";
 
 const publicChannels: OrderChannel[] = ["own_delivery", "pickup", "table_qr"];
+
+type PublicPromotionTarget = PromotionTarget & { label: string };
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,15 +51,16 @@ export async function GET(request: NextRequest) {
     const productName = new Map(visibleProducts.map(product => [product.id, product.name]));
     const flavorName = new Map(visibleFlavors.map(flavor => [flavor.id, flavor.name]));
     const promotions = activePromotions.flatMap(promotion => {
-      const targets = promotion.targets.flatMap(target => {
+      const targets: PublicPromotionTarget[] = [];
+      for (const target of promotion.targets) {
         if (target.productId && visibleProductIds.has(target.productId)) {
-          return [{ id: target.id, productId: target.productId, label: productName.get(target.productId) || target.productId }];
+          targets.push({ id: target.id, productId: target.productId, label: productName.get(target.productId) || target.productId });
+          continue;
         }
         if (target.flavorId && visibleFlavorIds.has(target.flavorId)) {
-          return [{ id: target.id, flavorId: target.flavorId, label: flavorName.get(target.flavorId) || target.flavorId }];
+          targets.push({ id: target.id, flavorId: target.flavorId, label: flavorName.get(target.flavorId) || target.flavorId });
         }
-        return [];
-      });
+      }
       if (!targets.length) return [];
       return [{
         id: promotion.id,
