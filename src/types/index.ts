@@ -16,9 +16,9 @@ export type PaymentMethodLiteral =
   | "alelo_refeicao"
   | "ticket_restaurante"
   | "voucher";
-// O app grava apenas PaymentMethodLiteral. A parte aberta mantém leitura segura de
-// históricos/importações sem obrigar todos os mapas de UI legados a enumerarem provedores futuros.
-export type PaymentMethod = PaymentMethodLiteral | (string & { readonly __storedPaymentMethod?: never });
+// Leitura persistida pode conter valores históricos de integrações. Toda escrita nova
+// usa PaymentMethodLiteral + validação Zod/enum do PostgreSQL.
+export type PaymentMethod = string;
 export type OrderPriority = "normal" | "high" | "urgent";
 export type ProductionStatus = "queued" | "preparing" | "ready" | "cancelled";
 
