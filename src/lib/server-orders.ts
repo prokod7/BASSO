@@ -3,8 +3,12 @@ import { addonPrice, comboTotal, pizzaTotal, validatePizzaSelection } from "@/li
 import { findProduct } from "@/lib/catalog";
 import type { CartItem, Order } from "@/types";
 
+const paymentMethodSchema = z.enum([
+  "pix","cash","debit","credit","meal_voucher","food_voucher",
+  "vr_refeicao","vr_alimentacao","sodexo","pluxe","alelo_refeicao","ticket_restaurante","voucher"
+]);
 const addressSchema=z.object({cep:z.string(),street:z.string(),number:z.string(),district:z.string(),complement:z.string().optional(),reference:z.string().optional(),city:z.string(),state:z.string(),latitude:z.number().optional(),longitude:z.number().optional()});
-const orderSchema=z.object({id:z.string().min(4).max(100),number:z.number().int().positive(),channel:z.enum(["own_delivery","pickup","counter","dine_in","ifood","99food","table_qr"]),status:z.enum(["received","confirmed","preparing","ready","out_for_delivery","completed","cancelled"]),paymentStatus:z.enum(["pending","partial","paid","refunded","cancelled"]),customerName:z.string().max(120),customerPhone:z.string().max(20),customerId:z.string().uuid().optional(),origin:z.enum(["web","whatsapp","phone","counter","table","marketplace"]).optional(),externalId:z.string().max(160).optional(),address:addressSchema.optional(),tableNumber:z.number().int().min(1).max(15).optional(),tabId:z.string().uuid().optional(),tabName:z.string().max(120).optional(),items:z.array(z.any()).min(1).max(80),subtotal:z.number().int().nonnegative(),discount:z.number().int().nonnegative(),deliveryFee:z.number().int().nonnegative(),total:z.number().int().nonnegative(),paymentMethod:z.enum(["pix","cash","debit","credit","meal_voucher","food_voucher"]),changeFor:z.number().int().nonnegative().optional(),notes:z.string().max(500).optional(),couponCode:z.string().max(30).optional(),createdAt:z.string(),updatedAt:z.string(),trackingToken:z.string().optional(),driverId:z.string().optional(),sourceIdempotencyKey:z.string().min(8)});
+const orderSchema=z.object({id:z.string().min(4).max(100),number:z.number().int().positive(),channel:z.enum(["own_delivery","pickup","counter","dine_in","ifood","99food","table_qr"]),status:z.enum(["received","confirmed","preparing","ready","out_for_delivery","completed","cancelled"]),paymentStatus:z.enum(["pending","partial","paid","refunded","cancelled"]),customerName:z.string().max(120),customerPhone:z.string().max(20),customerId:z.string().uuid().optional(),origin:z.enum(["web","whatsapp","phone","counter","table","marketplace"]).optional(),externalId:z.string().max(160).optional(),address:addressSchema.optional(),tableNumber:z.number().int().min(1).max(15).optional(),tabId:z.string().uuid().optional(),tabName:z.string().max(120).optional(),items:z.array(z.any()).min(1).max(80),subtotal:z.number().int().nonnegative(),discount:z.number().int().nonnegative(),deliveryFee:z.number().int().nonnegative(),total:z.number().int().nonnegative(),paymentMethod:paymentMethodSchema,changeFor:z.number().int().nonnegative().optional(),notes:z.string().max(500).optional(),couponCode:z.string().max(30).optional(),createdAt:z.string(),updatedAt:z.string(),trackingToken:z.string().optional(),driverId:z.string().optional(),sourceIdempotencyKey:z.string().min(8)});
 
 export function calculateAuthoritativeSubtotal(items: CartItem[], allowReward=false): number {
   let subtotal=0;
@@ -44,6 +48,7 @@ export function parseIncomingOrder(input: unknown): Order {
     if(!order.tabId&&(!order.tabName||order.tabName.trim().length<2))throw new Error("Comanda ou participante obrigatório para pedido pelo QR Code.");
     if(order.status!=="received"||order.paymentStatus!=="pending")throw new Error("Pedido pelo QR Code deve entrar recebido e com pagamento pendente.");
     if(order.address)throw new Error("Pedido de mesa não aceita endereço de entrega.");
+    if(!["pix","cash","debit","credit"].includes(order.paymentMethod)) throw new Error("Forma de pagamento indisponível no checkout público.");
   }
   if(order.channel==="dine_in"&&(!order.tableNumber||!order.tabId))throw new Error("Pedido de salão exige mesa e comanda.");
   if(order.total!==Math.max(0,order.subtotal-order.discount+order.deliveryFee))throw new Error("Total divergente.");
