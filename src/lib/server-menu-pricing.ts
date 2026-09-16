@@ -1,6 +1,7 @@
 import { catalog } from "@/lib/catalog";
 import { addonPrice, comboTotal, pizzaTotal, validatePizzaSelection } from "@/lib/pricing";
-import type { Addon, CartItem, Flavor, MenuCategory, OrderChannel, PizzaSelection, ComboSelection } from "@/types";
+import { bestPizzaPromotion, bestProductPromotion, loadActivePromotions } from "@/lib/promotions";
+import type { Addon, AppliedPromotion, CartItem, Flavor, MenuCategory, OrderChannel, PizzaSelection, ComboSelection } from "@/types";
 
 const OFFICIAL_PROMO_FLAVORS = ["calabresa-tradicional", "mozzarella"] as const;
 
@@ -45,8 +46,8 @@ function saoPauloClock(date = new Date()) {
 }
 
 function toMinutes(value: unknown) {
-  if (typeof value !== "string" || !/^\d{2}:\d{2}$/.test(value)) return null;
-  const [hour, minute] = value.split(":").map(Number);
+  if (typeof value !== "string" || !/^\d{2}:\d{2}/.test(value)) return null;
+  const [hour, minute] = value.slice(0, 5).split(":").map(Number);
   return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 ? hour * 60 + minute : null;
 }
 
@@ -111,8 +112,24 @@ function channelAvailable(item: { active: boolean; availableChannels?: OrderChan
   return item.active && (!item.availableChannels?.length || item.availableChannels.includes(channel)) && scheduleAllows(item.availableSchedule);
 }
 
+function protectedPizzaExtras(
+  selection: SweetPizzaSelection,
+  flavors: Flavor[],
+  addons: Addon[],
+) {
+  const addonCents = addonPrice(selection.addons, addons, selection.addonPlacements || {});
+  if (selection.sweetBase !== "hazelnut-zero") return addonCents;
+  const withoutPremiumBase = { ...selection, sweetBase: "standard" as const };
+  const standardTotal = pizzaTotal(withoutPremiumBase, flavors, addons);
+  const currentTotal = pizzaTotal(selection, flavors, addons);
+  return Math.max(0, addonCents + (currentTotal - standardTotal));
+}
+
 export async function priceItemsWithRuntime(db: any, items: CartItem[], channel: OrderChannel, allowReward = false): Promise<{ items: CartItem[]; subtotal: number; menu: RuntimeMenu }> {
-  const menu = await loadRuntimeMenu(db);
+  const [menu, activePromotions] = await Promise.all([
+    loadRuntimeMenu(db),
+    loadActivePromotions(db, channel),
+  ]);
   const activeCategories = new Set(menu.categories.filter(category => category.active).map(category => category.id));
   const flavors = menu.flavors.map(flavor => ({ ...flavor, active: channelAvailable(flavor as any, channel) && activeCategories.has(flavor.category) }));
   const addons = menu.addons;
@@ -126,6 +143,7 @@ export async function priceItemsWithRuntime(db: any, items: CartItem[], channel:
     if (["border","borda","borderId","bordaId"].some(key => key in rawSelection)) throw new Error("Bordas não existem neste sistema.");
     let unitPrice = 0;
     let name = item.name;
+    let promotion: AppliedPromotion | undefined;
 
     if (item.kind === "reward") {
       if (!allowReward) throw new Error("Recompensa exige autorização operacional.");
@@ -145,6 +163,8 @@ export async function priceItemsWithRuntime(db: any, items: CartItem[], channel:
       const cutLabel = hasSweet ? ` • ${selection.cutPreference === "cut" ? "CORTAR" : "NÃO CORTAR"}` : "";
       const baseLabel = hasSweet && selection.sweetBase === "hazelnut-zero" ? " • Base Avelã Zero" : "";
       name = `Pizza ${selection.size === "grande" ? "Grande" : "Broto"} • ${a.name}${b ? ` / ${b.name}` : ""}${cutLabel}${baseLabel}`;
+      promotion = bestPizzaPromotion(activePromotions, selection, unitPrice, protectedPizzaExtras(selection, flavors, addons));
+      if (promotion) unitPrice = promotion.promoUnitPrice;
     } else if (item.kind === "combo") {
       const selection = item.selection as ComboSelectionWithSweetCut | undefined;
       const comboId = item.productId || catalog.combo.id;
@@ -174,9 +194,11 @@ export async function priceItemsWithRuntime(db: any, items: CartItem[], channel:
       if (!product?.active) throw new Error("Produto inválido, esgotado ou indisponível.");
       unitPrice = product.price;
       name = product.name;
+      promotion = bestProductPromotion(activePromotions, product.id, unitPrice);
+      if (promotion) unitPrice = promotion.promoUnitPrice;
     }
 
-    normalized.push({ ...item, name, unitPrice });
+    normalized.push({ ...item, name, unitPrice, promotion });
     subtotal += unitPrice * item.quantity;
   }
   return { items: normalized, subtotal, menu };
