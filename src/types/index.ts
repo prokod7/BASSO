@@ -16,14 +16,9 @@ export type PaymentMethodLiteral =
   | "alelo_refeicao"
   | "ticket_restaurante"
   | "voucher";
-export type PaymentMethod =
-  | "pix"
-  | "cash"
-  | "debit"
-  | "credit"
-  | "meal_voucher"
-  | "food_voucher"
-  | (("vr_refeicao" | "vr_alimentacao" | "sodexo" | "pluxe" | "alelo_refeicao" | "ticket_restaurante" | "voucher") & { readonly __pdvOnlyPaymentMethod?: never });
+// O app grava apenas PaymentMethodLiteral. A parte aberta mantém leitura segura de
+// históricos/importações sem obrigar todos os mapas de UI legados a enumerarem provedores futuros.
+export type PaymentMethod = PaymentMethodLiteral | (string & { readonly __storedPaymentMethod?: never });
 export type OrderPriority = "normal" | "high" | "urgent";
 export type ProductionStatus = "queued" | "preparing" | "ready" | "cancelled";
 
