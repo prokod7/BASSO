@@ -3,7 +3,7 @@ import type { OrderChannel } from "@/types";
 
 export const promotionChannels = ["own_delivery", "pickup", "counter", "dine_in", "table_qr"] as const satisfies readonly OrderChannel[];
 
-export const promotionInputSchema = z.object({
+const promotionBaseSchema = z.object({
   name: z.string().trim().min(2).max(120),
   description: z.string().trim().max(500).default(""),
   badgeText: z.string().trim().min(2).max(60).default("Promoção do dia"),
@@ -21,16 +21,19 @@ export const promotionInputSchema = z.object({
   sortOrder: z.number().int().min(-9999).max(9999).default(0),
   productIds: z.array(z.string().min(1)).max(100).default([]),
   flavorIds: z.array(z.string().min(1)).max(100).default([]),
-}).superRefine((value, ctx) => {
+});
+
+function validatePromotion(value: z.infer<typeof promotionBaseSchema>, ctx: z.RefinementCtx) {
   if (!value.productIds.length && !value.flavorIds.length) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["productIds"], message: "Selecione pelo menos um produto ou sabor." });
   }
   if (value.startsOn && value.endsOn && value.startsOn > value.endsOn) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["endsOn"], message: "A data final deve ser igual ou posterior à inicial." });
   }
-});
+}
 
-export const promotionPatchSchema = promotionInputSchema.partial();
+export const promotionInputSchema = promotionBaseSchema.superRefine(validatePromotion);
+export const promotionPatchSchema = promotionBaseSchema.partial();
 
 export type PromotionInput = z.infer<typeof promotionInputSchema>;
 
