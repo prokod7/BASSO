@@ -56,7 +56,7 @@ export function PublicHeader() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2.5 px-3 sm:gap-3 sm:px-4 md:px-6">
         <Link href={homeHref} className="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <Image
-            src="/assets/brand/logo.png"
+            src="/assets/brand/logo-oficial.webp"
             alt="La Forneria Basso"
             width={44}
             height={44}
