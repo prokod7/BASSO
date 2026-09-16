@@ -38,8 +38,8 @@ describe("promoções do dia", () => {
 
   it("respeita período de datas e horário", () => {
     const scheduled = promo({ startsOn: "2026-09-15", endsOn: "2026-09-15", startTime: "18:00", endTime: "23:00" });
-    expect(promotionRuntimeStatus(scheduled, new Date("2026-09-15T21:30:00.000Z"))).toBe("active"); // 18:30 BRT
-    expect(promotionRuntimeStatus(scheduled, new Date("2026-09-16T03:30:00.000Z"))).toBe("ended"); // 00:30 BRT dia seguinte
+    expect(promotionRuntimeStatus(scheduled, new Date("2026-09-15T21:30:00.000Z"))).toBe("active");
+    expect(promotionRuntimeStatus(scheduled, new Date("2026-09-16T03:30:00.000Z"))).toBe("ended");
   });
 
   it("só aplica pizza meio a meio quando todos os sabores participam", () => {
@@ -51,7 +51,7 @@ describe("promoções do dia", () => {
 
   it("mantém adicional fora do preço base promocional da pizza", () => {
     const selection: PizzaSelection = { size: "grande", mass: "traditional", flavorA: "mozzarella", removedA: [], removedB: [], addons: { bacon: 1 }, notes: "" };
-    expect(bestPizzaPromotion([promo({ pizzaSize: "grande" })], selection, 6990, 1000)?.promoUnitPrice).toBe(6990);
+    expect(bestPizzaPromotion([promo({ pizzaSize: "grande" })], selection, 8000, 1000)?.promoUnitPrice).toBe(6990);
   });
 
   it("escolhe o menor preço promocional elegível para produto", () => {
