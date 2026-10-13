@@ -55,7 +55,7 @@ check("Validação explícita contra bordas", /Bordas não existem neste sistema
 
 const sqlFiles = fs.readdirSync(path.join(root,"supabase/migrations")).filter(x => x.endsWith(".sql")).sort();
 const sql = sqlFiles.map(x => read(`supabase/migrations/${x}`)).join("\n");
-check("Migrações SQL 001–028 presentes", sqlFiles.length >= 28 && sqlFiles[0].startsWith("001") && sqlFiles.some(x => x.startsWith("025")) && sqlFiles.some(x => x.startsWith("026")) && sqlFiles.some(x => x.startsWith("027")) && sqlFiles.some(x => x.startsWith("028")), sqlFiles.join(", "));
+check("Migrações SQL 001–031 presentes", sqlFiles.length >= 31 && sqlFiles[0].startsWith("001") && ["025", "026", "027", "028", "029", "030", "031"].every(n => sqlFiles.some(x => x.startsWith(n))), sqlFiles.join(", "));
 check("RLS habilitado", /enable row level security/i.test(sql));
 check("Auditoria imutável", /audit_no_update/i.test(sql));
 check("Idempotência persistente", /idempotency_keys/i.test(sql));
@@ -158,7 +158,11 @@ check("Pagamento na entrega passa pela transação oficial", /record_order_payme
 check("PWA mantém GPS durante entrega", /watchPosition/.test(driverPwa) && /api\/drivers\/\$\{driverId\}\/location/.test(driverPwa));
 
 const diagnosticsSource = read("src/app/api/system/diagnostics/route.ts");
-check("Diagnóstico alinhado ao MU16 / migration 28", /const REQUIRED_MIGRATION = 28/.test(diagnosticsSource) && /const APP_VERSION = "MU16"/.test(diagnosticsSource));
+check("Diagnóstico alinhado ao MU17 / migration 31", /const REQUIRED_MIGRATION = 31/.test(diagnosticsSource) && /const APP_VERSION = "MU17"/.test(diagnosticsSource));
+check("Diagnóstico consulta publicação Realtime real", /pedidopro_realtime_health/.test(diagnosticsSource));
+const realtimeGoLiveSql = read("supabase/migrations/031_realtime_go_live_audit.sql");
+check("Realtime: publica tabelas operacionais", /alter publication supabase_realtime add table/i.test(realtimeGoLiveSql) && /public\.orders/.test(realtimeGoLiveSql) && /public\.restaurant_tables/.test(realtimeGoLiveSql) && /public\.payments/.test(realtimeGoLiveSql));
+check("Realtime: RPC restrita ao backend", /revoke all on function public\.pedidopro_realtime_health\(\) from public, anon, authenticated/i.test(realtimeGoLiveSql) && /grant execute on function public\.pedidopro_realtime_health\(\) to service_role/i.test(realtimeGoLiveSql));
 check("Diagnóstico valida Print Bridge real", /heartbeatFresh/.test(diagnosticsSource) && /bridgeOnline/.test(diagnosticsSource));
 
 check("Controle de concorrência de pedidos", /order_edit_locks/.test(sql) && /ORDER_VERSION_CONFLICT/.test(read("src/app/api/orders/[id]/status/route.ts")));
