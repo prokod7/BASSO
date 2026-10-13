@@ -19,12 +19,12 @@ export async function GET() {
     const about: SystemAbout = {
       appName: "PedidoPro",
       clientName: "La Forneria Basso",
-      version: "7.0.0",
+      version: "9.0.0",
       environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
       databaseVersion,
       databaseMigrationName,
       supabaseConfigured: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
-      demoMode: process.env.NEXT_PUBLIC_DEMO_MODE !== "false",
+      demoMode: process.env.NODE_ENV !== "production" && process.env.DEMO_MODE === "true",
       generatedAt: new Date().toISOString(),
     };
     return NextResponse.json(about, { headers: { "Cache-Control": "no-store" } });
