@@ -5,8 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { healthLabels, mapHealthCheck } from "@/lib/admin-control";
 import type { SystemHealthCheck } from "@/types";
 
-const REQUIRED_MIGRATION = 28;
-const APP_VERSION = "MU16";
+const REQUIRED_MIGRATION = 31;
+const APP_VERSION = "MU17";
 const actionSchema = z.object({ action: z.enum(["run_all", "run_one"]), key: z.string().max(80).optional() });
 type CheckResult = Omit<SystemHealthCheck, "label">;
 type DiagnosticErrorRow = Record<string, unknown> & { source: "client" | "audit"; created_at?: unknown };
@@ -54,7 +54,32 @@ async function runIntegrationsCheck(db: NonNullable<ReturnType<typeof createAdmi
 }
 
 async function runAuthenticationCheck(db: NonNullable<ReturnType<typeof createAdminClient>>): Promise<CheckResult> { const { count, error } = await db.from("profiles").select("id", { count: "exact", head: true }).eq("active", true); return { key: "authentication", status: error ? "error" : (count || 0) > 0 ? "operational" : "warning", detail: error ? error.message : `${count || 0} perfil(is) ativo(s) configurado(s).`, checkedAt: new Date().toISOString(), metadata: { activeProfiles: count || 0 } }; }
-async function runRealtimeCheck(db: NonNullable<ReturnType<typeof createAdminClient>>): Promise<CheckResult> { const { count, error } = await db.from("orders").select("id", { count: "exact", head: true }).is("deleted_at", null); return { key: "realtime", status: error ? "error" : "operational", detail: error ? error.message : `Canal de dados disponível; ${count || 0} pedido(s) na base. A assinatura do navegador é validada durante o uso.`, checkedAt: new Date().toISOString(), metadata: { orders: count || 0 } }; }
+async function runRealtimeCheck(db: NonNullable<ReturnType<typeof createAdminClient>>): Promise<CheckResult> {
+  const { data, error } = await db.rpc("pedidopro_realtime_health");
+  if (error) {
+    return {
+      key: "realtime",
+      status: "warning",
+      detail: "Não foi possível validar a publicação Realtime: " + error.message,
+      checkedAt: new Date().toISOString(),
+      metadata: { error: error.message },
+    };
+  }
+  const health = (data || {}) as { required?: number; published?: number; missing?: string[] };
+  const required = Number(health.required || 0);
+  const published = Number(health.published || 0);
+  const missing = Array.isArray(health.missing) ? health.missing : [];
+  const ready = required > 0 && required === published && missing.length === 0;
+  return {
+    key: "realtime",
+    status: ready ? "operational" : "warning",
+    detail: ready
+      ? `Realtime publicado para as ${published} tabelas operacionais obrigatórias. A assinatura é validada no dispositivo.`
+      : `Realtime incompleto: ${published}/${required} tabelas obrigatórias publicadas.`,
+    checkedAt: new Date().toISOString(),
+    metadata: { required, published, missing },
+  };
+}
 async function runStorageCheck(db: NonNullable<ReturnType<typeof createAdminClient>>): Promise<CheckResult> { const { count, error } = await db.from("products").select("id", { count: "exact", head: true }).not("image_url", "is", null).is("deleted_at", null); return { key: "storage", status: error ? "error" : "operational", detail: error ? error.message : `${count || 0} produto(s) possuem imagem oficial vinculada.`, checkedAt: new Date().toISOString(), metadata: { productsWithImages: count || 0 } }; }
 
 async function executeCheck(key: string, db: NonNullable<ReturnType<typeof createAdminClient>>): Promise<CheckResult> {
