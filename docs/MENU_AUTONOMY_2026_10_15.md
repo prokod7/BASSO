@@ -17,14 +17,16 @@
 | Terça Maluca — Grande, 8 sabores das imagens | R$ 39,99 | Terça | Delivery/retirada |
 | Quarta da Pizza — Grande, 16 sabores das imagens | R$ 44,99 | Quarta | Delivery/retirada |
 | Quinta das Tradicionais — Grande, 21 sabores das imagens | R$ 49,90 | Quinta | Delivery/retirada |
+| Combo Tradicional 1 — 1 Grande salgada + 1 Broto doce + refrigerante 2 L | R$ 110,90 | Todos | Delivery/retirada/balcão/salão/QR |
+| Combo Tradicional 2 — 2 Grandes salgadas + 1 Grande doce + refrigerante 2 L | R$ 179,90 | Todos | Delivery/retirada/balcão/salão/QR |
 | Combo Premium 1 — 1 Grande salgada + 1 Broto doce + refrigerante 2 L | R$ 155,90 | Todos | Delivery/retirada/balcão/salão/QR |
 | Combo Premium 2 — 2 Grandes salgadas + 1 Grande doce + refrigerante 2 L | R$ 269,90 | Todos | Delivery/retirada/balcão/salão/QR |
 
-A lista de sabores/bebidas é explícita na migration. Chocolate ao Leite das artes usa o ID `chocolate` do catálogo existente; Kit Kat usa `kitkat`. Os refrigerantes Premium são Coca-Cola, Guaraná Antarctica, Fanta Uva, Fanta Laranja e Sprite, todos 2 L. A oferta Premium inclui os 11 salgados e os 10 doces das artes, sem ampliar para todos os sabores. Ofertas existentes com o mesmo nome/ID não são sobrescritas. O combo anterior permanece disponível conforme sua configuração.
+A lista de sabores/bebidas é explícita na migration. Chocolate ao Leite das artes usa o ID `chocolate` do catálogo existente; Kit Kat usa `kitkat`. Os refrigerantes das duas linhas são Coca-Cola, Guaraná Antarctica, Fanta Uva, Fanta Laranja e Sprite, todos 2 L. A oferta Premium inclui os 11 salgados e os 10 doces das artes. A linha Tradicional inclui somente os 20 salgados e os 9 doces das novas artes; Raffaello não entra nessa linha. As listas não são ampliadas automaticamente para toda a categoria. Ofertas existentes com o mesmo nome/ID não são sobrescritas. O combo anterior permanece disponível conforme sua configuração.
 
 ## Validação e publicação
 
-- 165 testes passaram em 19 arquivos. Incluem migração em PGlite/PostgreSQL isolado, listas/preços/canais das ofertas, reaplicação sem sobrescrever preços do gestor e trigger bloqueando inserção/edição de broto doce com dois sabores.
+- 166 testes passaram em 19 arquivos. Incluem migração em PGlite/PostgreSQL isolado, listas/preços/canais das ofertas, reaplicação sem sobrescrever preços do gestor e trigger bloqueando inserção/edição de broto doce com dois sabores.
 - TypeScript e build de produção aprovados; sequência de 33 migrations aprovada; auditoria de controles sem suspeitas.
 - As imagens estáticas não estão copiadas no checkout de análise; devem ser preservadas pela árvore base Git. A verificação local aprova 91/92 contratos; a pendência é somente presença desses binários.
 - Teste visual no navegador não foi concluído: o ambiente não possui Chromium, e o download retornou arquivo inválido. Não foi feita homologação em produção, impressão física nem venda real.
