@@ -1,3 +1,4 @@
+import { apiErrorMessage } from "@/lib/api-error";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -75,6 +76,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const { error } = await db.rpc("change_order_status_controlled", {
       p_order_id: id,
+      p_expected_version: body.expectedVersion ?? Number(order.version || 1),
       p_status: body.status,
       p_reason: body.reason || null,
       p_actor_id: auth.userId === "demo" ? null : auth.userId,
@@ -95,6 +97,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { data: updated } = await db.from("orders").select("version,status").eq("id", id).single();
     return NextResponse.json({ id, status: body.status, version: Number(updated?.version || Number(order.version || 1) + 1) });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao atualizar status." }, { status: 400 });
+    return NextResponse.json({ error: apiErrorMessage(error, "Falha ao atualizar status.") }, { status: apiErrorMessage(error, "").includes("ORDER_VERSION_CONFLICT") ? 409 : 400 });
   }
 }
+

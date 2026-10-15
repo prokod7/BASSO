@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOperationalRole } from "@/lib/authz";
+import { snapshotAccess } from "@/lib/operational-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const ACTIVE_ORDER_STATUSES = ["received", "confirmed", "preparing", "ready", "out_for_delivery"];
@@ -11,17 +12,20 @@ function warningFrom(label: string, error: unknown) {
 
 export async function GET() {
   try {
-    await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance", "viewer"], "orders.view");
+    const auth = await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance", "viewer"], "orders.view");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
 
     const warnings: string[] = [];
+    const access = snapshotAccess(auth);
+    const hidden = () => Promise.resolve({ data: [] as any[], error: null });
+    const hiddenCash = () => Promise.resolve({ data: null, error: null });
 
     // Núcleo crítico: se uma destas consultas falhar, não fabricamos uma operação vazia.
     const [recentOrdersR, tablesR, tabsR, driversR] = await Promise.all([
       db.from("orders").select("*").is("deleted_at", null).order("created_at", { ascending: false }).limit(250),
       db.from("restaurant_tables").select("*").order("number"),
-      db.from("tabs").select("*").neq("status", "closed"),
+      db.from("tabs").select("*").in("status", ["open", "partial"]),
       db.from("drivers").select("*").eq("active", true),
     ]);
 
@@ -58,14 +62,14 @@ export async function GET() {
 
     // Domínios auxiliares não podem derrubar KDS/Delivery/Salão caso uma consulta isolada falhe.
     const [inventoryR, productsR, couponsR, eventsR, auditR, cashR, financialR, campaignsR] = await Promise.all([
-      db.from("inventory_items").select("*"),
+      access.inventory ? db.from("inventory_items").select("*") : hidden(),
       db.from("products").select("id,name,category"),
-      db.from("coupons").select("*").order("created_at", { ascending: false }),
-      db.from("integration_events").select("id,provider,event_type,status,created_at,attempts").order("created_at", { ascending: false }).limit(50),
-      db.from("audit_logs").select("id,actor_label,action,entity_type,entity_id,created_at,reason").order("created_at", { ascending: false }).limit(100),
-      db.from("cash_sessions").select("*").eq("status", "open").order("opened_at", { ascending: false }).limit(1).maybeSingle(),
-      db.from("financial_entries").select("*,financial_categories(name)").is("deleted_at", null).order("due_date", { ascending: false }).limit(200),
-      db.from("campaigns").select("*").order("created_at", { ascending: false }).limit(100),
+      access.coupons ? db.from("coupons").select("*").order("created_at", { ascending: false }) : hidden(),
+      access.integrations ? db.from("integration_events").select("id,provider,event_type,status,created_at,attempts").order("created_at", { ascending: false }).limit(50) : hidden(),
+      access.audit ? db.from("audit_logs").select("id,actor_label,action,entity_type,entity_id,created_at,reason").order("created_at", { ascending: false }).limit(100) : hidden(),
+      access.cash ? db.from("cash_sessions").select("*").eq("status", "open").order("opened_at", { ascending: false }).limit(1).maybeSingle() : hiddenCash(),
+      access.finance ? db.from("financial_entries").select("*,financial_categories(name)").is("deleted_at", null).order("due_date", { ascending: false }).limit(200) : hidden(),
+      access.campaigns ? db.from("campaigns").select("*").order("created_at", { ascending: false }).limit(100) : hidden(),
     ]);
 
     const optional = [
@@ -290,3 +294,4 @@ export async function GET() {
     return NextResponse.json({ error: message }, { status: authError ? 401 : 500, headers: { "Cache-Control": "no-store" } });
   }
 }
+

@@ -1,3 +1,4 @@
+import { apiErrorMessage } from "@/lib/api-error";
 import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
@@ -36,17 +37,20 @@ export async function POST(request: NextRequest) {
     });
     const discount = supplied.couponCode ? quote.discount : Math.min(quote.subtotal, supplied.discount);
     const order = parseIncomingOrder({ ...supplied, items: quote.items, subtotal: quote.subtotal, discount, deliveryFee: quote.deliveryFee, total: Math.max(0, quote.subtotal - discount + quote.deliveryFee), couponCode: quote.couponCode });
-    const { error } = await db.rpc("create_internal_order_transaction", { p_order: order, p_reward_token: metadata.rewardAuthorizationToken || null, p_actor_id: auth.userId === "demo" ? null : auth.userId, p_discount_reason: metadata.discountReason || null });
+    const { data: transaction, error } = await db.rpc("create_internal_order_transaction", { p_order: order, p_reward_token: metadata.rewardAuthorizationToken || null, p_actor_id: auth.userId === "demo" ? null : auth.userId, p_discount_reason: metadata.discountReason || null });
     if (error) throw error;
+    const createdId = String(transaction?.id || order.id);
     const accessToken = randomBytes(24).toString("base64url");
-    await db.from("order_access_tokens").insert({ order_id: order.id, token_hash: createHash("sha256").update(accessToken).digest("hex") });
-    await db.rpc("enqueue_order_print_jobs", { p_order_id: order.id });
-    const { data: created, error: createdError } = await db.from("orders").select("number,status,payment_status,total_cents").eq("id", order.id).single();
+    const { error: accessError } = await db.from("order_access_tokens").insert({ order_id: createdId, token_hash: createHash("sha256").update(accessToken).digest("hex") });
+    if (accessError) throw accessError;
+    await db.rpc("enqueue_order_print_jobs", { p_order_id: createdId });
+    const { data: created, error: createdError } = await db.from("orders").select("number,status,payment_status,total_cents").eq("id", createdId).single();
     if (createdError) throw createdError;
-    const response = { id: order.id, number: Number(created.number), status: created.status, paymentStatus: created.payment_status, total: created.total_cents, accessToken, quote: { ...quote, discount, total: order.total } };
+    const response = { id: createdId, number: Number(created.number), status: created.status, paymentStatus: created.payment_status, total: created.total_cents, accessToken, quote: { ...quote, discount, total: order.total } };
     await db.from("idempotency_keys").insert({ key, scope: "orders:create-internal", response_body: response, status_code: 201 });
     return NextResponse.json(response, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Pedido interno inválido." }, { status: 400 });
+    return NextResponse.json({ error: apiErrorMessage(error, "Pedido interno inválido.") }, { status: 400 });
   }
 }
+

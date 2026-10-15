@@ -33,11 +33,13 @@ export async function requireOperationalRole(allowed: OperationalRole[], permiss
 
   const { data: profile, error } = await client
     .from("profiles")
-    .select("display_name,role,active,permissions")
+    .select("display_name,role,active,permissions,must_change_password")
     .eq("id", user.id)
     .single();
 
   if (error || !profile?.active) throw new Error("Usuário bloqueado ou sem perfil.");
+
+  if (profile.must_change_password) throw new Error("Troque sua senha antes de continuar a operação.");
 
   const role = profile.role as OperationalRole;
   if (!allowed.includes(role)) throw new Error("Acesso não autorizado para este perfil.");
@@ -49,3 +51,4 @@ export async function requireOperationalRole(allowed: OperationalRole[], permiss
 
   return { userId: user.id, role, displayName: profile.display_name, permissions };
 }
+

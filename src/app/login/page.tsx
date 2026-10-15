@@ -13,7 +13,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("gestor@laforneriabasso.com.br");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -24,27 +23,9 @@ export default function LoginPage() {
     if (signInError) throw signInError;
   }
 
-  async function bootstrapFirstAccess() {
-    const response = await fetch("/api/auth/bootstrap", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
-    });
-    const body = (await response.json().catch(() => ({}))) as {
-      error?: string;
-      message?: string;
-      code?: string;
-    };
-    if (!response.ok) {
-      throw new Error(body.error || "Não foi possível preparar o primeiro acesso.");
-    }
-    setMessage(body.message || "Acesso inicial criado. Entrando no painel...");
-  }
-
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
-    setMessage("");
 
     if (isDemoMode()) {
       router.push("/painel");
@@ -58,18 +39,7 @@ export default function LoginPage() {
 
     setSubmitting(true);
     try {
-      try {
-        await signIn();
-      } catch (signInError) {
-        const signInMessage = signInError instanceof Error ? signInError.message : "Falha no login.";
-        const looksLikeMissingAccount = /invalid login|invalid credentials|email not confirmed/i.test(
-          signInMessage,
-        );
-        if (!looksLikeMissingAccount) throw signInError;
-
-        await bootstrapFirstAccess();
-        await signIn();
-      }
+      await signIn();
 
       router.replace("/painel");
       router.refresh();
@@ -125,12 +95,6 @@ export default function LoginPage() {
             </button>
           </div>
         </label>
-
-        {message && (
-          <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
-            {message}
-          </p>
-        )}
         {error && (
           <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
             {error}
@@ -151,3 +115,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

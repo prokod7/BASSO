@@ -15,12 +15,6 @@ function isDevelopmentDemoMode() {
 }
 
 export async function middleware(request: NextRequest) {
-  // Webhook oficial da 99Food precisa ser público para os servidores da plataforma.
-  // A própria rota faz a validação criptográfica/autenticidade conforme o contrato oficial.
-  if (request.nextUrl.pathname === "/api/integrations/99food/webhook") {
-    return NextResponse.next();
-  }
-
   // Nunca permita bypass de autenticação em produção.
   if (isDevelopmentDemoMode()) {
     return NextResponse.next();
@@ -45,35 +39,30 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  const redirect = (destination: URL) => {
+    const result = NextResponse.redirect(destination);
+    for (const cookie of response.cookies.getAll()) result.cookies.set(cookie);
+    result.headers.set("Cache-Control", "private, no-store");
+    return result;
+  };
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", request.nextUrl.pathname);
-    return NextResponse.redirect(login);
+    return redirect(login);
   }
 
+  const { data: profile, error } = await supabase.from("profiles")
+    .select("active,must_change_password").eq("id", user.id).maybeSingle();
+  if (error || !profile?.active) return redirect(new URL("/login?error=access", request.url));
+  if (profile.must_change_password && request.nextUrl.pathname !== "/trocar-senha") {
+    return redirect(new URL("/trocar-senha", request.url));
+  }
+
+  response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
 
 export const config = {
-  matcher: [
-    "/painel/:path*",
-    "/garcom/:path*",
-    "/trocar-senha",
-    "/api/operational-snapshot",
-    "/api/attention",
-    "/api/feature-flags",
-    "/api/system/:path*",
-    "/api/auth/change-password",
-    "/api/orders/:path*/status",
-    "/api/orders/:path*/served",
-    "/api/client-errors",
-    "/api/inventory/:path*",
-    "/api/coupons/:path*",
-    "/api/cash/:path*",
-    "/api/delivery/:path*",
-    "/api/drivers/:path*",
-    "/api/integrations/:path*",
-    "/api/print/:path*",
-  ],
+  matcher: ["/painel/:path*", "/garcom/:path*", "/trocar-senha"],
 };

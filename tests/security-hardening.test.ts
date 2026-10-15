@@ -9,7 +9,7 @@ function source(path: string) {
 describe("production security hardening", () => {
   it("never enables demo auth through a NEXT_PUBLIC variable", () => {
     const authz = source("src/lib/authz.ts");
-    const middleware = source("middleware.ts");
+    const middleware = source("src/middleware.ts");
 
     expect(authz).not.toContain("NEXT_PUBLIC_DEMO_MODE");
     expect(middleware).not.toContain("NEXT_PUBLIC_DEMO_MODE");
@@ -41,3 +41,4 @@ describe("production security hardening", () => {
     expect(migration).toContain("grant execute on function public.enqueue_order_print_jobs(text) to service_role");
   });
 });
+

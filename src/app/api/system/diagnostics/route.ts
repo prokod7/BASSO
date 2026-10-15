@@ -5,8 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { healthLabels, mapHealthCheck } from "@/lib/admin-control";
 import type { SystemHealthCheck } from "@/types";
 
-const REQUIRED_MIGRATION = 31;
-const APP_VERSION = "MU17";
+const REQUIRED_MIGRATION = 32;
+const APP_VERSION = "MU18";
 const actionSchema = z.object({ action: z.enum(["run_all", "run_one"]), key: z.string().max(80).optional() });
 type CheckResult = Omit<SystemHealthCheck, "label">;
 type DiagnosticErrorRow = Record<string, unknown> & { source: "client" | "audit"; created_at?: unknown };
@@ -107,3 +107,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ checks: results, requiredMigration: REQUIRED_MIGRATION, appVersion: APP_VERSION });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao executar diagnóstico." }, { status: 400 }); }
 }
+

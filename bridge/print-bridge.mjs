@@ -39,7 +39,7 @@ function render(job) {
   const items = payload.items || [];
   const lines = [
     center("LA FORNERIA BASSO"),
-    center(`${String(job.sector || "").toUpperCase()} ${job.is_reprint ? "- REIMPRESSAO" : ""}`),
+    center(`${String(job.sector || "").toUpperCase()} ${payload.event === "item_added" ? "- ACRESCIMO DE ITENS" : job.is_reprint ? "- REIMPRESSAO" : ""}`),
     line(),
     `PEDIDO #${order.number || order.id || job.order_id || ""}`,
     `CANAL: ${order.channel || ""}`,
@@ -168,3 +168,4 @@ while (!stopped) {
   catch (error) { console.error(`[BRIDGE] ${error instanceof Error ? error.message : String(error)}`); }
   await new Promise(resolve => setTimeout(resolve, intervalMs));
 }
+

@@ -1,3 +1,4 @@
+import { apiErrorMessage } from "@/lib/api-error";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireOperationalRole } from "@/lib/authz";
@@ -22,7 +23,7 @@ export async function GET() {
     const expectedCents = session.initial_cents + (movements || []).reduce((sum: number, movement: any) => sum + movement.amount_cents, 0);
     return NextResponse.json({ open: true, session, movements: movements || [], expectedCents }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao consultar caixa." }, { status: 401 });
+    return NextResponse.json({ error: apiErrorMessage(error, "Falha ao consultar caixa.") }, { status: 401 });
   }
 }
 
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
     return NextResponse.json({ id: data, recorded: true }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha no caixa." }, { status: 400 });
+    return NextResponse.json({ error: apiErrorMessage(error, "Falha no caixa.") }, { status: 400 });
   }
 }
+

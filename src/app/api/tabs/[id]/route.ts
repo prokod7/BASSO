@@ -1,6 +1,23 @@
-import { NextRequest,NextResponse } from "next/server";
+import { apiErrorMessage } from "@/lib/api-error";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireOperationalRole } from "@/lib/authz";
 import { createAdminClient } from "@/lib/supabase/admin";
-const schema=z.discriminatedUnion("action",[z.object({action:z.literal("transfer"),targetTable:z.number().int().min(1).max(15)}),z.object({action:z.literal("rename"),name:z.string().min(1).max(120)}),z.object({action:z.literal("cancel"),reason:z.string().min(2).max(300)})]);
-export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:string}>}){try{const auth=await requireOperationalRole(["manager","counter","waiter"], "tables.manage");const {id}=await params;const body=schema.parse(await request.json());const db=createAdminClient();if(!db)return NextResponse.json({error:"Supabase não configurado."},{status:503});if(body.action==="transfer"){const {error}=await db.rpc("transfer_tab",{p_tab_id:id,p_target_table:body.targetTable,p_actor_id:auth.userId==="demo"?null:auth.userId});if(error)throw error;}else{const {data:before,error:readError}=await db.from("tabs").select("*").eq("id",id).single();if(readError)throw readError;const payload=body.action==="rename"?{name:body.name,updated_at:new Date().toISOString()}:{status:"cancelled",closed_at:new Date().toISOString(),updated_at:new Date().toISOString()};const {error}=await db.from("tabs").update(payload).eq("id",id);if(error)throw error;await db.from("audit_logs").insert({actor_id:auth.userId==="demo"?null:auth.userId,actor_label:auth.displayName,action:body.action==="rename"?"TAB_RENAMED":"TAB_CANCELLED",entity_type:"tab",entity_id:id,reason:body.action==="cancel"?body.reason:null,before_data:before,after_data:payload});}return NextResponse.json({saved:true})}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Falha ao alterar comanda."},{status:400})}}
+const schema = z.discriminatedUnion("action", [
+  z.object({action:z.literal("transfer"),targetTable:z.number().int().min(1).max(15)}),
+  z.object({action:z.literal("rename"),name:z.string().trim().min(1).max(120)}),
+  z.object({action:z.literal("cancel"),reason:z.string().trim().min(2).max(300)}),
+]);
+export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:string}>}) {
+  try {
+    const auth=await requireOperationalRole(["manager","counter","waiter"],"tables.manage");
+    const {id}=await params; const body=schema.parse(await request.json());
+    if(body.action==="cancel" && auth.role!=="manager" && auth.permissions["orders.cancel"]!==true) throw new Error("Sem autorização para cancelar comandas.");
+    const db=createAdminClient(); if(!db) return NextResponse.json({error:"Supabase não configurado."},{status:503});
+    const actor=auth.userId==="demo"?null:auth.userId;
+    const {error}=body.action==="transfer"
+      ? await db.rpc("transfer_tab",{p_tab_id:id,p_target_table:body.targetTable,p_actor_id:actor})
+      : await db.rpc("manage_tab_transaction",{p_tab_id:id,p_action:body.action,p_name:body.action==="rename"?body.name:null,p_reason:body.action==="cancel"?body.reason:null,p_actor_id:actor});
+    if(error) throw error; return NextResponse.json({saved:true});
+  } catch(error) { return NextResponse.json({error:apiErrorMessage(error, "Falha ao alterar comanda.")},{status:400}); }
+}

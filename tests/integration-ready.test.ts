@@ -29,9 +29,10 @@ describe("Mega Update 06 - fundação de integrações", () => {
     expect(rede).not.toMatch(/\/transactions|REDE_BASE_URL|REDE_TOKEN/);
   });
 
-  it("libera somente o webhook exato da 99Food no middleware", () => {
-    const middleware = read("middleware.ts");
-    expect(middleware).toContain('request.nextUrl.pathname === "/api/integrations/99food/webhook"');
+  it("protege páginas sem impor sessão humana às integrações", () => {
+    const middleware = read("src/middleware.ts");
+    expect(middleware).not.toContain('"/api/integrations/:path*"');
+    expect(middleware).not.toContain('"/api/print/:path*"');
     expect(middleware).toContain('"/painel/:path*"');
   });
 
@@ -42,3 +43,4 @@ describe("Mega Update 06 - fundação de integrações", () => {
     expect(worker).toContain("resolveFood99OrderFromEvent");
   });
 });
+

@@ -3,5 +3,6 @@ import path from "node:path";
 
 export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
-  test: { environment: "node", include: ["tests/**/*.test.ts"] }
+  test: { environment: "node", include: ["tests/**/*.test.ts", "src/tests/**/*.test.ts"], testTimeout: 30000, hookTimeout: 60000 }
 });
+

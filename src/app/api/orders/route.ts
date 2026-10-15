@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseIncomingOrder } from "@/lib/server-orders";
+import { parsePublicCheckout } from "@/lib/public-checkout";
 import { quoteCommercialTerms } from "@/lib/server-quote";
 import { requireOperationalRole } from "@/lib/authz";
 import { storeStatus } from "@/lib/opening-hours";
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     const raw = await request.json();
     const hasReward = Array.isArray(raw?.items) && raw.items.some((item: any) => item?.kind === "reward");
     if (hasReward || raw?.rewardAuthorizationToken) throw new Error("Recompensas são lançadas exclusivamente pela operação interna.");
-    const supplied = parseIncomingOrder(raw);
+    const supplied = parsePublicCheckout(raw);
     if (!["own_delivery", "pickup", "table_qr"].includes(supplied.channel)) throw new Error("Canal não permitido no checkout público.");
     if (!(PUBLIC_PAYMENT_METHODS as readonly string[]).includes(supplied.paymentMethod)) throw new Error("Forma de pagamento disponível somente no PDV interno.");
     if (supplied.sourceIdempotencyKey !== key) return NextResponse.json({ error: "Chave de idempotência divergente." }, { status: 400 });
@@ -74,15 +75,17 @@ export async function POST(request: NextRequest) {
       throw new Error(`O valor para troco deve ser igual ou maior que R$ ${(quote.total / 100).toFixed(2).replace(".", ",")}.`);
     }
     const order = parseIncomingOrder({ ...supplied, items: quote.items, subtotal: quote.subtotal, discount: quote.discount, deliveryFee: quote.deliveryFee, total: quote.total, couponCode: quote.couponCode });
-    const { error } = await db.rpc("create_order_transaction", { p_order: order });
+    const { data: transaction, error } = await db.rpc("create_order_transaction", { p_order: order });
     if (error) throw error;
+    const createdId = String(transaction?.id || order.id);
     const accessToken = randomBytes(24).toString("base64url");
     const tokenHash = createHash("sha256").update(accessToken).digest("hex");
-    await db.from("order_access_tokens").insert({ order_id: order.id, token_hash: tokenHash });
-    await db.rpc("enqueue_order_print_jobs", { p_order_id: order.id });
-    const { data: created, error: createdError } = await db.from("orders").select("number,status,tab_id").eq("id", order.id).single();
+    const { error: accessError } = await db.from("order_access_tokens").insert({ order_id: createdId, token_hash: tokenHash });
+    if (accessError) throw accessError;
+    await db.rpc("enqueue_order_print_jobs", { p_order_id: createdId });
+    const { data: created, error: createdError } = await db.from("orders").select("number,status,tab_id").eq("id", createdId).single();
     if (createdError) throw createdError;
-    const response = { id: order.id, number: Number(created.number), status: created.status, tabId: created.tab_id || undefined, quote, accessToken };
+    const response = { id: createdId, number: Number(created.number), status: created.status, tabId: created.tab_id || undefined, quote, accessToken };
     await db.from("idempotency_keys").insert({ key, scope: "orders:create", response_body: response, status_code: 201 });
     return NextResponse.json(response, { status: 201 });
   } catch (error) {

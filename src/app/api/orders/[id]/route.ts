@@ -1,3 +1,4 @@
+import { apiErrorMessage } from "@/lib/api-error";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireOperationalRole } from "@/lib/authz";
@@ -103,9 +104,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         const fee = Number(patch.delivery_fee_cents ?? before.delivery_fee_cents);
         patch.total_cents = Math.max(0, Number(before.subtotal_cents) - discount + fee);
       }
-      const { data: after, error } = await db.from("orders").update(patch).eq("id", id).select("*").single();
+      delete patch.version; delete patch.updated_at; delete patch.updated_by; delete patch.total_cents;
+      const { error } = await db.rpc("update_order_transaction", {
+        p_order_id: id, p_patch: patch, p_reason: body.reason, p_actor_id: actorId,
+        p_expected_version: Number(before.version || 1),
+      });
       if (error) throw error;
-      await db.from("audit_logs").insert({ actor_id: actorId, actor_label: auth.displayName, action: "ORDER_UPDATED", entity_type: "order", entity_id: id, reason: body.reason, before_data: before, after_data: after });
     }
 
     if (body.action === "add_note") {
@@ -130,6 +134,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     return NextResponse.json({ order: await loadDetail(db, id) });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao atualizar o pedido." }, { status: 400 });
+    return NextResponse.json({ error: apiErrorMessage(error, "Falha ao atualizar o pedido.") }, { status: 400 });
   }
 }
+

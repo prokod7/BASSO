@@ -1,3 +1,4 @@
+import { apiErrorMessage } from "@/lib/api-error";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireOperationalRole } from "@/lib/authz";
@@ -34,6 +35,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (error) throw error;
     return NextResponse.json(data, { status: data?.duplicate ? 200 : 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao registrar pagamento." }, { status: 400 });
+    return NextResponse.json({ error: apiErrorMessage(error, "Falha ao registrar pagamento.") }, { status: 400 });
   }
 }
