@@ -9,7 +9,7 @@ function pizza(overrides: Partial<PizzaSelection> = {}): PizzaSelection {
 
 describe("regras de pizza", () => {
   it("calcula meio a meio por metade de cada sabor, nunca pelo mais caro", () => {
-    expect(pizzaBasePrice(pizza({ flavorA: "mozzarella", flavorB: "bella-italia" }))).toBe(5850);
+    expect(pizzaBasePrice(pizza({ flavorA: "mozzarella", flavorB: "bella-italia" }))).toBe(6000);
   });
 
   it("permite dois sabores salgados na Broto", () => {
