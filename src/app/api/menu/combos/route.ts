@@ -3,94 +3,129 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireOperationalRole } from "@/lib/authz";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { comboConfigSchema } from "@/lib/combos";
+import { apiErrorMessage } from "@/lib/api-error";
 
 const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
-const schema = z.object({
-  name: z.string().trim().min(2).max(180),
-  description: z.string().trim().min(2).max(1000),
-  price: z.number().int().nonnegative(),
-  days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
-  start: z.string().regex(hhmm).optional(),
-  end: z.string().regex(hhmm).optional(),
-  grandeFlavors: z.array(z.string().min(1).max(120)).min(1),
-  beverages: z.array(z.string().min(1).max(120)).min(1),
-  sweetFlavor: z.string().min(1).max(120).default("brigadeiro"),
-  active: z.boolean().default(true),
-});
+const schema = comboConfigSchema
+  .extend({
+    id: z.string().min(1).max(120).optional(),
+    name: z.string().trim().min(2).max(180),
+    description: z.string().trim().min(2).max(1000),
+    price: z.number().int().nonnegative(),
+    days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+    start: z.string().regex(hhmm).optional(),
+    end: z.string().regex(hhmm).optional(),
+    channels: z
+      .array(
+        z.enum(["own_delivery", "pickup", "counter", "dine_in", "table_qr"]),
+      )
+      .min(1)
+      .default(["own_delivery", "pickup", "counter", "dine_in", "table_qr"]),
+    active: z.boolean().default(true),
+  })
+  .refine((v) => Boolean(v.start) === Boolean(v.end), {
+    message: "Preencha início e fim do horário.",
+  });
 
-function slug(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 70) || "combo";
-}
-
-export async function POST(request: NextRequest) {
+async function save(request: NextRequest, updating: boolean) {
   try {
-    const auth = await requireOperationalRole(["manager", "counter"], "menu.manage");
+    const auth = await requireOperationalRole(
+      ["manager", "counter"],
+      "menu.manage",
+    );
     const body = schema.parse(await request.json());
+    if (updating && !body.id) throw new Error("Informe o combo a editar.");
     const db = createAdminClient();
-    if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
-
-    const [{ data: flavorRows, error: flavorError }, { data: beverageRows, error: beverageError }] = await Promise.all([
-      db.from("pizza_flavors").select("id,active").in("id", body.grandeFlavors),
-      db.from("products").select("id,active,category").in("id", body.beverages),
+    if (!db)
+      return NextResponse.json(
+        { error: "Supabase não configurado." },
+        { status: 503 },
+      );
+    const sweets = body.sweetFlavors || [body.sweetFlavor];
+    const ids = [...new Set([...body.grandeFlavors, ...sweets])];
+    const [f, b] = await Promise.all([
+      db.from("pizza_flavors").select("id,category").in("id", ids),
+      db
+        .from("products")
+        .select("id,category")
+        .in("id", body.beverages)
+        .is("deleted_at", null),
     ]);
-    if (flavorError) throw flavorError;
-    if (beverageError) throw beverageError;
-
-    const validFlavors = new Set((flavorRows || []).filter((row: any) => row.active).map((row: any) => row.id));
-    const validBeverages = new Set((beverageRows || []).filter((row: any) => row.active && row.category === "beverages").map((row: any) => row.id));
-    if (body.grandeFlavors.some(id => !validFlavors.has(id))) throw new Error("Existe sabor inválido ou indisponível na configuração do combo.");
-    if (body.beverages.some(id => !validBeverages.has(id))) throw new Error("Existe bebida inválida ou indisponível na configuração do combo.");
-
-    const { data: sweet } = await db.from("pizza_flavors").select("id,active").eq("id", body.sweetFlavor).maybeSingle();
-    if (!sweet?.active) throw new Error("O sabor doce do combo não está disponível.");
-
-    const id = `${slug(body.name)}-${randomUUID().slice(0, 8)}`;
-    const schedule: Record<string, unknown> = { days: [...new Set(body.days)].sort((a, b) => a - b) };
-    if (body.start && body.end) {
-      schedule.start = body.start;
-      schedule.end = body.end;
-    }
-    const config = {
-      grandeFlavors: body.grandeFlavors,
-      beverages: body.beverages,
-      sweetFlavor: body.sweetFlavor,
-      masses: ["traditional", "integral"],
-      allowHalfHalf: true,
-      allowAddonPlacement: true,
-      structure: "grande_broto_bebida",
-    };
-
-    const { data: combo, error } = await db.from("products").insert({
-      id,
+    if (f.error) throw f.error;
+    if (b.error) throw b.error;
+    if (
+      body.grandeFlavors.some(
+        (id) =>
+          !f.data?.some((row) => row.id === id && row.category !== "sweet"),
+      ) ||
+      sweets.some(
+        (id) =>
+          !f.data?.some((row) => row.id === id && row.category === "sweet"),
+      )
+    )
+      throw new Error("Confira os sabores salgados e doces selecionados.");
+    if (
+      body.beverages.some(
+        (id) =>
+          !b.data?.some((row) => row.id === id && row.category === "beverages"),
+      )
+    )
+      throw new Error("Confira as bebidas selecionadas.");
+    const id = updating ? body.id! : `combo-${randomUUID()}`;
+    const config = comboConfigSchema.parse({ ...body, sweetFlavor: sweets[0] });
+    const values = {
       name: body.name,
-      category: "combo",
       description: body.description,
       price_cents: body.price,
-      stock_tracked: false,
       active: body.active,
-      available_channels: ["own_delivery", "pickup", "counter", "dine_in", "table_qr"],
-      available_schedule: schedule,
+      available_channels: body.channels,
+      available_schedule: {
+        days: [...new Set(body.days)],
+        ...(body.start ? { start: body.start, end: body.end } : {}),
+      },
       config,
-    }).select("id,name,description,price_cents,active,available_schedule,config").single();
-    if (error) throw error;
-
-    await db.from("audit_logs").insert({
-      actor_id: auth.userId === "demo" ? null : auth.userId,
-      actor_label: auth.displayName,
-      action: "COMBO_CREATED",
-      entity_type: "product",
-      entity_id: id,
-      after_data: combo,
-    });
-
-    return NextResponse.json({ combo }, { status: 201 });
+      updated_at: new Date().toISOString(),
+    };
+    const result = updating
+      ? await db
+          .from("products")
+          .update(values)
+          .eq("id", id)
+          .eq("category", "combo")
+          .is("deleted_at", null)
+          .select("id")
+          .single()
+      : await db
+          .from("products")
+          .insert({ id, category: "combo", stock_tracked: false, ...values })
+          .select("id")
+          .single();
+    if (result.error) throw result.error;
+    await db
+      .from("audit_logs")
+      .insert({
+        actor_id: auth.userId === "demo" ? null : auth.userId,
+        actor_label: auth.displayName,
+        action: updating ? "COMBO_UPDATED" : "COMBO_CREATED",
+        entity_type: "product",
+        entity_id: id,
+        after_data: values,
+      });
+    return NextResponse.json(
+      { id, saved: true },
+      { status: updating ? 200 : 201 },
+    );
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao criar combo." }, { status: 400 });
+    return NextResponse.json(
+      { error: apiErrorMessage(error, "Falha ao salvar combo.") },
+      { status: 400 },
+    );
   }
+}
+export function POST(request: NextRequest) {
+  return save(request, false);
+}
+export function PATCH(request: NextRequest) {
+  return save(request, true);
 }

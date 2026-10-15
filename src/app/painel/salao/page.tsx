@@ -30,7 +30,7 @@ export default function SalaoPage() {
         <p className="mt-4 text-sm font-bold">{statusText[table.status]}</p>
         <div className="mt-2 flex items-center gap-1 text-xs text-black/45"><Users size={14} />{table.capacity} lugares{table.people ? ` • ${table.people} pessoas` : ""}</div>
         {table.openedAt && <div className="mt-1 flex items-center gap-1 text-xs text-black/45"><Clock3 size={14} />{shortDateTime(table.openedAt)}</div>}
-        <p className="mt-3 text-xs font-semibold text-basso-wine">{table.tabs.length} comanda(s){table.groupId ? " • mesa unida" : ""}</p>
+        <p className="mt-3 text-xs font-semibold text-basso-wine">{table.tabs.filter(tab=>tab.status==="open"||tab.status==="partial").length} comanda(s){table.groupId ? " • mesa unida" : ""}</p>
       </button>)}
     </div>
     <TableModal table={selected} allTables={tables} onClose={() => setSelectedNumber(null)} />
@@ -40,6 +40,7 @@ export default function SalaoPage() {
 function TableModal({ table, allTables, onClose }: { table: DemoTable | null; allTables: DemoTable[]; onClose: () => void }) {
   const [name, setName] = useState("");
   const [people, setPeople] = useState("1");
+  const [tabMode,setTabMode]=useState<"individual"|"shared">("individual");
   const [selectedTab, setSelectedTab] = useState("");
   const [target, setTarget] = useState("1");
   const [payAmount, setPayAmount] = useState("");
@@ -51,16 +52,16 @@ function TableModal({ table, allTables, onClose }: { table: DemoTable | null; al
   useEffect(() => {
     if (table) {
       setTarget(String(allTables.find((item) => item.number !== table.number)?.number || 1));
-      setSelectedTab(table.tabs[0]?.id || "");
+      setSelectedTab(previous=>table.tabs.some(t=>t.id===previous&&(t.status==="open"||t.status==="partial"))?previous:(table.tabs.find(t=>t.status==="open"||t.status==="partial")?.id||""));
       setMessage("");
-      const selected = table.tabs[0];
+      const selected = table.tabs.find(t=>t.id===selectedTab)||table.tabs.find(t=>t.status==="open"||t.status==="partial");
       setServiceChargeApplied(selected?.serviceChargeApplied !== false);
     }
   }, [table?.number, table?.tabs.length, allTables]);
 
   if (!table) return null;
   const current = table;
-  const tab = current.tabs.find((item) => item.id === selectedTab) || current.tabs[0];
+  const tab = current.tabs.find((item) => item.id === selectedTab && (item.status==="open"||item.status==="partial"));
 
   async function afterMutation(messageText: string) {
     if (!isDemoMode()) requestOperationalRefresh();
@@ -69,16 +70,17 @@ function TableModal({ table, allTables, onClose }: { table: DemoTable | null; al
 
   async function openTab(event: FormEvent) {
     event.preventDefault();
-    if (name.trim().length < 1) { setMessage("Informe o nome da comanda."); return; }
+    const tabName=name.trim()||(tabMode==="shared"?`Mesa ${current.number}`:"");
+    if (tabName.length < 1) { setMessage("Informe o nome da comanda."); return; }
     setWorking("open"); setMessage("");
     try {
       let id: string;
       if (isDemoMode()) {
-        id = demoActions.openTab(current.number, name.trim(), Math.max(1, Number(people) || 1));
+        id = demoActions.openTab(current.number, tabName, tabMode==="individual"?1:Math.max(1, Number(people) || 1));
       } else {
         const body = await apiJson<{ id: string }>(`/api/tables/${current.number}/tabs`, {
           method: "POST",
-          body: JSON.stringify({ name: name.trim(), people: Math.max(1, Number(people) || 1) }),
+          body: JSON.stringify({ name: tabName, people: tabMode==="individual"?1:Math.max(1, Number(people) || 1) }),
         });
         id = body.id;
         requestOperationalRefresh();
@@ -120,7 +122,7 @@ function TableModal({ table, allTables, onClose }: { table: DemoTable | null; al
   async function pay() {
     if (!tab) return;
     const cents = Math.round(Number(payAmount.replace(",", ".")) * 100);
-    const serviceCents = serviceChargeApplied ? Math.round(tab.totalCents * ((tab.serviceChargeRate || 10) / 100)) : 0;
+    const serviceCents = serviceChargeApplied ? Math.round(tab.totalCents * ((tab.serviceChargeRate ?? 10) / 100)) : 0;
     const outstanding = Math.max(0, tab.totalCents + serviceCents - tab.paidCents);
     if (!Number.isFinite(cents) || cents <= 0 || cents > outstanding) { setMessage("Informe um valor válido, sem exceder o saldo."); return; }
     setWorking("pay"); setMessage("");
@@ -176,18 +178,18 @@ function TableModal({ table, allTables, onClose }: { table: DemoTable | null; al
     <div className="space-y-5 p-5">
       <div className="grid grid-cols-2 gap-3"><Info label="Capacidade" value={`${current.capacity} lugares`} /><Info label="Status" value={statusText[current.status]} /></div>
       {current.groupId && <p className="rounded-xl bg-blue-50 p-3 text-sm font-semibold text-blue-800">Esta mesa está unida a outra mesa. <button className="underline" disabled={working === "ungroup"} onClick={ungroup}>{working === "ungroup" ? "Separando..." : "Separar agora"}</button></p>}
-      <form onSubmit={openTab} className="rounded-2xl border p-4">
+      <div className="grid grid-cols-2 gap-2"><button type="button" className={tabMode==="individual"?"btn-primary":"btn-secondary"} onClick={()=>{setTabMode("individual");setPeople("1")}}>Comanda individual</button><button type="button" className={tabMode==="shared"?"btn-primary":"btn-secondary"} onClick={()=>setTabMode("shared")}>Conta da mesa</button></div><p className="text-sm text-black/50">Uma comanda por pessoa, com pedidos e pagamento separados. Informe um nome ou número.</p><form onSubmit={openTab} className="rounded-2xl border p-4">
         <p className="label">Abrir nova comanda</p>
-        <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_90px_auto]"><input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Nome da comanda" maxLength={120} /><input className="input" type="number" min="1" max={current.capacity} value={people} onChange={(event) => setPeople(event.target.value)} /><button type="submit" className="btn-primary" disabled={!!working}>{working === "open" ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}Abrir</button></div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_90px_auto]"><input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder={tabMode==="individual"?"Nome da pessoa ou nº da comanda":"Nome da mesa (opcional)"} maxLength={120} /><input aria-label="Pessoas na comanda" disabled={tabMode==="individual"} className="input" type="number" min="1" max={20} value={people} onChange={(event) => setPeople(event.target.value)} /><button type="submit" className="btn-primary" disabled={!!working}>{working === "open" ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}Abrir</button></div>
       </form>
       <section>
         <p className="label">Comandas</p>
-        <div className="space-y-2">{current.tabs.map((item) => <button key={item.id} onClick={() => { setSelectedTab(item.id); setServiceChargeApplied(item.serviceChargeApplied !== false); }} className={`w-full rounded-xl border p-3 text-left ${selectedTab === item.id ? "border-basso-wine bg-basso-wine/5" : ""}`}><div className="flex justify-between"><strong>{item.name}</strong><span className="text-xs text-black/45">{item.waiter}</span></div><p className="mt-1 text-xs text-black/45">{item.items.length} item(ns) • {currency(item.paidCents)} pago de {currency(item.totalCents)}</p></button>)}{!current.tabs.length && <p className="rounded-xl bg-basso-paper p-4 text-sm text-black/45">Nenhuma comanda aberta.</p>}</div>
+        <div className="space-y-2">{current.tabs.filter(item=>item.status==="open"||item.status==="partial").map((item) => <button key={item.id} onClick={() => { setSelectedTab(item.id); setServiceChargeApplied(item.serviceChargeApplied !== false); }} className={`w-full rounded-xl border p-3 text-left ${selectedTab === item.id ? "border-basso-wine bg-basso-wine/5" : ""}`}><div className="flex justify-between"><strong>{item.name}</strong><span className="text-xs text-black/45">{item.waiter}</span></div><p className="mt-1 text-xs text-black/45">{item.items.length} item(ns) • {currency(item.paidCents)} pago de {currency(item.totalCents)}</p></button>)}{!current.tabs.length && <p className="rounded-xl bg-basso-paper p-4 text-sm text-black/45">Nenhuma comanda aberta.</p>}</div>
       </section>
       {tab && <section className="rounded-2xl border p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="label">Comanda selecionada</p><h3 className="font-display text-xl font-bold">{tab.name}</h3></div><div className="text-right"><p className="text-xs text-black/45">Saldo</p><strong className="text-lg text-basso-wine">{currency(Math.max(0, tab.totalCents + (serviceChargeApplied ? Math.round(tab.totalCents * ((tab.serviceChargeRate || 10) / 100)) : 0) - tab.paidCents))}</strong></div></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="label">Comanda selecionada</p><h3 className="font-display text-xl font-bold">{tab.name}</h3></div><div className="text-right"><p className="text-xs text-black/45">Saldo</p><strong className="text-lg text-basso-wine">{currency(Math.max(0, tab.totalCents + (serviceChargeApplied ? Math.round(tab.totalCents * ((tab.serviceChargeRate ?? 10) / 100)) : 0) - tab.paidCents))}</strong></div></div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2"><select className="input" value={target} onChange={(event) => setTarget(event.target.value)}>{allTables.filter((item) => item.number !== current.number).map((item) => <option key={item.number} value={item.number}>Mesa {item.number}</option>)}</select><button className="btn-secondary" disabled={!!working} onClick={transfer}>{working === "transfer" ? "Transferindo..." : "Transferir comanda"}</button><button className="btn-secondary" disabled={!!working} onClick={group}>{working === "group" ? "Unindo..." : "Unir com a mesa escolhida"}</button><button className="btn-secondary" disabled={!!working} onClick={() => window.print()}><Printer size={16} />Emitir pré-conta</button></div>
-        <div className="mt-4 rounded-xl bg-basso-paper p-3"><label className="flex items-center justify-between gap-3 text-sm font-semibold"><span><strong>Taxa de serviço {tab.serviceChargeRate || 10}%</strong><span className="mt-0.5 block text-xs font-normal text-black/45">{serviceChargeApplied ? `Incluída: ${currency(Math.round(tab.totalCents * ((tab.serviceChargeRate || 10) / 100)))}` : "Retirada no pagamento"}</span></span><input type="checkbox" checked={serviceChargeApplied} disabled={!!working} onChange={e=>void toggleServiceCharge(e.target.checked)}/></label></div>
+        <div className="mt-4 rounded-xl bg-basso-paper p-3"><label className="flex items-center justify-between gap-3 text-sm font-semibold"><span><strong>Taxa de serviço {tab.serviceChargeRate ?? 10}%</strong><span className="mt-0.5 block text-xs font-normal text-black/45">{serviceChargeApplied ? `Incluída: ${currency(Math.round(tab.totalCents * ((tab.serviceChargeRate ?? 10) / 100)))}` : "Retirada no pagamento"}</span></span><input type="checkbox" checked={serviceChargeApplied} disabled={!!working} onChange={e=>void toggleServiceCharge(e.target.checked)}/></label></div>
         <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_140px_auto]"><input className="input" value={payAmount} onChange={(event) => setPayAmount(event.target.value)} placeholder="Valor a receber" inputMode="decimal" /><select className="input" value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)}><option value="pix">Pix</option><option value="cash">Dinheiro</option><option value="debit">Débito</option><option value="credit">Crédito</option><option value="meal_voucher">Refeição</option><option value="food_voucher">Alimentação</option></select><button className="btn-primary" onClick={pay} disabled={!!working || tab.totalCents <= tab.paidCents}>{working === "pay" ? <Loader2 className="animate-spin" size={16} /> : <CreditCard size={16} />}Receber</button></div>
       </section>}
       <div className="grid gap-2 sm:grid-cols-2"><button className="btn-secondary" disabled={!!working || (current.tabs.length > 0 && current.status !== "free")} onClick={toggleTable}>{working === "table" ? <Loader2 className="animate-spin" size={16} /> : null}{current.status === "free" ? "Abrir mesa sem comanda" : "Fechar mesa"}</button><a href={`/mesa/${current.number}`} target="_blank" rel="noreferrer" className="btn-secondary"><QrCode size={17} />Abrir QR da mesa</a></div>
@@ -199,3 +201,4 @@ function TableModal({ table, allTables, onClose }: { table: DemoTable | null; al
 function Info({ label, value }: { label: string; value: string }) {
   return <div className="rounded-xl bg-basso-paper p-3"><p className="text-[10px] font-bold uppercase text-black/40">{label}</p><p className="mt-1 font-bold">{value}</p></div>;
 }
+

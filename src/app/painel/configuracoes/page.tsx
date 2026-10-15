@@ -5,7 +5,11 @@ import { Building2, CreditCard, Edit3, MapPin, PauseCircle, PlayCircle, Plus, Sa
 import { PageHeader } from "@/components/internal/PageHeader";
 import { currency, isDemoMode, uid } from "@/lib/utils";
 
+import { catalog } from "@/lib/catalog";
+import { dayKeys,weekdayPt,type OpeningHours } from "@/lib/opening-hours";
+
 type FormState = {
+  name:string; phone:string; contactPhones:string; instagram:string; openingHours:OpeningHours;
   minimumOrder: string;
   maximumDeliveryKm: string;
   pixKey: string;
@@ -19,7 +23,7 @@ type FormState = {
 };
 type Zone = { id: string; name: string; city: string; districts: string[]; fee_cents: number; minimum_order_cents: number; max_distance_km: number | null; active: boolean };
 const DEMO_KEY = "lfb-settings-v31";
-const defaults: FormState = { minimumOrder: "0", maximumDeliveryKm: "", pixKey: "", pixKeyType: "cpf_cnpj", pixConfirmation: "manual", serviceFeePercent: "0", waiterCommissionPercent: "0", schedulingEnabled: true, fiscalMode: "non_fiscal", preparationCapacityPerSlot: "" };
+const defaults: FormState = { name:"La Forneria Basso",phone:"(11) 97235-6751",contactPhones:"",instagram:"@laforneriabasso",openingHours:catalog.business.hours as OpeningHours, minimumOrder: "0", maximumDeliveryKm: "", pixKey: "", pixKeyType: "cpf_cnpj", pixConfirmation: "manual", serviceFeePercent: "0", waiterCommissionPercent: "0", schedulingEnabled: true, fiscalMode: "non_fiscal", preparationCapacityPerSlot: "" };
 
 export default function SettingsPage() {
   const [form, setForm] = useState(defaults);
@@ -49,6 +53,7 @@ export default function SettingsPage() {
           const config = body.settings?.config || {};
           if (!cancelled) {
             setForm({
+              name:body.settings.name,phone:body.settings.phone,contactPhones:(config.contactPhones||[]).join("\n"),instagram:body.settings.instagram||"",openingHours:body.settings.opening_hours||defaults.openingHours,
               minimumOrder: String((body.settings?.minimum_order_cents || 0) / 100),
               maximumDeliveryKm: config.maximumDeliveryKm == null ? "" : String(config.maximumDeliveryKm),
               pixKey: config.pixKey || "", pixKeyType: config.pixKeyType || "cpf_cnpj",
@@ -73,7 +78,7 @@ export default function SettingsPage() {
     try {
       if (isDemoMode()) persistDemo();
       else {
-        const response = await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ minimumOrder: numberValue(form.minimumOrder, 100), config: { pixKey: form.pixKey || null, pixKeyType: form.pixKeyType || null, pixConfirmation: form.pixConfirmation, serviceFeePercent: numberValue(form.serviceFeePercent), waiterCommissionPercent: numberValue(form.waiterCommissionPercent), schedulingEnabled: form.schedulingEnabled, maximumDeliveryKm: form.maximumDeliveryKm ? Number(form.maximumDeliveryKm.replace(",", ".")) : null, fiscalMode: form.fiscalMode, preparationCapacityPerSlot: form.preparationCapacityPerSlot ? Number(form.preparationCapacityPerSlot) : null } }) });
+        const response = await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({name:form.name,phone:form.phone,contactPhones:form.contactPhones.split(/[\n;,]/).map(p=>p.trim()).filter(Boolean),instagram:form.instagram,openingHours:form.openingHours, minimumOrder: numberValue(form.minimumOrder, 100), config: { pixKey: form.pixKey || null, pixKeyType: form.pixKeyType || null, pixConfirmation: form.pixConfirmation, serviceFeePercent: numberValue(form.serviceFeePercent), waiterCommissionPercent: numberValue(form.waiterCommissionPercent), schedulingEnabled: form.schedulingEnabled, maximumDeliveryKm: form.maximumDeliveryKm ? Number(form.maximumDeliveryKm.replace(",", ".")) : null, fiscalMode: form.fiscalMode, preparationCapacityPerSlot: form.preparationCapacityPerSlot ? Number(form.preparationCapacityPerSlot) : null } }) });
         const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao salvar.");
       }
       setMessage("Configurações salvas e registradas na auditoria.");
@@ -127,7 +132,8 @@ export default function SettingsPage() {
     <PageHeader title="Configurações da operação" icon={Settings} description="Controle cobertura, cidades, bairros, taxas, pedido mínimo, Pix, salão e parâmetros operacionais." actions={<button className="btn-primary" onClick={save} disabled={saving || loading}><Save size={17}/>{saving ? "Salvando..." : "Salvar alterações"}</button>} />
     {message && <p className="mb-5 rounded-xl bg-blue-50 p-4 text-sm font-semibold text-blue-800">{message}</p>}
     <div className="grid gap-5 xl:grid-cols-2">
-      <Section icon={<Building2/>} title="Estabelecimento"><Grid><ReadOnly label="Nome fantasia" value="La Forneria Basso"/><ReadOnly label="CNPJ" value="62.332.415/0001-10"/><ReadOnly label="Telefone" value="(11) 97235-6751"/><ReadOnly label="Funcionamento" value="Terça a domingo, 18h às 23h"/></Grid></Section>
+      <Section icon={<Building2/>} title="Estabelecimento"><Grid><Field label="Nome fantasia" value={form.name} onChange={name=>setForm({...form,name})}/><ReadOnly label="CNPJ" value="62.332.415/0001-10"/><Field label="Telefone principal" value={form.phone} onChange={phone=>setForm({...form,phone})}/><Field label="Instagram" value={form.instagram} onChange={instagram=>setForm({...form,instagram})}/><label className="sm:col-span-2"><span className="label">Outros telefones (um por linha)</span><textarea className="textarea" value={form.contactPhones} onChange={e=>setForm({...form,contactPhones:e.target.value})}/></label></Grid></Section>
+      <Section icon={<Settings/>} title="Horários de atendimento"><p className="mb-3 text-sm text-black/50">Fuso de São Paulo. Desmarque os dias fechados. Horários que passam da meia-noite são aceitos. Para seguir estes horários, use o modo automático no controle da loja.</p><div className="space-y-3">{dayKeys.map(day=>{const hours=form.openingHours[day];return <div key={day} className="grid grid-cols-[1fr_100px_100px] items-center gap-2"><label className="flex items-center gap-2 text-sm capitalize"><input type="checkbox" checked={Boolean(hours)} onChange={e=>setForm({...form,openingHours:{...form.openingHours,[day]:e.target.checked?["18:00","23:00"]:null}})}/>{weekdayPt[day]}</label><input aria-label={`Abre ${weekdayPt[day]}`} className="input" type="time" disabled={!hours} value={hours?.[0]||""} onChange={e=>setForm({...form,openingHours:{...form.openingHours,[day]:[e.target.value,hours?.[1]||"23:00"]}})}/><input aria-label={`Fecha ${weekdayPt[day]}`} className="input" type="time" disabled={!hours} value={hours?.[1]||""} onChange={e=>setForm({...form,openingHours:{...form.openingHours,[day]:[hours?.[0]||"18:00",e.target.value]}})}/></div>})}</div></Section>
       <Section icon={<Truck/>} title="Delivery"><Grid><Field label="Pedido mínimo geral (R$)" value={form.minimumOrder} onChange={value=>setForm({...form,minimumOrder:value})}/><Field label="Área máxima (km)" value={form.maximumDeliveryKm} onChange={value=>setForm({...form,maximumDeliveryKm:value})}/><Field label="Capacidade por faixa" value={form.preparationCapacityPerSlot} onChange={value=>setForm({...form,preparationCapacityPerSlot:value})}/><label className="flex items-end gap-3 rounded-xl border p-3"><input type="checkbox" checked={form.schedulingEnabled} onChange={event=>setForm({...form,schedulingEnabled:event.target.checked})}/><span className="text-sm font-bold">Agendamento habilitado</span></label></Grid><button className="btn-secondary mt-4" onClick={()=>setShowZone(value=>!value)}><MapPin size={16}/>{showZone ? "Fechar cadastro" : "Adicionar cidade/bairro"}</button></Section>
       <Section icon={<CreditCard/>} title="Pagamentos"><Grid><Field label="Chave Pix" value={form.pixKey} onChange={value=>setForm({...form,pixKey:value})}/><label><span className="label">Conferência Pix</span><select className="input" value={form.pixConfirmation} onChange={event=>setForm({...form,pixConfirmation:event.target.value as FormState["pixConfirmation"]})}><option value="manual">Manual</option><option value="automatic">Automática (somente com gateway homologado)</option></select></label><ReadOnly label="Integração Rede" value="Aguardando SDK/App2App e homologação da Laranjinha"/><label><span className="label">Modo fiscal</span><select className="input" value={form.fiscalMode} onChange={event=>setForm({...form,fiscalMode:event.target.value as FormState["fiscalMode"]})}><option value="non_fiscal">Comprovante não fiscal</option><option value="nfce">NFC-e</option><option value="external">Integração fiscal externa</option></select></label></Grid></Section>
       <Section icon={<Users/>} title="Salão e permissões"><Grid><ReadOnly label="Mesas" value="15 (10×5 + 5×2 lugares)"/><Field label="Taxa de serviço (%)" value={form.serviceFeePercent} onChange={value=>setForm({...form,serviceFeePercent:value})}/><Field label="Comissão garçom (%)" value={form.waiterCommissionPercent} onChange={value=>setForm({...form,waiterCommissionPercent:value})}/><ReadOnly label="Junção de mesas" value="Permitida com auditoria"/></Grid></Section>
@@ -149,3 +155,4 @@ function Section({icon,title,children}:{icon:React.ReactNode;title:string;childr
 function Grid({children}:{children:React.ReactNode}){return <div className="grid gap-4 sm:grid-cols-2">{children}</div>}
 function Field({label,value,onChange}:{label:string;value:string;onChange:(value:string)=>void}){return <label><span className="label">{label}</span><input className="input" value={value} onChange={event=>onChange(event.target.value)}/></label>}
 function ReadOnly({label,value}:{label:string;value:string}){return <label><span className="label">{label}</span><input className="input bg-black/[.025]" value={value} readOnly/></label>}
+

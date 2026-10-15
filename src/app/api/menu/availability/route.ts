@@ -13,7 +13,7 @@ const schema = z.object({
   priceBroto: z.number().int().nonnegative().optional(),
   price: z.number().int().nonnegative().optional(),
   channels: z.array(channel).min(1).optional(),
-  schedule: z.record(z.any()).optional(),
+  schedule: z.object({days:z.array(z.number().int().min(0).max(6)).min(1).optional(),start:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).or(z.literal("")).optional(),end:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).or(z.literal("")).optional()}).passthrough().refine(s=>Boolean(s.start)===Boolean(s.end),"Preencha início e fim do horário.").optional(),
   name: z.string().trim().min(2).max(180).optional(),
   description: z.string().max(1000).optional(),
   ingredients: z.array(z.string().min(1).max(120)).max(40).optional(),

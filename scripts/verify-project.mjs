@@ -75,7 +75,7 @@ const publicAreas = read("src/app/api/delivery/areas/route.ts");
 const serverQuote = read("src/lib/server-quote.ts");
 check("Checkout mantém idempotência", /checkoutKeyRef/.test(checkoutSource) && /Idempotency-Key/.test(checkoutSource));
 check("API pública limita canais", /own_delivery.*pickup.*table_qr/.test(publicOrderApi) && /Canal não permitido no checkout público/.test(publicOrderApi));
-check("Pedido público valida agenda oficial", /manual_override/.test(publicOrderApi) && /storeStatus\(\)/.test(publicOrderApi));
+check("Pedido público valida agenda oficial", /manual_override/.test(publicOrderApi) && /storeStatus\(new Date\(\),\s*business.openingHours\)/.test(publicOrderApi) && /loadBusinessSettings\(db\)/.test(publicOrderApi));
 check("Delivery público bloqueia cobertura ausente", /bairros e taxas ainda não foram configurados/i.test(publicOrderApi));
 check("Recompensa pública bloqueada", /Recompensas são lançadas exclusivamente/.test(publicOrderApi));
 check("Checkout oferece cidade e bairro dependentes", /api\/delivery\/areas/.test(checkoutSource) && /Cidade atendida/.test(checkoutSource) && /Bairro atendido/.test(checkoutSource) && /Selecione a cidade primeiro/.test(checkoutSource));

@@ -122,7 +122,7 @@ export function OperationalHydrator() {
       "orders", "order_items", "payments", "restaurant_tables", "tabs", "drivers", "inventory_items",
       "coupons", "cash_sessions", "cash_movements", "financial_entries", "integration_events", "audit_logs",
       "store_runtime_status", "operation_tasks", "approval_requests", "internal_notifications", "print_jobs",
-      "campaigns", "campaign_recipients", "customers"
+      "campaigns", "campaign_recipients", "customers", "business_settings", "products", "pizza_flavors", "addons", "categories", "delivery_zones", "promotions", "promotion_targets"
     ];
     for (const table of tables) realtime?.on("postgres_changes", { event: "*", schema: "public", table }, debounceRefresh);
     realtime?.subscribe((realtimeStatus) => {
@@ -146,3 +146,4 @@ export function OperationalHydrator() {
 
   return null;
 }
+

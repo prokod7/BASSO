@@ -4,6 +4,7 @@ import { parseIncomingOrder } from "@/lib/server-orders";
 import { parsePublicCheckout } from "@/lib/public-checkout";
 import { quoteCommercialTerms } from "@/lib/server-quote";
 import { requireOperationalRole } from "@/lib/authz";
+import { loadBusinessSettings } from "@/lib/business-settings";
 import { storeStatus } from "@/lib/opening-hours";
 import { createHash, randomBytes } from "crypto";
 
@@ -36,7 +37,8 @@ export async function POST(request: NextRequest) {
     let effectiveAccepting = Boolean(runtime?.accepting_orders);
 
     if (runtime && runtime.manual_override === false) {
-      const schedule = storeStatus();
+      const business = await loadBusinessSettings(db);
+      const schedule = storeStatus(new Date(),business.openingHours);
       effectiveStatus = schedule.open ? "open" : "closed";
       effectiveAccepting = schedule.open;
 

@@ -7,7 +7,9 @@ import {
   Home, Loader2, Minus, Plus, RefreshCw, Search, Send, ShoppingBag, Table2, Trash2, UserRound, UtensilsCrossed,
 } from "lucide-react";
 import { OperationalHydrator } from "@/components/internal/OperationalHydrator";
-import { PizzaBuilder } from "@/components/public/PizzaBuilder";
+import { applyRuntimeCatalog } from "@/lib/runtime-catalog";
+import type { Addon } from "@/types";
+import { EnhancedPizzaBuilder as PizzaBuilder } from "@/components/public/EnhancedPizzaBuilder";
 import { demoActions } from "@/lib/demo-store";
 import { useStableDemoState } from "@/lib/stable-store";
 import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client/api";
@@ -33,6 +35,7 @@ export default function WaiterMobilePage() {
   const [tabId, setTabId] = useState("");
   const [newTabName, setNewTabName] = useState("");
   const [people, setPeople] = useState("1");
+  const [tabMode,setTabMode]=useState<"individual"|"shared">("individual");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [items, setItems] = useState<CartItem[]>([]);
@@ -81,8 +84,9 @@ export default function WaiterMobilePage() {
           }
           return;
         }
-        const body = await apiJson<{ flavors: Flavor[]; products: RuntimeProduct[]; categories: MenuCategory[] }>("/api/waiter/menu", { cache: "no-store" });
+        const body = await apiJson<{ flavors: Flavor[]; products: RuntimeProduct[]; categories: MenuCategory[];addons:Addon[] }>("/api/waiter/menu", { cache: "no-store" });
         if (!cancelled) {
+          applyRuntimeCatalog(body);
           setRuntimeFlavors(body.flavors || []);
           setRuntimeProducts(body.products || []);
           setCategories(body.categories || []);
@@ -94,7 +98,9 @@ export default function WaiterMobilePage() {
       }
     }
     void loadMenu();
-    return () => { cancelled = true; };
+    const timer=window.setInterval(()=>{if(document.visibilityState==="visible")void loadMenu()},15000);
+    const onFocus=()=>void loadMenu();window.addEventListener("focus",onFocus);
+    return () => { cancelled = true;window.clearInterval(timer);window.removeEventListener("focus",onFocus); };
   }, []);
 
   useEffect(() => {
@@ -106,7 +112,8 @@ export default function WaiterMobilePage() {
   function chooseTable(number: number) {
     const selected = store.tables.find((item) => item.number === number);
     setTableNumber(number);
-    setTabId(selected?.tabs.find((tab) => tab.status === "open" || tab.status === "partial")?.id || "");
+    const tabs=selected?.tabs.filter(tab=>tab.status==="open"||tab.status==="partial")||[];
+    setTabId(tabs.length===1?tabs[0].id:"");
     setItems([]);
     setQuery("");
     setCategory("all");
@@ -123,9 +130,10 @@ export default function WaiterMobilePage() {
   async function openTab(event: FormEvent) {
     event.preventDefault();
     if (!tableNumber) return;
-    const name = newTabName.trim();
+    if(items.length){setMessage("Envie ou esvazie o pedido atual antes de abrir outra comanda.");return}
+    const name = newTabName.trim() || (tabMode === "shared" ? `Mesa ${tableNumber}` : "");
     if (!name) { setMessage("Informe o nome da comanda."); return; }
-    const count = Math.max(1, Number(people) || 1);
+    const count = tabMode === "individual" ? 1 : Math.max(1, Number(people) || 1);
     setWorking("tab"); setMessage("");
     try {
       let id: string;
@@ -291,8 +299,8 @@ export default function WaiterMobilePage() {
       {screen === "order" && tableNumber && <>
         <div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-[.16em] text-basso-wine">Mesa {tableNumber}</p><h1 className="font-display text-3xl font-black">Lançar pedido</h1></div>{selectedTab && <button className="rounded-2xl bg-basso-wine px-3 py-2 text-xs font-black text-white" onClick={() => setScreen("account")}>Ver conta</button>}</div>
 
-        <section className="surface mb-4 p-4"><p className="label">Comanda</p>{activeTabs.length ? <select className="input mt-2 text-base" value={tabId} onChange={(event) => setTabId(event.target.value)}><option value="">Selecione</option>{activeTabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.name} • {currency(tab.totalCents)}{tab.paidCents ? ` • pago ${currency(tab.paidCents)}` : ""}</option>)}</select> : <p className="mt-1 text-sm text-black/50">Nenhuma comanda aberta nesta mesa.</p>}
-          <form onSubmit={openTab} className="mt-3 grid gap-2"><input className="input text-base" value={newTabName} onChange={(event) => setNewTabName(event.target.value)} placeholder="Nome da nova comanda" maxLength={120}/><div className="grid grid-cols-[90px_1fr] gap-2"><input className="input text-base" type="number" min="1" max={table?.capacity || 5} value={people} onChange={(event) => setPeople(event.target.value)} /><button type="submit" className="btn-secondary" disabled={working === "tab"}>{working === "tab" ? <Loader2 className="animate-spin" size={17} /> : <Plus size={17} />}Abrir comanda</button></div></form>
+        <section className="surface mb-4 p-4"><p className="label">Selecione quem está pedindo</p><div className="mt-2 grid grid-cols-2 gap-2">{activeTabs.map(tab=><button type="button" key={tab.id} className={`min-h-16 rounded-xl border p-3 text-left ${tabId===tab.id?"border-basso-wine bg-basso-wine/5":""}`} onClick={()=>{if(items.length&&tabId!==tab.id){setMessage("Envie ou esvazie o pedido atual antes de trocar de comanda.");return}setTabId(tab.id)}}><strong className="block text-sm">{tab.name}</strong><span className="text-xs">{currency(tab.totalCents)} • {tabId===tab.id?"Selecionada":"Selecionar"}</span></button>)}</div>{activeTabs.length ? <select className="input mt-2 text-base" value={tabId} disabled={items.length>0} onChange={(event) => setTabId(event.target.value)}><option value="">Selecione</option>{activeTabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.name} • {currency(tab.totalCents)}{tab.paidCents ? ` • pago ${currency(tab.paidCents)}` : ""}</option>)}</select> : <p className="mt-1 text-sm text-black/50">Nenhuma comanda aberta nesta mesa.</p>}
+          <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" className={tabMode==="individual"?"btn-primary":"btn-secondary"} onClick={()=>{setTabMode("individual");setPeople("1")}}>Por pessoa</button><button type="button" className={tabMode==="shared"?"btn-primary":"btn-secondary"} onClick={()=>setTabMode("shared")}>Conta da mesa</button></div><p className="mt-2 text-xs text-black/50">Cada comanda tem seus pedidos, saldo e pagamento separados.</p><form onSubmit={openTab} className="mt-3 grid gap-2"><input className="input text-base" value={newTabName} onChange={(event) => setNewTabName(event.target.value)} placeholder={tabMode === "individual"?"Nome da pessoa ou nº da comanda":"Nome da conta da mesa (opcional)"} maxLength={120}/><div className="grid grid-cols-[90px_1fr] gap-2"><input className="input text-base" aria-label="Pessoas na comanda" disabled={tabMode==="individual"} type="number" min="1" max={20} value={people} onChange={(event) => setPeople(event.target.value)} /><button type="submit" className="btn-secondary" disabled={working === "tab"}>{working === "tab" ? <Loader2 className="animate-spin" size={17} /> : <Plus size={17} />}Abrir comanda</button></div></form>
         </section>
 
         <label className="relative mb-3 block"><Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30" /><input className="input h-12 pl-10 text-base" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar sabor, bebida ou sobremesa" /></label>

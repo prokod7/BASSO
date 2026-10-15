@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireOperationalRole } from "@/lib/authz";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mapStoreRuntime } from "@/lib/admin-control";
+import { loadBusinessSettings } from "@/lib/business-settings";
+import type { OpeningHours } from "@/lib/opening-hours";
 import { storeStatus } from "@/lib/opening-hours";
 
 const schema = z.object({
@@ -20,8 +22,9 @@ const schema = z.object({
 async function synchronizeRuntime(
   db: NonNullable<ReturnType<typeof createAdminClient>>,
   runtime: Record<string, unknown>,
+  hours: OpeningHours,
 ) {
-  const schedule = storeStatus();
+  const schedule = storeStatus(new Date(),hours);
   let current = runtime;
   const temporaryPauseExpired =
     current.operational_status === "paused" &&
@@ -88,18 +91,20 @@ export async function GET() {
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
 
-    const [{ data, error }, deliveryZones] = await Promise.all([
+    const [{ data, error }, deliveryZones, business] = await Promise.all([
       db.from("store_runtime_status").select("*").eq("id", true).single(),
-      db.from("delivery_zones").select("id", { count: "exact", head: true }).eq("active", true),
+      db.from("delivery_zones").select("id", { count: "exact", head: true }).eq("active", true).is("deleted_at",null),
+      loadBusinessSettings(db),
     ]);
     if (error) throw error;
 
-    const { current, schedule } = await synchronizeRuntime(db, data as Record<string, unknown>);
+    const { current, schedule } = await synchronizeRuntime(db, data as Record<string, unknown>,business.openingHours);
     const deliveryAvailable = !deliveryZones.error && (deliveryZones.count || 0) > 0;
 
     return NextResponse.json(
       {
         ...mapStoreRuntime(current),
+        business,
         scheduledOpen: schedule.open,
         scheduleLabel: schedule.label,
         deliveryAvailable,
@@ -165,3 +170,4 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+
