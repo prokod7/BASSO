@@ -6,7 +6,8 @@ import { PizzaBuilder, type PizzaMenuEntry } from "@/components/public/PizzaBuil
 import { Modal } from "@/components/ui/Modal";
 import { useCart } from "@/context/CartContext";
 import { findFlavor } from "@/lib/catalog";
-import { pizzaTotal, SWEET_HAZELNUT_ZERO_SURCHARGE } from "@/lib/pricing";
+import { runtimePizzaTotal as pizzaTotal } from "@/lib/runtime-catalog";
+import { SWEET_HAZELNUT_ZERO_SURCHARGE } from "@/lib/pricing";
 import { currency } from "@/lib/utils";
 import type { CartItem, Flavor, PizzaSelection } from "@/types";
 
@@ -207,3 +208,4 @@ function OptionButton({ active, onClick, children }: { active: boolean; onClick:
     </button>
   );
 }
+

@@ -3,9 +3,15 @@ import { z } from "zod";
 import { requireOperationalRole } from "@/lib/authz";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const dayHours = z.tuple([time,time]).refine(v=>v[0]!==v[1],"Horário de abertura e fechamento devem ser diferentes.").nullable();
 const schema = z.object({
+  name: z.string().trim().min(2).max(180).optional(),
+  phone: z.string().trim().min(8).max(30).optional(),
+  contactPhones: z.array(z.string().trim().min(8).max(30)).max(5).optional(),
+  instagram: z.string().trim().max(120).regex(/^@?[A-Za-z0-9_.]*$/,"Informe apenas o @ do Instagram.").optional(),
   minimumOrder: z.number().int().nonnegative().optional(),
-  openingHours: z.record(z.string(), z.tuple([z.string(), z.string()]).nullable()).optional(),
+  openingHours: z.object({sunday:dayHours,monday:dayHours,tuesday:dayHours,wednesday:dayHours,thursday:dayHours,friday:dayHours,saturday:dayHours}).optional(),
   config: z.object({
     pixKey: z.string().max(200).nullable().optional(),
     pixKeyType: z.string().max(50).nullable().optional(),
@@ -47,7 +53,10 @@ export async function PATCH(request: NextRequest) {
     const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (body.minimumOrder !== undefined) payload.minimum_order_cents = body.minimumOrder;
     if (body.openingHours !== undefined) payload.opening_hours = body.openingHours;
-    if (body.config !== undefined) payload.config = { ...(current.config || {}), ...body.config };
+    if (body.name !== undefined) payload.name=body.name;
+    if (body.phone !== undefined) payload.phone=body.phone;
+    if (body.instagram !== undefined) payload.instagram=body.instagram;
+    if (body.config !== undefined || body.contactPhones !== undefined) payload.config = { ...(current.config || {}), ...body.config, ...(body.contactPhones !== undefined?{contactPhones:body.contactPhones}:{}) };
     const { error } = await db.from("business_settings").update(payload).eq("id", current.id);
     if (error) throw error;
     await db.from("audit_logs").insert({ actor_id: auth.userId === "demo" ? null : auth.userId, actor_label: auth.displayName, action: "BUSINESS_SETTINGS_UPDATED", entity_type: "business_settings", entity_id: current.id, before_data: current, after_data: payload });
@@ -56,3 +65,4 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Configuração inválida." }, { status: 400 });
   }
 }
+

@@ -52,6 +52,11 @@ export interface ComboSelection {
   mass: "traditional" | "integral";
   grandeFlavor: string;
   grandeFlavorB?: string;
+  secondGrandeFlavor?: string;
+  secondGrandeFlavorB?: string;
+  sweetFlavor?: string;
+  sweetSize?: "grande" | "broto";
+  sweetCutPreference?: "uncut" | "cut";
   brigadeiroBase: "chocolate-ao-leite" | "creme-de-avela";
   beverage: string;
   addons: Record<string, number>;

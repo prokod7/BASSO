@@ -69,6 +69,9 @@ function itemDetails(item: CartItem) {
     lines.push({ text: `- ${flavorA}`, emphasis: true });
   }
 
+  if(selection.secondGrandeFlavor) lines.push({text:`Grande 2: ${labelFlavor(selection.secondGrandeFlavor)}${selection.secondGrandeFlavorB?` / ${labelFlavor(selection.secondGrandeFlavorB)}`:""}`,emphasis:true});
+  if(selection.sweetFlavor) lines.push({text:`${selection.sweetSize === "grande"?"Grande":"Broto"} doce: ${labelFlavor(selection.sweetFlavor)}`,emphasis:true});
+  if(selection.beverage) lines.push({text:`Bebida: ${String(selection.beverage).replaceAll("-"," ")}`,emphasis:true});
   const removedA = Array.isArray(selection.removedA) ? selection.removedA.filter((x): x is string => typeof x === "string") : [];
   const removedB = Array.isArray(selection.removedB) ? selection.removedB.filter((x): x is string => typeof x === "string") : [];
   if (removedA.length) lines.push({ text: `  SEM ${removedA.join(", ")}`, emphasis: true });
@@ -275,3 +278,4 @@ export default function BrowserPrintPage({ params }: { params: Promise<{ id: str
 function Divider({ compact = false }: { compact?: boolean }) {
   return <div className={`${compact ? "my-1" : "my-2"} border-t border-dashed border-black`} />;
 }
+

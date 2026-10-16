@@ -3,7 +3,7 @@ import { addonPrice, comboTotal, pizzaTotal, validatePizzaSelection } from "@/li
 import { bestPizzaPromotion, bestProductPromotion, loadActivePromotions } from "@/lib/promotions";
 import type { Addon, AppliedPromotion, CartItem, Flavor, MenuCategory, OrderChannel, PizzaSelection, ComboSelection } from "@/types";
 
-const OFFICIAL_PROMO_FLAVORS = ["calabresa-tradicional", "mozzarella"] as const;
+import { comboConfig, priceConfiguredCombo } from "@/lib/combos";
 
 type SweetPizzaSelection = PizzaSelection & {
   sweetBase?: "standard" | "hazelnut-zero";
@@ -57,9 +57,10 @@ export function scheduleAllows(schedule: unknown, date = new Date()): boolean {
   const windows = Array.isArray(config.windows) && config.windows.length ? config.windows : [config];
   const clock = saoPauloClock(date);
   return windows.some(window => {
-    if (Array.isArray(window.days) && !window.days.includes(clock.weekday)) return false;
     const start = toMinutes(window.start);
     const end = toMinutes(window.end);
+    const effectiveWeekday=start!=null&&end!=null&&start>end&&clock.minutes<=end?(clock.weekday+6)%7:clock.weekday;
+    if (Array.isArray(window.days) && !window.days.includes(effectiveWeekday)) return false;
     if (start == null || end == null) return true;
     return start <= end ? clock.minutes >= start && clock.minutes <= end : clock.minutes >= start || clock.minutes <= end;
   });
@@ -171,24 +172,13 @@ export async function priceItemsWithRuntime(db: any, items: CartItem[], channel:
       const combo = products.find(product => product.id === comboId && product.category === "combo");
       if (!selection || !combo?.active) throw new Error("Combo inválido ou indisponível.");
 
-      const config = (combo.config || {}) as { grandeFlavors?: unknown; beverages?: unknown; sweetFlavor?: unknown };
-      const configuredFlavorIds = Array.isArray(config.grandeFlavors) ? config.grandeFlavors.filter((value): value is string => typeof value === "string") : catalog.combo.options.grandeFlavors;
-      const allowedFlavorIds = comboId === catalog.combo.id ? [...OFFICIAL_PROMO_FLAVORS] : configuredFlavorIds;
-      const allowedBeverageIds = Array.isArray(config.beverages) ? config.beverages.filter((value): value is string => typeof value === "string") : catalog.combo.options.beverages;
-      const sweetFlavorId = typeof config.sweetFlavor === "string" ? config.sweetFlavor : catalog.combo.options.sweetFlavor;
-
-      if (!allowedFlavorIds.includes(selection.grandeFlavor) || (selection.grandeFlavorB && !allowedFlavorIds.includes(selection.grandeFlavorB))) throw new Error("Sabor não permitido nesta promoção.");
-      if (!allowedBeverageIds.includes(selection.beverage)) throw new Error("Bebida não permitida neste combo.");
-
+      const config = comboConfig({ grandeFlavors: catalog.combo.options.grandeFlavors, beverages: catalog.combo.options.beverages, sweetFlavor: catalog.combo.options.sweetFlavor, ...combo.config });
       const beverage = products.find(product => product.id === selection.beverage && product.category === "beverages");
       if (!beverage?.active) throw new Error("Bebida do combo indisponível.");
-      const grande = flavors.find(flavor => flavor.id === selection.grandeFlavor);
-      const grandeB = selection.grandeFlavorB ? flavors.find(flavor => flavor.id === selection.grandeFlavorB) : undefined;
-      const sweet = flavors.find(flavor => flavor.id === sweetFlavorId);
-      if (!grande?.active || (selection.grandeFlavorB && !grandeB?.active) || !sweet?.active) throw new Error("Um dos sabores do combo está indisponível.");
-      unitPrice = comboTotal(selection, addons, combo.price, allowedBeverageIds);
-      const sweetCutLabel = selection.sweetCutPreference === "cut" ? "Broto CORTAR" : "Broto NÃO CORTAR";
-      name = `${combo.name} • ${grande.name}${grandeB ? ` / ${grandeB.name}` : ""} • ${sweetCutLabel}`;
+      const priced = priceConfiguredCombo(selection, config, combo.price, flavors, addons);
+      unitPrice = priced.total;
+      item.selection = { ...selection, sweetFlavor: priced.sweetFlavor, sweetSize: priced.sweetSize };
+      name = `${combo.name} • ${priced.details} • ${beverage.name}`;
     } else {
       const product = products.find(row => row.id === item.productId && row.category !== "combo");
       if (!product?.active) throw new Error("Produto inválido, esgotado ou indisponível.");
@@ -203,3 +193,4 @@ export async function priceItemsWithRuntime(db: any, items: CartItem[], channel:
   }
   return { items: normalized, subtotal, menu };
 }
+

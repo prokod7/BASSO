@@ -58,6 +58,9 @@ function render(job) {
     if (selection.removedA?.length) lines.push(`   SEM: ${selection.removedA.join(", ")}`);
     if (selection.removedB?.length) lines.push(`   SEM 2a METADE: ${selection.removedB.join(", ")}`);
     if (selection.addons && Object.keys(selection.addons).length) lines.push(`   ADICIONAIS: ${Object.entries(selection.addons).filter(([, q]) => Number(q) > 0).map(([id, q]) => { const place=selection.addonPlacements?.[id]||"whole"; const label=place==="halfA"?`METADE ${selection.flavorA||"1"}`:place==="halfB"?`METADE ${selection.flavorB||"2"}`:"INTEIRA"; return `${q}x ${id} (${label})`; }).join(", ")}`);
+    if(selection.secondGrandeFlavor) lines.push(`   Grande 2: ${selection.secondGrandeFlavor}${selection.secondGrandeFlavorB?` / ${selection.secondGrandeFlavorB}`:""}`);
+    if(selection.sweetFlavor) lines.push(`   ${selection.sweetSize === "grande"?"Grande":"Broto"} doce: ${selection.sweetFlavor}`);
+    if(selection.beverage) lines.push(`   Bebida: ${selection.beverage}`);
     if (selection.notes) lines.push(`   OBS: ${selection.notes}`);
     lines.push("");
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadRuntimeMenu, scheduleAllows } from "@/lib/server-menu-pricing";
-import { loadActivePromotions } from "@/lib/promotions";
+import { loadActivePromotions,bestProductPromotion } from "@/lib/promotions";
 import type { OrderChannel, PromotionTarget } from "@/types";
 
 const publicChannels: OrderChannel[] = ["own_delivery", "pickup", "table_qr"];
@@ -43,11 +43,15 @@ export async function GET(request: NextRequest) {
         : [];
       if (!configuredBeverages.length) return [product];
 
+      const savoryIds=Array.isArray(config.grandeFlavors)?config.grandeFlavors:[];
+      const sweetIds=Array.isArray(config.sweetFlavors)?config.sweetFlavors:[config.sweetFlavor];
+      if(!savoryIds.some(id=>typeof id==="string"&&visibleFlavorIds.has(id)) || !sweetIds.some(id=>typeof id==="string"&&visibleFlavorIds.has(id)))return [];
       const beverages = configuredBeverages.filter(id => availableBeverageIds.has(id));
       if (!beverages.length) return [];
       return [{ ...product, config: { ...config, beverages } }];
     });
 
+    const pricedProducts=products.map(product=>{const promotion=product.category!=="combo"?bestProductPromotion(activePromotions,product.id,product.price):undefined;return promotion?{...product,price:promotion.promoUnitPrice}:product});
     const productName = new Map(visibleProducts.map(product => [product.id, product.name]));
     const flavorName = new Map(visibleFlavors.map(flavor => [flavor.id, flavor.name]));
     const promotions = activePromotions.flatMap(promotion => {
@@ -81,10 +85,10 @@ export async function GET(request: NextRequest) {
         categories: menu.categories.filter(category => category.active),
         flavors: visibleFlavors,
         addons: menu.addons.filter(addon => addon.active),
-        products,
+        products:pricedProducts,
         promotions,
       },
-      { headers: { "Cache-Control": "public, max-age=15, stale-while-revalidate=30" } },
+      { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     return NextResponse.json(
@@ -93,3 +97,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

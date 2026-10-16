@@ -35,12 +35,13 @@ export function validatePizzaSelection(selection: PizzaSelection, flavorList: Fl
   if (typeof selection.notes !== "string") throw new PricingError("Observação inválida.");
   const a = flavorList.find(flavor => flavor.id === selection.flavorA);
   if (!a || !a.active) throw new PricingError("Primeiro sabor indisponível.");
-  if (selection.size === "broto" && selection.flavorB) throw new PricingError("Pizza Broto aceita somente um sabor.");
   const b = selection.flavorB ? flavorList.find(flavor => flavor.id === selection.flavorB) : undefined;
   if (selection.flavorB) {
     if (!b || !b.active) throw new PricingError("Segundo sabor indisponível.");
     if (b.id === a.id) throw new PricingError("Escolha dois sabores diferentes para o meio a meio.");
   }
+
+  if (selection.size === "broto" && b && (a.category === "sweet" || b.category === "sweet")) throw new PricingError("Broto doce aceita somente um sabor. Na broto salgada, escolha até dois sabores salgados.");
 
   const sweetSelection = selection as SweetPizzaMetadata;
   const hasSweetFlavor = a.category === "sweet" || b?.category === "sweet";
@@ -99,7 +100,7 @@ export function pizzaTotal(selection: PizzaSelection, flavorList: Flavor[] = cat
   return pizzaBasePrice(selection, flavorList, addonList) + addonPrice(selection.addons, addonList, selection.addonPlacements || {}) + sweetBaseSurcharge;
 }
 
-export function comboTotal(selection: ComboSelection, addonList: Addon[] = catalog.addons, comboPrice: number = catalog.combo.price, availableBeverages: string[] = catalog.combo.options.beverages): number {
+export function comboTotal(selection: ComboSelection, addonList: Addon[] = catalog.addons, comboPrice: number = catalog.combo.price, availableBeverages: string[] = catalog.combo.options.beverages, flavorList: Flavor[] = catalog.flavors): number {
   if (!selection || !["traditional","integral"].includes(selection.mass)) throw new PricingError("Massa inválida para o combo.");
   if (!["chocolate-ao-leite","creme-de-avela"].includes(selection.brigadeiroBase)) throw new PricingError("Base do brigadeiro inválida para o combo.");
   const comboSelection = selection as ComboSweetMetadata;
@@ -108,10 +109,10 @@ export function comboTotal(selection: ComboSelection, addonList: Addon[] = catal
   const quantities = Object.values(selection.addons);
   const totalUnits = quantities.reduce((sum, quantity) => sum + quantity, 0);
   if (totalUnits > 5 || quantities.some(quantity => !Number.isInteger(quantity) || quantity > 2 || quantity < 0)) throw new PricingError("Adicionais do combo excedem os limites permitidos.");
-  const comboFlavorA = catalog.flavors.find(flavor => flavor.id === selection.grandeFlavor && flavor.active);
+  const comboFlavorA = flavorList.find(flavor => flavor.id === selection.grandeFlavor && flavor.active);
   if (!comboFlavorA) throw new PricingError("Sabor de pizza Grande inválido para o combo.");
   if (selection.grandeFlavorB) {
-    const comboFlavorB = catalog.flavors.find(flavor => flavor.id === selection.grandeFlavorB && flavor.active);
+    const comboFlavorB = flavorList.find(flavor => flavor.id === selection.grandeFlavorB && flavor.active);
     if (!comboFlavorB) throw new PricingError("Segundo sabor do combo inválido.");
     if (comboFlavorB.id === comboFlavorA.id) throw new PricingError("Escolha dois sabores diferentes no meio a meio do combo.");
   }
@@ -122,3 +123,4 @@ export function comboTotal(selection: ComboSelection, addonList: Addon[] = catal
 export function cartSubtotal(items: Array<{ unitPrice: number; quantity: number }>): number {
   return items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 }
+
