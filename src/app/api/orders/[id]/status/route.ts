@@ -60,9 +60,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       reason: body.reason,
     });
 
-    if (body.status === "completed" && order.payment_status !== "paid") {
-      throw new Error("Confirme o recebimento integral antes de concluir o pedido.");
-    }
+    // Concluir a operação não altera o financeiro: pedidos pendentes continuam pendentes
+    // até o recebimento ser registrado na aba Pagamento.
 
     if (order.channel === "ifood" && order.external_id) {
       const ifood = new IfoodAdapter();
