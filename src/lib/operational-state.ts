@@ -2,9 +2,9 @@ import type { OperationalRole } from "@/lib/authz";
 import type { OrderChannel, OrderStatus } from "@/types";
 
 export const orderTransitionMatrix: Record<OrderStatus, OrderStatus[]> = {
-  received: ["confirmed", "cancelled"],
-  confirmed: ["preparing", "received", "cancelled"],
-  preparing: ["ready", "confirmed", "cancelled"],
+  received: ["confirmed", "completed", "cancelled"],
+  confirmed: ["preparing", "completed", "received", "cancelled"],
+  preparing: ["ready", "completed", "confirmed", "cancelled"],
   ready: ["out_for_delivery", "completed", "preparing", "cancelled"],
   out_for_delivery: ["completed", "ready", "cancelled"],
   completed: ["ready"],
@@ -25,6 +25,8 @@ const roleAllowedTargets: Record<OperationalRole, OrderStatus[]> = {
 export function validTransitions(current: OrderStatus, channel: OrderChannel, role: OperationalRole): OrderStatus[] {
   return orderTransitionMatrix[current].filter((target) => {
     if (target === "out_for_delivery" && !["own_delivery", "ifood", "99food"].includes(channel)) return false;
+    // Conclusão excepcional: somente gestor/caixa, com motivo obrigatório e histórico auditado.
+    if (target === "completed" && ["received", "confirmed", "preparing"].includes(current) && !["manager", "counter"].includes(role)) return false;
     if (current === "ready" && target === "completed" && ["own_delivery", "ifood", "99food"].includes(channel)) return false;
     return roleAllowedTargets[role].includes(target);
   });
