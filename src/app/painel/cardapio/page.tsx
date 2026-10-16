@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { BookOpen, Edit3, Eye, EyeOff, ImagePlus, Loader2, Plus, Save, Search, Trash2, X } from "lucide-react";
 import { AvailabilityFields } from "@/components/internal/AvailabilityFields";
 import { PageHeader } from "@/components/internal/PageHeader";
@@ -146,7 +147,11 @@ export default function MenuAdminPage() {
   }
 
   return <>
-    <PageHeader title="Administração do cardápio" icon={BookOpen} description="Controle produtos, categorias, sabores, adicionais, imagens, preços e disponibilidade sem acessar o banco." actions={<div className="flex flex-wrap gap-2"><button className="btn-primary" onClick={()=>setCreatingProduct(true)}><Plus size={17}/>Novo produto</button><button className="btn-secondary" onClick={()=>setCreatingCategory(true)}><Plus size={17}/>Nova categoria</button><button className="btn-secondary" onClick={()=>setCreatingCombo(true)}><Plus size={17}/>Novo combo</button></div>}/>
+    <PageHeader title="Administração do cardápio" icon={BookOpen} description="Controle produtos, categorias, sabores, adicionais, imagens, preços e disponibilidade sem acessar o banco." actions={<div className="flex flex-wrap gap-2"><button className="btn-primary" onClick={()=>setCreatingProduct(true)}><Plus size={17}/>
+    <nav aria-label="Controles do cardápio" className="mb-5 grid gap-2 sm:grid-cols-2">
+      <Link href="/painel/promocoes" className="rounded-2xl border bg-white p-4"><strong className="text-sm">Promoções do dia →</strong><p className="mt-1 text-xs text-black/50">Preços, dias, horários, legendas, fotos e sabores participantes.</p></Link>
+      <Link href="/painel/configuracoes" className="rounded-2xl border bg-white p-4"><strong className="text-sm">Horários e contatos →</strong><p className="mt-1 text-xs text-black/50">Horários de funcionamento, telefones e configurações da loja.</p></Link>
+    </nav>Novo produto</button><button className="btn-secondary" onClick={()=>setCreatingCategory(true)}><Plus size={17}/>Nova categoria</button><button className="btn-secondary" onClick={()=>setCreatingCombo(true)}><Plus size={17}/>Novo combo</button></div>}/>
     {message&&<p className="mb-4 rounded-xl bg-blue-50 p-4 text-sm font-semibold text-blue-800">{message}</p>}
     <div className="mb-5 grid gap-4 sm:grid-cols-4"><Count label="Categorias" value={categories.length}/><Count label="Produtos" value={products.length}/><Count label="Sabores" value={flavors.length}/><Count label="Adicionais" value={addons.length}/></div>
     <section className="surface mb-5 p-4"><div className="flex flex-col gap-3 lg:flex-row"><div className="flex flex-wrap rounded-xl border bg-white p-1">{(["product","category","flavor","addon"] as Entity[]).map(value=><button key={value} className={`min-h-9 rounded-lg px-4 text-xs font-bold ${tab===value?"bg-basso-wine text-white":"text-black/50"}`} onClick={()=>setTab(value)}>{value==="product"?"Produtos":value==="category"?"Categorias":value==="flavor"?"Sabores de pizza":"Adicionais"}</button>)}</div><label className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30" size={17}/><input className="input pl-9" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Buscar por nome, descrição ou ingrediente"/></label><button className="btn-secondary" onClick={()=>void load()} disabled={loading}>{loading?<Loader2 className="animate-spin" size={17}/>:<Save size={17}/>}Atualizar</button></div></section>

@@ -56,6 +56,7 @@ const sections: NavSection[] = [
   ]},
   { label: "Gestão", items: [
     { href: "/painel/cardapio", label: "Cardápio", icon: BookOpen, roles: ["manager", "counter", "viewer"] },
+    { href: "/painel/promocoes", label: "Promoções do dia", icon: TicketPercent, roles: ["manager"] },
     { href: "/painel/estoque", label: "Estoque restrito", icon: Boxes, roles: ["manager", "counter", "finance", "viewer"] },
     { href: "/painel/inventario", label: "Inventário rápido", icon: ClipboardCheck, roles: ["manager", "counter", "finance", "viewer"] },
     { href: "/painel/compras", label: "Compras e fornecedores", icon: ShoppingBasket, roles: ["manager", "counter", "finance", "viewer"] },

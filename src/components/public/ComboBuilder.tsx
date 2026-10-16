@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Minus, Plus } from "lucide-react";
 import { catalog, categoryImages } from "@/lib/catalog";
 import {
   comboConfig,
@@ -211,65 +212,40 @@ export function ComboBuilder({
           onChange={(v) => update("beverage", v)}
           options={beverages.map((p) => [p.id, p.name])}
         />
-        <details className="rounded-2xl border p-4">
-          <summary className="cursor-pointer font-bold">
-            Adicionais na primeira pizza salgada
+        <details className="group rounded-2xl border border-black/10 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-bold">
+            Adicionais opcionais <span className="font-normal text-black/50">· {Object.values(selection.addons).reduce((sum, n) => sum + n, 0)}/5</span>
           </summary>
-          <p className="mt-2 text-xs text-black/50">
-            Até 5 unidades, no máximo 2 de cada. Cobrados à parte.
-          </p>
-          <div className="mt-3 space-y-3">
-            {catalog.addons
-              .filter((a) => a.active)
-              .map((a) => (
-                <div key={a.id} className="grid grid-cols-[1fr_70px] gap-2">
-                  <label className="text-sm">
-                    {a.name} • {currency(a.price)}
-                    <input
-                      aria-label={`Quantidade de ${a.name}`}
-                      className="input mt-1"
-                      type="number"
-                      min={0}
-                      max={2}
-                      value={selection.addons[a.id] || 0}
-                      onChange={(e) =>
-                        setSelection((s) => ({
-                          ...s,
-                          addons: {
-                            ...s.addons,
-                            [a.id]: Number(e.target.value),
-                          },
-                        }))
-                      }
-                    />
-                  </label>
-                  {Boolean(selection.addons[a.id]) && (
-                    <select
-                      aria-label={`Local de ${a.name}`}
-                      className="input self-end"
-                      value={selection.addonPlacements?.[a.id] || "whole"}
-                      onChange={(e) =>
-                        setSelection((s) => ({
-                          ...s,
-                          addonPlacements: {
-                            ...s.addonPlacements,
-                            [a.id]: e.target.value as
-                              | "whole"
-                              | "halfA"
-                              | "halfB",
-                          },
-                        }))
-                      }
-                    >
-                      <option value="whole">Inteira</option>
-                      <option value="halfA">Metade 1</option>
-                      {selection.grandeFlavorB && (
-                        <option value="halfB">Metade 2</option>
-                      )}
-                    </select>
-                  )}
-                </div>
-              ))}
+          <div className="border-t border-black/5 px-4 pb-3">
+            <p className="py-3 text-xs text-black/50">Na primeira pizza salgada. Até 5 unidades, no máximo 2 de cada.</p>
+            <div className="divide-y divide-black/5">
+              {catalog.addons.filter((a) => a.active).map((a) => {
+                const quantity = selection.addons[a.id] || 0;
+                const count = Object.values(selection.addons).reduce((sum, n) => sum + n, 0);
+                const max = Math.min(2, a.maxQuantity ?? 2);
+                const change = (delta: number) => setSelection((current) => {
+                  const next = (current.addons[a.id] || 0) + delta;
+                  const total = Object.values(current.addons).reduce((sum, n) => sum + n, 0);
+                  if (next < 0 || next > max || total + delta > 5) return current;
+                  const addons = { ...current.addons };
+                  const addonPlacements = { ...current.addonPlacements };
+                  if (next) addons[a.id] = next;
+                  else { delete addons[a.id]; delete addonPlacements[a.id]; }
+                  return { ...current, addons, addonPlacements };
+                });
+                return <div key={a.id} className="py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0"><p className="text-sm font-medium leading-snug">{a.name}</p><p className="mt-0.5 text-xs text-black/50">+ {currency(a.price)}</p></div>
+                    <div className="flex shrink-0 items-center gap-1 rounded-full border border-black/10 p-0.5">
+                      <button type="button" aria-label={`Remover ${a.name}`} disabled={!quantity} onClick={() => change(-1)} className="grid h-10 w-10 place-items-center rounded-full disabled:opacity-25"><Minus size={16}/></button>
+                      <span aria-live="polite" className="w-5 text-center text-sm font-bold tabular-nums">{quantity}</span>
+                      <button type="button" aria-label={`Adicionar ${a.name}`} disabled={quantity >= max || count >= 5} onClick={() => change(1)} className="grid h-10 w-10 place-items-center rounded-full bg-basso-wine text-white disabled:opacity-25"><Plus size={16}/></button>
+                    </div>
+                  </div>
+                  {quantity > 0 && <fieldset className="mt-2"><legend className="sr-only">Local de {a.name}</legend><div className="flex flex-wrap gap-1.5">{([['whole', 'Inteira'], ...(selection.grandeFlavorB ? [['halfA', 'Metade 1'], ['halfB', 'Metade 2']] : [])] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={(selection.addonPlacements?.[a.id] || 'whole') === value} onClick={() => setSelection(current => ({...current, addonPlacements: {...current.addonPlacements, [a.id]: value as 'whole' | 'halfA' | 'halfB'}}))} className={`min-h-10 rounded-full border px-3 text-xs font-medium ${(selection.addonPlacements?.[a.id] || 'whole') === value ? 'border-basso-wine bg-basso-wine/5 text-basso-wine' : 'border-black/10 text-black/60'}`}>{label}</button>)}</div></fieldset>}
+                </div>;
+              })}
+            </div>
           </div>
         </details>
         <label className="block">
