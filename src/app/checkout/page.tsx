@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Crosshair, Loader2, LockKeyhole, ShoppingBag } from "lucide-react";
-import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useCart } from "@/context/CartContext";
@@ -35,7 +34,7 @@ type DeliveryAreasResponse = { cities?: DeliveryCity[]; error?: string };
 
 export default function CheckoutPage() {
   const cart = useCart();
-  const router = useRouter();
+  const [confirmed,setConfirmed]=useState<{id:string;number:number;token?:string}|null>(null);
   const coupons = useDemoState(s => s.coupons);
   const orders = useDemoState(s => s.orders);
   const tables = useDemoState(s => s.tables);
@@ -242,9 +241,11 @@ export default function CheckoutPage() {
       }
       if (isTableOrder && tableNumber && resolvedTabId) { localStorage.setItem(tableTabKey(tableNumber), resolvedTabId); localStorage.setItem(tableNameKey(tableNumber), tabName.trim()); }
       customerDeviceActions.saveOrder({ id: finalOrderId, number: finalNumber, token: accessToken, phone: order.customerPhone, total: finalTotal, status: "received", createdAt: now, items: cart.items });
-      cart.clear(); router.push(`/pedido/${finalOrderId}${accessToken ? `?token=${encodeURIComponent(accessToken)}` : ""}`);
+      setConfirmed({id:finalOrderId,number:finalNumber,token:accessToken}); cart.clear(); cart.setOpen(false); setLoading(false);
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Não foi possível finalizar o pedido."); setLoading(false); }
   };
+
+  if(confirmed) return <main className="grid min-h-screen place-items-center bg-basso-paper p-4"><section className="surface w-full max-w-lg p-6 text-center sm:p-9"><ShoppingBag className="mx-auto text-emerald-700" size={44}/><h1 className="mt-4 font-display text-3xl font-bold">Pedido confirmado!</h1><p className="mt-2 text-black/60">Pedido #{confirmed.number} recebido pela pizzaria.</p><p className="mt-3 text-sm text-black/50">Acompanhe o preparo e a entrega pelo botão abaixo. O status é atualizado automaticamente.</p><Link className="btn-primary mt-6 min-h-14 w-full" href={`/pedido/${encodeURIComponent(confirmed.id)}${confirmed.token ? `?token=${encodeURIComponent(confirmed.token)}` : ''}`}>Acompanhar pedido</Link><Link className="btn-secondary mt-3 w-full" href="/meus-pedidos">Meus pedidos</Link><Link className="mt-5 inline-block text-sm font-bold text-basso-wine" href={backHref}>Voltar ao cardápio</Link></section></main>;
 
   if (!cart.items.length) return <main className="grid min-h-screen place-items-center bg-basso-paper p-6"><div className="surface max-w-md p-8 text-center"><ShoppingBag className="mx-auto text-black/25" size={42}/><h1 className="mt-4 font-display text-2xl font-bold">Carrinho vazio</h1><p className="mt-2 text-sm text-black/50">Adicione itens antes de seguir para o checkout.</p><Link href={backHref} className="btn-primary mt-6 w-full">Voltar ao cardápio</Link></div></main>;
 

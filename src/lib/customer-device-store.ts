@@ -17,16 +17,17 @@ const KEY = "lfb-customer-device-v31";
 let memory: DeviceState | null = null;
 const listeners = new Set<() => void>();
 const empty = (): DeviceState => ({ orders: [], favorites: [] });
+const serverSnapshot = empty();
 function load(): DeviceState {
   if (memory) return memory;
-  if (typeof window === "undefined") return empty();
+  if (typeof window === "undefined") return serverSnapshot;
   try { memory = { ...empty(), ...JSON.parse(localStorage.getItem(KEY) || "null") }; }
   catch { memory = empty(); }
   return memory!;
 }
 function save(next: DeviceState) {
   memory = next;
-  if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(next));
+  if (typeof window !== "undefined") { try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* Mantém o link em memória quando o navegador bloqueia armazenamento. */ } }
   listeners.forEach(listener => listener());
 }
 function subscribe(listener: () => void) {
@@ -36,7 +37,7 @@ function subscribe(listener: () => void) {
   return () => { listeners.delete(listener); window.removeEventListener("storage", onStorage); };
 }
 export function useCustomerDeviceState<T>(selector: (state: DeviceState) => T): T {
-  return useSyncExternalStore(subscribe, () => selector(load()), () => selector(empty()));
+  return useSyncExternalStore(subscribe, () => selector(load()), () => selector(serverSnapshot));
 }
 export const customerDeviceActions = {
   saveOrder(order: DeviceOrderRef) {
@@ -56,3 +57,4 @@ export const customerDeviceActions = {
     const state = load(); save({ ...state, orders: state.orders.filter(order => order.id !== id) });
   }
 };
+
