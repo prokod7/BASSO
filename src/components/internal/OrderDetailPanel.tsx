@@ -33,6 +33,7 @@ import {
   X,
 } from "lucide-react";
 import { allowedStatuses, channelLabel, statusLabel } from "@/lib/order-validation";
+import { requiresTransitionReason } from "@/lib/operational-state";
 import { currency, isDemoMode, shortDateTime, uid } from "@/lib/utils";
 import { demoActions, useDemoState } from "@/lib/demo-store";
 import type {
@@ -299,7 +300,7 @@ function SummaryTab({ order, drivers, working, mutate, setOrder }: { order: Orde
 
   async function changeStatus() {
     if (status === order.status) return;
-    if (["cancelled", "completed"].includes(status) && statusReason.trim().length < 2) throw new Error("Informe o motivo para concluir ou cancelar manualmente.");
+    if (requiresTransitionReason(order.status, status) && !statusReason.trim()) throw new Error("Informe o motivo para cancelar, reabrir ou saltar etapas.");
     if (order.channel === "ifood" && status === "cancelled" && !cancellationCode) throw new Error("Selecione o motivo de cancelamento fornecido pelo iFood.");
     if (isDemoMode()) {
       demoActions.updateOrderStatus(order.id, status, "Gestor");
@@ -350,7 +351,7 @@ function SummaryTab({ order, drivers, working, mutate, setOrder }: { order: Orde
       <div className="flex flex-col gap-4 border-b border-black/5 p-5 lg:flex-row lg:items-end">
         <div className="flex-1"><label className="label">Etapa atual</label><select className="input" value={status} onChange={(event) => setStatus(event.target.value as OrderStatus)}>{allowedStatuses(order.channel).map((value) => <option key={value} value={value}>{statusLabel[value]}</option>)}<option value="cancelled">Cancelado</option></select></div>
         {order.channel === "ifood" && status === "cancelled" && <div className="flex-1"><label className="label">Motivo oficial do iFood</label><select className="input" value={cancellationCode} onChange={(event) => setCancellationCode(event.target.value)} disabled={loadingCancellationReasons || Boolean(cancellationError)}><option value="">{loadingCancellationReasons ? "Carregando motivos..." : "Selecione"}</option>{cancellationReasons.map((reason) => <option key={reason.code} value={reason.code}>{reason.description}</option>)}</select>{cancellationError && <p className="mt-1 text-xs font-semibold text-red-700">{cancellationError}</p>}</div>}
-        <div className="flex-[1.5]"><label className="label">Motivo / observação da mudança</label><input className="input" value={statusReason} onChange={(event) => setStatusReason(event.target.value)} placeholder="Obrigatório em cancelamento, conclusão manual ou retorno de etapa" /></div>
+        <div className="flex-[1.5]"><label className="label">Motivo / observação da mudança</label><input className="input" value={statusReason} onChange={(event) => setStatusReason(event.target.value)} placeholder="Obrigatório ao cancelar, reabrir ou saltar etapas" /></div>
         <button className="btn-primary" disabled={working === "status" || status === order.status || loadingCancellationReasons} onClick={() => mutate("status", changeStatus, `Pedido movido para ${statusLabel[status]}.`)}>{working === "status" ? <Loader2 size={17} className="animate-spin"/> : <ChevronRight size={17}/>}Atualizar etapa</button>
       </div>
       <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
