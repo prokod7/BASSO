@@ -81,7 +81,7 @@ function OrderTrackingContent() {
 
       <section className="surface p-5"><h2 className="font-display text-xl font-bold">Resumo</h2><div className="mt-4 space-y-3">{order.items.map(item => <div key={item.id} className="flex justify-between gap-4 text-sm"><span><strong>{item.quantity}×</strong> {item.name}</span><strong>{currency(item.unitPrice * item.quantity)}</strong></div>)}</div><div className="mt-4 flex justify-between border-t pt-4"><strong>Total</strong><strong className="text-lg text-basso-wine">{currency(order.total)}</strong></div></section>
 
-      <div className="grid gap-3 sm:grid-cols-2"><a className="btn-secondary" href={`https://wa.me/5511972356751?text=${encodeURIComponent(`Olá! Gostaria de falar sobre o pedido #${order.number}.`)}`} target="_blank"><MessageCircle size={18} />Falar manualmente no WhatsApp</a><button className="btn-secondary" onClick={() => location.reload()}><RefreshCw size={18} />Atualizar</button>{order.status === "completed" && <Link className="btn-primary sm:col-span-2" href={`/avaliar/${order.id}${token ? `?token=${encodeURIComponent(token)}` : ""}`}>Avaliar pedido</Link>}</div>
+      <div className="grid gap-3 sm:grid-cols-2"><a className="btn-secondary" href={`https://wa.me/5511998805533?text=${encodeURIComponent(`Olá! Gostaria de falar sobre o pedido #${order.number}.`)}`} target="_blank"><MessageCircle size={18} />Falar manualmente no WhatsApp</a><button className="btn-secondary" onClick={() => location.reload()}><RefreshCw size={18} />Atualizar</button>{order.status === "completed" && <Link className="btn-primary sm:col-span-2" href={`/avaliar/${order.id}${token ? `?token=${encodeURIComponent(token)}` : ""}`}>Avaliar pedido</Link>}</div>
     </div>
   </main>;
 }
