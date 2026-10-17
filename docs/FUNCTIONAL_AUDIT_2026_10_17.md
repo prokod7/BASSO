@@ -88,3 +88,11 @@ Implementado:
 Validação: 374 testes em 30 arquivos, incluindo testes da API com autenticação/perfis, transações PostgreSQL isoladas e interação do Kanban em DOM de testes. Os testes verificam pagamento pendente/parcial, inexistência de novos recebimentos/caixa, autor no histórico/auditoria, concorrência, restrições de sessão e ausência de permissão direta à função SQL.
 
 Esta validação não utiliza login em produção, não conclui pedidos reais e não comprova gestos em um iPhone físico. O fluxo separado de comprovação de entrega por código no aplicativo do motoboy permanece disponível; a conclusão operacional pelo painel não depende dele.
+
+## Ruído da notificação de pedidos — 17/10/2026
+
+O áudio embutido é Opus mono de 4,35 s, cerca de 6 kbps, com taxa de origem declarada de 8 kHz. A análise não detectou saturação digital (pico aproximado de -8,9 dBFS). A compressão limita a qualidade, mas não basta para atribuir a ela todo ruído relatado. O MP3 original não foi localizado entre os arquivos disponíveis.
+
+Havia duas fontes simultâneas: a campainha global e um oscilador de 620 Hz no KDS, sem envelope de entrada/saída. Além disso, o painel reiniciava a campainha em andamento quando chegava outro pedido. Painel e KDS agora compartilham um único reprodutor da mesma campainha, sem sobreposição nem reinício durante reprodução. A busca/troca de setor do KDS não dispara avisos para pedidos já conhecidos. Desativar/reativar o som continua disponível; bloqueio de autoplay não interrompe o recebimento de pedidos.
+
+Foram acrescentados testes para solicitações simultâneas, reprodução em andamento, término, autoplay bloqueado, filtro/setor da cozinha e controle de som. Não foi alterado o conteúdo da campainha nem se afirma recuperar qualidade perdida na compressão. Para melhorar o próprio arquivo é necessário reenviar o MP3 original. Não houve teste nos alto-falantes do aparelho do usuário.
