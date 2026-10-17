@@ -53,7 +53,7 @@ export default function SystemPage() {
     try {
       const response = await fetch("/api/system/snapshots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: snapshotName.trim() }) });
       const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao criar snapshot.");
-      setSnapshotName(""); setMessage("Snapshot das configurações criado."); await load();
+      setSnapshotName(""); await load(); setMessage("Snapshot das configurações criado.");
     } catch (e) { setMessage(e instanceof Error ? e.message : "Falha ao criar snapshot."); }
     finally { setWorking(""); }
   }
@@ -64,7 +64,7 @@ export default function SystemPage() {
     try {
       const response = await fetch("/api/system/snapshots", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: snapshot.id }) });
       const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao restaurar snapshot.");
-      setMessage("Configurações restauradas. Revise loja, canais e integrações antes de continuar."); await load();
+      await load(); setMessage("Configurações restauradas. Revise loja, canais e integrações antes de continuar.");
     } catch (e) { setMessage(e instanceof Error ? e.message : "Falha ao restaurar snapshot."); }
     finally { setWorking(""); }
   }
