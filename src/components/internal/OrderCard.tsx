@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AlertTriangle, ChevronRight, Clock3, CreditCard, MapPin, Package, UserRound } from "lucide-react";
 import { channelLabel, statusLabel } from "@/lib/order-validation";
+import { isOrderDelayed } from "@/lib/operational-totals";
 import { currency, shortDateTime } from "@/lib/utils";
 import type { Order } from "@/types";
 
@@ -22,7 +23,7 @@ function elapsedMinutes(iso: string) { return Math.max(0, Math.floor((Date.now()
 
 export function OrderCard({ order, compact = false, onOpen }: { order: Order; compact?: boolean; onOpen?: (order: Order) => void }) {
   const minutes = elapsedMinutes(order.createdAt);
-  const late = !["completed", "cancelled"].includes(order.status) && minutes >= 45;
+  const late = isOrderDelayed(order);
   const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
   const content = <article className={`surface group overflow-hidden transition hover:-translate-y-0.5 hover:border-basso-gold/50 hover:shadow-lg ${late ? "border-amber-300" : ""}`}>
     <div className="flex items-start justify-between gap-3 border-b border-black/5 p-4">

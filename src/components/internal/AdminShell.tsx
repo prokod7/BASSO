@@ -33,7 +33,7 @@ const sections: NavSection[] = [
   { label: "Operação", items: [
     { href: "/painel", label: "Centro de comando", icon: LayoutDashboard, roles: operationRoles },
     { href: "/painel/atencao", label: "Precisa de atenção", icon: BellRing, roles: operationRoles },
-    { href: "/painel/pedidos", label: "Pedidos", icon: ClipboardList, roles: ["manager", "counter", "waiter", "kitchen", "bar", "finance", "viewer"], badge: "orders" },
+    { href: "/painel/pedidos", label: "Pedidos", icon: ClipboardList, roles: operationRoles, badge: "orders" },
     { href: "/painel/pdv", label: "PDV / Balcão", icon: ShoppingCart, roles: ["manager", "counter", "waiter"] },
     { href: "/painel/salao", label: "Salão e mesas", icon: Table2, roles: ["manager", "counter", "waiter", "viewer"] },
     { href: "/painel/garcom", label: "Aplicativo garçom", icon: Users, roles: ["manager", "counter", "waiter"] },

@@ -16,9 +16,12 @@ const schema = z.object({
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance"], "orders.edit");
-    const { id } = await params;
     const body = schema.parse(await request.json());
+    // Conclusão é permitida a todo perfil ativo; demais alterações mantêm as permissões.
+    const auth = body.status === "completed"
+      ? await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance", "viewer"])
+      : await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance"], "orders.edit");
+    const { id } = await params;
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
 
@@ -38,14 +41,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }, { status: 409 });
     }
 
-    // No delivery próprio, o motoboy não pode contornar a validação de retirada
-    // nem concluir sem o código que está somente com o cliente. Gestor/balcão
-    // continuam com capacidade de contingência administrativa auditada.
+    // A validação de retirada permanece; conclusão operacional usa a regra comum do painel.
     if (order.channel === "own_delivery" && auth.role === "driver" && body.status === "out_for_delivery") {
       throw new Error("Valide a retirada pelo QR Code ou código de 6 dígitos da comanda.");
-    }
-    if (order.channel === "own_delivery" && auth.role === "driver" && body.status === "completed") {
-      throw new Error("Informe o código de confirmação do cliente para concluir a entrega.");
     }
 
     if (body.status === "cancelled" && auth.role !== "manager" && auth.permissions["orders.cancel"] !== true) {
@@ -63,7 +61,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Concluir a operação não altera o financeiro: pedidos pendentes continuam pendentes
     // até o recebimento ser registrado na aba Pagamento.
 
-    if (order.channel === "ifood" && order.external_id) {
+    if (order.channel === "ifood" && order.external_id && body.status !== "completed") {
       const ifood = new IfoodAdapter();
       if (body.status === "cancelled") {
         if (!body.cancellationCode) throw new Error("Selecione um motivo de cancelamento fornecido pelo iFood.");
@@ -94,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const { data: updated } = await db.from("orders").select("version,status").eq("id", id).single();
-    return NextResponse.json({ id, status: body.status, version: Number(updated?.version || Number(order.version || 1) + 1) });
+    return NextResponse.json({ id, status: updated?.status || body.status, version: Number(updated?.version || Number(order.version || 1) + 1) });
   } catch (error) {
     return NextResponse.json({ error: apiErrorMessage(error, "Falha ao atualizar status.") }, { status: apiErrorMessage(error, "").includes("ORDER_VERSION_CONFLICT") ? 409 : 400 });
   }

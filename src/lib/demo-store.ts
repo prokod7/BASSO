@@ -162,7 +162,13 @@ export const demoActions = {
   addOrderLocal(order: Order, actor = "Operação") { const s=load(); const tables=order.tabId?s.tables.map(table=>({...table,tabs:table.tabs.map(tab=>tab.id===order.tabId?{...tab,items:[...tab.items,...order.items],totalCents:tab.totalCents+order.total}:tab)})):s.tables; save({ ...s, tables, orders:[order,...s.orders], audit:[{id:uid("audit"),actor,action:"ORDER_CREATED",entity:"order",entityId:order.id,createdAt:new Date().toISOString()},...s.audit] }); },
   replaceSnapshot(snapshot: Partial<DemoState>) {
     const base = fallbackState();
-    save({ ...base, ...snapshot });
+    // Um snapshot iniciado antes da gravação não pode desfazer uma versão confirmada.
+    const current = new Map(load().orders.map(order => [order.id, order]));
+    const orders = snapshot.orders?.map(order => {
+      const previous = current.get(order.id);
+      return !isDemoMode() && previous && (previous.version ?? 1) > (order.version ?? 1) ? previous : order;
+    });
+    save({ ...base, ...snapshot, ...(orders ? { orders } : {}) });
   },
   createOrder(order: Order, endpoint = "/api/orders", metadata?: Record<string, unknown>) { const s = load(); const tables=order.tabId?s.tables.map(table=>({...table,tabs:table.tabs.map(tab=>tab.id===order.tabId?{...tab,items:[...tab.items,...order.items],totalCents:tab.totalCents+order.total}:tab)})):s.tables; save({ ...s, tables, orders: [order, ...s.orders], audit: [{ id: uid("audit"), actor: endpoint.includes("internal") ? "Operação" : "Cliente", action: "ORDER_CREATED", entity: "order", entityId: order.id, createdAt: new Date().toISOString() }, ...s.audit] }); fire(endpoint, { method: "POST", headers: { "Idempotency-Key": order.sourceIdempotencyKey }, body: JSON.stringify({ ...order, ...(metadata || {}) }) }); },
   patchOrder(id: string, patch: Partial<Order>, actor = "Operação") {
@@ -170,11 +176,16 @@ export const demoActions = {
     const now = new Date().toISOString();
     save({ ...s, orders: s.orders.map(order => order.id === id ? { ...order, ...patch, updatedAt: now } : order), audit: [{ id: uid("audit"), actor, action: "ORDER_UPDATED", entity: "order", entityId: id, createdAt: now, details: "Comanda alterada pela operação" }, ...s.audit] });
   },
+  applyConfirmedOrderStatus(id: string, status: OrderStatus, version: number) {
+    const s = load();
+    save({ ...s, orders: s.orders.map(order => order.id === id && version >= (order.version ?? 1)
+      ? { ...order, status, version, updatedAt: new Date().toISOString() } : order) });
+  },
   patchDriver(id: string, patch: Partial<Driver>) { const s=load(); save({ ...s, drivers: s.drivers.map(driver => driver.id===id ? { ...driver, ...patch } : driver) }); },
   updateOrderStatus(id: string, status: OrderStatus, actor = "Operação") {
     const s = load();
     const now = new Date().toISOString();
-    save({ ...s, orders: s.orders.map(o => o.id === id ? { ...o, status, updatedAt: now, paymentStatus: status === "completed" && o.paymentStatus === "pending" ? "paid" : o.paymentStatus } : o), audit: [{ id: uid("audit"), actor, action: "ORDER_STATUS_CHANGED", entity: "order", entityId: id, createdAt: now, details: status }, ...s.audit] });
+    save({ ...s, orders: s.orders.map(o => o.id === id ? { ...o, status, updatedAt: now, paymentStatus: o.paymentStatus } : o), audit: [{ id: uid("audit"), actor, action: "ORDER_STATUS_CHANGED", entity: "order", entityId: id, createdAt: now, details: status }, ...s.audit] });
     fire(`/api/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
   },
   assignDriver(orderId: string, driverId: string) {
