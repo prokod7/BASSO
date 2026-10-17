@@ -8,6 +8,7 @@ import { useStableDemoState } from "@/lib/stable-store";
 import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client/api";
 import { statusLabel } from "@/lib/order-validation";
 import { isDemoMode } from "@/lib/utils";
+import { playNewOrderSound } from "@/lib/order-notification-sound";
 import { compactItemName, itemDetails } from "@/lib/item-presentation";
 import type { CartItem, Order, OrderStatus } from "@/types";
 
@@ -55,7 +56,6 @@ export default function KdsPage() {
   const [message, setMessage] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
   const [query, setQuery] = useState("");
-  const audioContextRef = useRef<AudioContext | null>(null);
   const previousOrdersRef = useRef<Set<string> | null>(null);
 
   const allOrders = useMemo(
@@ -74,33 +74,16 @@ export default function KdsPage() {
       .filter((order) => !term || `${order.number} ${order.customerName || ""} ${order.externalId || ""} ${order.tableNumber || ""}`.toLowerCase().includes(term));
   }, [allOrders, query, sector]);
 
-  function beep() {
-    if (!sound || typeof window === "undefined") return;
-    try {
-      const AudioContextCtor = window.AudioContext;
-      if (!AudioContextCtor) return;
-      const context = audioContextRef.current || new AudioContextCtor();
-      audioContextRef.current = context;
-      if (context.state === "suspended") void context.resume();
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.frequency.value = 620;
-      gain.gain.value = 0.04;
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start();
-      oscillator.stop(context.currentTime + 0.1);
-    } catch {
-      // Som é auxiliar e nunca bloqueia a operação.
-    }
-  }
-
   useEffect(() => {
-    const ids = new Set(orders.map((order) => order.id));
+    // O filtro de busca/setor não transforma pedidos já conhecidos em novos.
+    const ids = new Set(store.orders.map(order => order.id));
     const previous = previousOrdersRef.current;
-    if (previous && orders.some((order) => !previous.has(order.id) && ["received", "confirmed"].includes(order.status))) beep();
+    const hasNewOrder = store.orders.some(order => !previous?.has(order.id)
+      && ["received", "confirmed"].includes(order.status)
+      && order.items.some(item => belongsToSector(item as OperationalCartItem, sector)));
     previousOrdersRef.current = ids;
-  }, [orders]);
+    if (previous && hasNewOrder && sound) void playNewOrderSound();
+  }, [store.orders, sector, sound]);
 
   useEffect(() => {
     const sync = () => setFullscreen(Boolean(document.fullscreenElement));
@@ -161,7 +144,7 @@ export default function KdsPage() {
   }
 
   return <>
-    <PageHeader title="Cozinha e produção" icon={ChefHat} description="KDS por setor, com Realtime, cronômetros, meio a meio, adicionais por metade e comanda térmica pelo navegador." actions={<><button className="btn-secondary" onClick={() => requestOperationalRefresh()}><RefreshCw size={16} />Atualizar</button><button className="btn-secondary" onClick={toggleFullscreen}>{fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}Modo monitor</button><button className="btn-secondary" onClick={() => { setSound((value) => !value); if (!sound) beep(); }}>{sound ? <BellRing size={16} /> : <BellOff size={16} />}Som {sound ? "ativo" : "desativado"}</button></>} />
+    <PageHeader title="Cozinha e produção" icon={ChefHat} description="KDS por setor, com Realtime, cronômetros, meio a meio, adicionais por metade e comanda térmica pelo navegador." actions={<><button className="btn-secondary" onClick={() => requestOperationalRefresh()}><RefreshCw size={16} />Atualizar</button><button className="btn-secondary" onClick={toggleFullscreen}>{fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}Modo monitor</button><button className="btn-secondary" onClick={() => { setSound((value) => !value); if (!sound) void playNewOrderSound(); }}>{sound ? <BellRing size={16} /> : <BellOff size={16} />}Som {sound ? "ativo" : "desativado"}</button></>} />
 
     <div className="mb-4 flex flex-col gap-3 rounded-2xl border bg-white p-3 sm:flex-row sm:items-center"><div className="flex rounded-xl border bg-white p-1"><button className={`btn-ghost min-h-9 flex-1 ${sector === "kitchen" ? "bg-basso-wine text-white hover:text-white" : ""}`} onClick={() => setSector("kitchen")}><ChefHat size={16} />Cozinha</button><button className={`btn-ghost min-h-9 flex-1 ${sector === "bar" ? "bg-basso-wine text-white hover:text-white" : ""}`} onClick={() => setSector("bar")}><GlassWater size={16} />Bar</button></div><input className="input sm:ml-auto sm:max-w-xs" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar pedido, mesa ou código" /></div>
 

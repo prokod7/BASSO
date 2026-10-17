@@ -16,7 +16,7 @@ import { cn, isDemoMode } from "@/lib/utils";
 import { OperationalHydrator, type OperationalStatusDetail } from "@/components/internal/OperationalHydrator";
 import { GlobalSearchDialog } from "@/components/internal/GlobalSearchDialog";
 import { NotificationCenter } from "@/components/internal/NotificationCenter";
-import { BASSO_NEW_ORDER_AUDIO } from "@/lib/basso-notification-audio";
+import { playNewOrderSound } from "@/lib/order-notification-sound";
 import { StoreControlPanel } from "@/components/internal/StoreControlPanel";
 import { createClient } from "@/lib/supabase/client";
 import { useStableDemoState } from "@/lib/stable-store";
@@ -99,7 +99,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<OperationalStatusDetail>({ status: "loading", message: "Carregando operação" });
   const [leaving, setLeaving] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const orderSoundRef = useRef<HTMLAudioElement | null>(null);
   const seenOrderIdsRef = useRef<Set<string> | null>(null);
 
   // A primeira sincronização apenas registra os pedidos existentes. Depois,
@@ -111,10 +110,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     if (seen === null) { seenOrderIdsRef.current = ids; return; }
     const hasNewOrder = store.orders.some(order => order.status === "received" && !seen.has(order.id));
     seenOrderIdsRef.current = ids;
-    if (hasNewOrder && soundEnabled && orderSoundRef.current) {
-      orderSoundRef.current.currentTime = 0;
-      void orderSoundRef.current.play().catch(() => undefined);
-    }
+    if (hasNewOrder && soundEnabled) void playNewOrderSound();
   }, [store.orders, status.status, soundEnabled]);
 
   const visibleSections = useMemo(() => sections.map((section) => ({ ...section, items: section.items.filter((item) => !item.roles || item.roles.includes(role)) })).filter((section) => section.items.length), [role]);
@@ -184,7 +180,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return <div className="min-h-dvh bg-[#f5f2eb]">
     <OperationalHydrator />
-    <audio ref={orderSoundRef} src={BASSO_NEW_ORDER_AUDIO} preload="auto" aria-hidden="true" />
     <GlobalSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
 
     <aside className={cn("fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/10 bg-basso-black text-white transition-all", collapsed ? "w-20" : "w-72", mobile ? "translate-x-0" : "-translate-x-full lg:translate-x-0")}>
@@ -221,7 +216,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="relative ml-auto flex items-center gap-2 sm:gap-3">
           <button type="button" onClick={() => setStorePanel((value) => !value)} className={`hidden min-h-9 items-center gap-2 rounded-full px-3 text-xs font-black sm:flex ${storeStatus.operationalStatus === "open" ? "bg-emerald-50 text-emerald-700" : storeStatus.operationalStatus === "paused" ? "bg-amber-50 text-amber-800" : "bg-stone-100 text-stone-600"}`}>{storeStatus.operationalStatus === "open" ? <CirclePlay size={14} /> : storeStatus.operationalStatus === "paused" ? <CirclePause size={14} /> : <LockKeyhole size={14} />}Loja {storeLabel}</button>
           {storePanel && <StoreControlPanel status={storeStatus} onChange={setStoreStatus} onClose={() => setStorePanel(false)} />}
-          <button type="button" className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition ${soundEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-black/10 bg-white text-black/50"}`} title={soundEnabled ? "Desativar som de novos pedidos" : "Ativar som de novos pedidos"} aria-label={soundEnabled ? "Desativar som de novos pedidos" : "Ativar som de novos pedidos"} aria-pressed={soundEnabled} onClick={() => { const next = !soundEnabled; setSoundEnabled(next); if (next && orderSoundRef.current) { orderSoundRef.current.currentTime = 0; void orderSoundRef.current.play().catch(() => undefined); } }}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
+          <button type="button" className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition ${soundEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-black/10 bg-white text-black/50"}`} title={soundEnabled ? "Desativar som de novos pedidos" : "Ativar som de novos pedidos"} aria-label={soundEnabled ? "Desativar som de novos pedidos" : "Ativar som de novos pedidos"} aria-pressed={soundEnabled} onClick={() => { const next = !soundEnabled; setSoundEnabled(next); if (next) void playNewOrderSound(); }}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
           <NotificationCenter />
           <span className={cn("hidden max-w-56 items-center gap-2 truncate rounded-full px-3 py-1 text-xs font-bold xl:flex", statusClass)} title={status.message}>{status.status === "loading" ? <Loader2 size={13} className="animate-spin" /> : status.status === "error" || status.status === "offline" ? <AlertCircle size={13} /> : <span>●</span>}{status.message || "Sistema operacional"}</span>
           <div className="grid h-10 w-10 place-items-center rounded-full bg-basso-wine text-xs font-black text-white">{userName.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "GB"}</div>
