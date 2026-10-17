@@ -15,7 +15,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { catalog, categoryImages, findFlavor } from "@/lib/catalog";
 import { runtimePizzaTotal as pizzaTotal } from "@/lib/runtime-catalog";
-import { arePizzaFlavorsCompatible, validatePizzaSelection } from "@/lib/pricing";
+import { arePizzaFlavorsCompatible, SWEET_HAZELNUT_ZERO_SURCHARGE, validatePizzaSelection } from "@/lib/pricing";
 import type { AddonPlacement, CartItem, Flavor, PizzaSelection } from "@/types";
 import { currency, normalizeSearchText, uid } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
@@ -217,6 +217,12 @@ export function PizzaBuilder({
   const currentA = findFlavor(selection.flavorA) || seedFlavor;
   const currentB = selection.flavorB ? findFlavor(selection.flavorB) : undefined;
   const isHalfHalf = Boolean(currentB);
+  const hasSweetFlavor = currentA.category === "sweet" || currentB?.category === "sweet";
+  const pricedSelection: PizzaSelection = {
+    ...selection,
+    sweetBase: hasSweetFlavor ? selection.sweetBase ?? "standard" : undefined,
+    cutPreference: hasSweetFlavor ? selection.cutPreference ?? "uncut" : undefined,
+  };
   const removedCount = selection.removedA.length + selection.removedB.length;
   const addonUnits = Object.values(selection.addons).reduce((sum, value) => sum + value, 0);
   const missingPlacementId = Object.entries(selection.addons).find(
@@ -225,7 +231,7 @@ export function PizzaBuilder({
 
   const total = (() => {
     try {
-      return pizzaTotal(selection);
+      return pizzaTotal(pricedSelection);
     } catch {
       return 0;
     }
@@ -444,7 +450,7 @@ export function PizzaBuilder({
 
   const goToCustomize = () => {
     try {
-      validatePizzaSelection({ ...selection, addons: {}, addonPlacements: {} });
+      validatePizzaSelection({ ...pricedSelection, addons: {}, addonPlacements: {} });
       setStep("customize");
       setCustomizeView(null);
       setError("");
@@ -461,7 +467,7 @@ export function PizzaBuilder({
       return;
     }
     try {
-      validatePizzaSelection(selection);
+      validatePizzaSelection(pricedSelection);
       setStep("review");
       setCustomizeView(null);
       setError("");
@@ -479,18 +485,19 @@ export function PizzaBuilder({
       return;
     }
     try {
-      validatePizzaSelection(selection);
+      validatePizzaSelection(pricedSelection);
       const first = findFlavor(selection.flavorA)!;
       const second = selection.flavorB ? findFlavor(selection.flavorB) : undefined;
-      const name = `Pizza ${selection.size === "grande" ? "Grande" : "Broto"} • ${first.name}${second ? ` / ${second.name}` : ""}`;
+      const sweetDetails = hasSweetFlavor ? ` • ${pricedSelection.cutPreference === "cut" ? "CORTAR" : "NÃO CORTAR"}${pricedSelection.sweetBase === "hazelnut-zero" ? " • Base Avelã Zero" : ""}` : "";
+      const name = `Pizza ${selection.size === "grande" ? "Grande" : "Broto"} • ${first.name}${second ? ` / ${second.name}` : ""}${sweetDetails}`;
       const item: CartItem = {
         id: uid("cart"),
         kind: "pizza",
         name,
         quantity: 1,
-        unitPrice: pizzaTotal(selection),
+        unitPrice: pizzaTotal(pricedSelection),
         image: entry ? imageForEntry(entry) : categoryImages[first.category][selection.size],
-        selection,
+        selection: pricedSelection,
       };
       if (onAdd) onAdd(item);
       else cart.addItem(item);
@@ -610,6 +617,19 @@ export function PizzaBuilder({
                   />
                 )}
 
+                {hasSweetFlavor && !customizeView && <fieldset className="my-4 rounded-2xl border border-basso-gold/30 bg-basso-gold/10 p-4">
+                  <legend className="px-1 text-sm font-bold">Opções da pizza doce</legend>
+                  <p className="mb-3 text-xs text-black/60">A base original do sabor está inclusa. A base de Creme de Avelã Zero é opcional.</p>
+                  <label className="flex min-h-12 items-center justify-between gap-3 rounded-xl border bg-white p-3 text-sm font-bold">
+                    <span>Adicionar Creme de Avelã Zero <span className="whitespace-nowrap text-basso-wine">(+ {currency(SWEET_HAZELNUT_ZERO_SURCHARGE)})</span></span>
+                    <input type="checkbox" checked={pricedSelection.sweetBase === "hazelnut-zero"} onChange={event => setSelection(current => ({ ...current, sweetBase: event.target.checked ? "hazelnut-zero" : "standard" }))}/>
+                  </label>
+                  <label className="mt-2 flex min-h-12 items-center justify-between gap-3 rounded-xl border bg-white p-3 text-sm font-semibold">
+                    <span>Cortar a pizza doce <small className="block font-normal text-black/50">Sem corte por padrão para evitar vazamento do recheio.</small></span>
+                    <input type="checkbox" checked={pricedSelection.cutPreference === "cut"} onChange={event => setSelection(current => ({ ...current, cutPreference: event.target.checked ? "cut" : "uncut" }))}/>
+                  </label>
+                </fieldset>}
+
                 {step === "customize" && !customizeView && (
                   <CustomizeHub
                     removedCount={removedCount}
@@ -644,7 +664,7 @@ export function PizzaBuilder({
 
                 {step === "review" && !customizeView && (
                   <ReviewStep
-                    selection={selection}
+                    selection={pricedSelection}
                     currentA={currentA}
                     currentB={currentB}
                     total={total}
@@ -757,6 +777,7 @@ function PizzaStep({
   onFlavorB: () => void;
 }) {
   const isHalfHalf = Boolean(currentB);
+
 
   return (
     <div className="space-y-5">
