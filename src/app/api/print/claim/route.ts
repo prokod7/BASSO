@@ -1,3 +1,4 @@
+import { hydratePrintJobs } from "@/lib/print-presentation";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -10,5 +11,5 @@ export async function POST(request: NextRequest) {
   const limit = Math.max(1, Math.min(10, Number(body.limit || 3)));
   const { data, error } = await db.rpc("claim_print_jobs", { p_bridge_key: key, p_limit: limit });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ jobs: data || [] });
+  return NextResponse.json({ jobs: await hydratePrintJobs(db, data || []) });
 }

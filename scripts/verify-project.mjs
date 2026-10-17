@@ -16,7 +16,7 @@ function check(name, condition, detail = "") {
 check("42 pizzas tradicionais", catalog.flavors.filter(x => x.category === "traditional").length === 42);
 check("11 pizzas premium", catalog.flavors.filter(x => x.category === "premium").length === 11);
 check("11 pizzas doces", catalog.flavors.filter(x => x.category === "sweet").length === 11);
-check("29 bebidas base", catalog.beverages.length === 29);
+check("32 bebidas base (catálogo atualizado pela migration 034)", catalog.beverages.length === 32);
 check("20 adicionais", catalog.addons.length === 20);
 check("Combo oficial R$ 79,99", catalog.combo?.price === 7999);
 check("Bordas desativadas", catalog.rules?.borders === false);

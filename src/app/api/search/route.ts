@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const term = escapeLike(query);
     const numeric = Number(query.replace(/\D/g, ""));
     const [orders, customers, tables, products, drivers, tasks, financial] = await Promise.all([
-      db.from("orders").select("id,number,customer_name,customer_phone,status,channel,total_cents").or(Number.isFinite(numeric) && numeric > 0 ? `number.eq.${numeric},customer_name.ilike.%${term}%,customer_phone.ilike.%${term}%` : `customer_name.ilike.%${term}%,customer_phone.ilike.%${term}%`).is("deleted_at", null).limit(8),
+      db.from("orders").select("id,number,daily_number,customer_name,customer_phone,status,channel,total_cents").or(Number.isFinite(numeric) && numeric > 0 ? `number.eq.${numeric},daily_number.eq.${numeric},customer_name.ilike.%${term}%,customer_phone.ilike.%${term}%` : `customer_name.ilike.%${term}%,customer_phone.ilike.%${term}%`).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
       db.from("customers").select("id,name,phone,email").or(`name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`).limit(8),
       Number.isFinite(numeric) && numeric > 0 && numeric <= 15
         ? db.from("restaurant_tables").select("number,status,people_count,group_id").eq("number", numeric).limit(1)
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const failed = [orders, customers, tables, products, drivers, tasks, financial].find((result) => result.error);
     if (failed?.error) throw failed.error;
     const results: GlobalSearchResult[] = [];
-    for (const row of orders.data || []) results.push({ id: row.id, kind: "order", title: `Pedido #${row.number}`, subtitle: `${row.customer_name} • ${row.status} • ${(Number(row.total_cents || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`, href: `/painel/pedidos?order=${row.id}`, badge: row.channel });
+    for (const row of orders.data || []) results.push({ id: row.id, kind: "order", title: `Pedido #${row.daily_number ?? row.number}`, subtitle: `${row.customer_name} • ${row.status} • ${(Number(row.total_cents || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`, href: `/painel/pedidos?order=${row.id}`, badge: row.channel });
     for (const row of customers.data || []) results.push({ id: row.id, kind: "customer", title: row.name, subtitle: `${row.phone}${row.email ? ` • ${row.email}` : ""}`, href: `/painel/clientes?query=${encodeURIComponent(row.name)}`, badge: "Cliente" });
     for (const row of tables.data || []) results.push({ id: String(row.number), kind: "table", title: `Mesa ${row.number}`, subtitle: `${row.status} • ${row.people_count || 0} pessoa(s)`, href: `/painel/salao?mesa=${row.number}`, badge: row.status === "free" ? "Livre" : "Em uso" });
     for (const row of products.data || []) results.push({ id: row.id, kind: "product", title: row.name, subtitle: `${row.category} • ${(Number(row.price_cents || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`, href: `/painel/cardapio?query=${encodeURIComponent(row.name)}`, badge: row.active ? "Ativo" : "Inativo" });

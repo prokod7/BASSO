@@ -86,7 +86,7 @@ export async function loadRuntimeMenu(db: any): Promise<RuntimeMenu> {
       active: Boolean(row.active),
       image: row.image_url || undefined,
     })),
-    flavors: (flavorsResult.data || []).map((row: any) => ({
+    flavors: (flavorsResult.data || []).sort((a: any, b: any) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }) || a.id.localeCompare(b.id)).map((row: any) => ({
       id: row.id,
       name: row.name,
       category: row.category,
@@ -188,6 +188,13 @@ export async function priceItemsWithRuntime(db: any, items: CartItem[], channel:
       if (promotion) unitPrice = promotion.promoUnitPrice;
     }
 
+    // Server-generated names survive later catalog edits and custom products.
+    if (item.selection) {
+      const selection = item.selection as unknown as Record<string, unknown>;
+      const used = new Set([...Object.values(selection).filter((v): v is string => typeof v === "string"), ...Object.keys(item.selection.addons || {})]);
+      const labels = Object.fromEntries([...flavors, ...addons, ...products].filter(row => used.has(row.id)).map(row => [row.id, row.name]));
+      item.selection = { ...item.selection, labels } as typeof item.selection;
+    }
     normalized.push({ ...item, name, unitPrice, promotion });
     subtotal += unitPrice * item.quantity;
   }

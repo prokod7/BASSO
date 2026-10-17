@@ -64,7 +64,7 @@ export default function MenuAdminPage() {
 
   const rows = useMemo(()=>{
     const source = tab === "flavor" ? flavors : tab === "product" ? products : tab === "addon" ? addons : categories;
-    return source.filter((row:any)=>!query||`${row.name} ${row.description||""} ${(row.ingredients||[]).join(" ")}`.toLowerCase().includes(query.toLowerCase()));
+    return [...source].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR",{sensitivity:"base"})).filter((row:any)=>!query||`${row.name} ${row.description||""} ${(row.ingredients||[]).join(" ")}`.toLowerCase().includes(query.toLowerCase()));
   },[tab,flavors,products,addons,categories,query]);
 
   function updateLocal(entity:Entity,id:string,patch:any) {
@@ -128,7 +128,7 @@ export default function MenuAdminPage() {
     setSaving(true);setMessage("");
     try {
       if(isDemoMode()){setMessage("Criação persistente de produto exige banco configurado.");return;}
-      const response=await fetch("/api/menu/products",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:draft.name,category:draft.category,description:draft.description||"",variant:draft.variant||null,price:draft.price,stockTracked:Boolean(draft.stockTracked),active:true,channels:defaultChannels,allergens:[]})});
+      const response=await fetch("/api/menu/products",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:draft.name,category:draft.category,description:draft.description||"",variant:draft.variant||null,price:draft.price,stockTracked:Boolean(draft.stockTracked),active:true,channels:draft.salonOnly?["dine_in","table_qr"]:defaultChannels,allergens:[]})});
       const body=await response.json();if(!response.ok)throw new Error(body.error||"Falha ao criar produto.");
       setCreatingProduct(false);await load();setMessage("Produto criado. Agora você pode enviar a foto e ajustar todos os detalhes.");
     } catch(error){setMessage(error instanceof Error?error.message:"Falha ao criar produto.");}
@@ -187,8 +187,8 @@ function EditModal({entity,initial,categories,saving,onClose,onSave,onImageChang
 }
 
 function NewProductModal({categories,saving,onClose,onSave}:{categories:MenuCategory[];saving:boolean;onClose:()=>void;onSave:(draft:any)=>void}) {
-  const [draft,setDraft]=useState({name:"",category:categories[0]?.id||"beverages",description:"",variant:"",price:0,stockTracked:false});
-  return <Modal title="Novo produto" onClose={onClose}><div className="grid gap-4 sm:grid-cols-2"><Field label="Nome" value={draft.name} onChange={name=>setDraft({...draft,name})}/><label><span className="label">Categoria</span><select className="input" value={draft.category} onChange={e=>setDraft({...draft,category:e.target.value})}>{categories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></label><Money label="Preço" value={draft.price} onChange={price=>setDraft({...draft,price})}/><Field label="Variação" value={draft.variant} onChange={variant=>setDraft({...draft,variant})}/><label className="sm:col-span-2"><span className="label">Descrição</span><textarea className="textarea" value={draft.description} onChange={e=>setDraft({...draft,description:e.target.value})}/></label><label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={draft.stockTracked} onChange={e=>setDraft({...draft,stockTracked:e.target.checked})}/>Controlar estoque</label></div><button className="btn-primary mt-6 w-full" disabled={saving||draft.name.trim().length<2||!draft.category} onClick={()=>onSave(draft)}>{saving?<Loader2 className="animate-spin"/>:<Plus size={17}/>}Criar produto</button></Modal>;
+  const [draft,setDraft]=useState({name:"",category:categories[0]?.id||"beverages",description:"",variant:"",price:0,stockTracked:false,salonOnly:false});
+  return <Modal title="Novo produto" onClose={onClose}><div className="grid gap-4 sm:grid-cols-2"><Field label="Nome" value={draft.name} onChange={name=>setDraft({...draft,name})}/><label><span className="label">Categoria</span><select className="input" value={draft.category} onChange={e=>setDraft({...draft,category:e.target.value})}>{categories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></label><Money label="Preço" value={draft.price} onChange={price=>setDraft({...draft,price})}/><Field label="Variação" value={draft.variant} onChange={variant=>setDraft({...draft,variant})}/><label className="sm:col-span-2"><span className="label">Descrição</span><textarea className="textarea" value={draft.description} onChange={e=>setDraft({...draft,description:e.target.value})}/></label><label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={draft.stockTracked} onChange={e=>setDraft({...draft,stockTracked:e.target.checked})}/>Controlar estoque</label><label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={draft.salonOnly} onChange={e=>setDraft({...draft,salonOnly:e.target.checked})}/>Somente salão e mesas (garçom e QR da mesa)</label></div><button className="btn-primary mt-6 w-full" disabled={saving||draft.name.trim().length<2||!draft.category} onClick={()=>onSave(draft)}>{saving?<Loader2 className="animate-spin"/>:<Plus size={17}/>}Criar produto</button></Modal>;
 }
 
 function NewCategoryModal({saving,onClose,onSave}:{saving:boolean;onClose:()=>void;onSave:(draft:any)=>void}) {

@@ -15,12 +15,12 @@ async function loadArea(tokens: unknown) {
   if (!access?.length) return NextResponse.json({ error: "Acesso expirado ou inválido." }, { status: 401 });
   const ids = [...new Set(access.map(row => row.order_id))];
   const { data: orders, error: orderError } = await db.from("orders")
-    .select("id,number,status,total_cents,created_at,updated_at,channel")
+    .select("id,number,daily_number,status,total_cents,created_at,updated_at,channel")
     .in("id", ids).is("deleted_at", null).not("channel", "in", "(ifood,99food)")
     .order("created_at", { ascending: false }).limit(100);
   if (orderError) throw orderError;
   return NextResponse.json({ loyalty: null, orders: (orders || []).map(o => ({
-    id: o.id, number: Number(o.number), status: o.status, total: Number(o.total_cents),
+    id: o.id, number: Number(o.daily_number ?? o.number), status: o.status, total: Number(o.total_cents),
     createdAt: o.created_at, updatedAt: o.updated_at, channel: o.channel,
   })) }, { headers: { "Cache-Control": "private, no-store" } });
 }

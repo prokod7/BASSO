@@ -41,7 +41,7 @@ function render(job) {
     center("LA FORNERIA BASSO"),
     center(`${String(job.sector || "").toUpperCase()} ${payload.event === "item_added" ? "- ACRESCIMO DE ITENS" : job.is_reprint ? "- REIMPRESSAO" : ""}`),
     line(),
-    `PEDIDO #${order.number || order.id || job.order_id || ""}`,
+    `PEDIDO #${order.daily_number || order.number || order.id || job.order_id || ""}`,
     `CANAL: ${order.channel || ""}`,
     `CLIENTE: ${order.customer_name || ""}`,
     order.customer_phone ? `TEL: ${order.customer_phone}` : "",
@@ -50,8 +50,12 @@ function render(job) {
   ];
 
   for (const item of items) {
-    lines.push(`${item.quantity || 1}x ${item.name_snapshot || item.name || "Item"}`);
+    lines.push(`${item.quantity || 1}x ${item.display_name || item.name_snapshot || item.name || "Item"}`);
     if (item.unit_price_cents != null) lines.push(`   ${money(item.unit_price_cents)}`);
+    if (Array.isArray(item.detail_lines)) {
+      lines.push(...item.detail_lines.map(detail => `   ${detail.text}`), "");
+      continue;
+    }
     const selection = item.selection || {};
     if (selection.size) lines.push(`   ${selection.size} | massa ${selection.mass || "tradicional"}`);
     if (selection.flavorA) lines.push(`   Sabor: ${selection.flavorA}${selection.flavorB ? ` / ${selection.flavorB}` : ""}`);

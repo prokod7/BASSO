@@ -4,7 +4,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import type { OrderDetail, CartItem } from "@/types";
 import { currency, shortDateTime } from "@/lib/utils";
-import { findAddon, findFlavor, findProduct } from "@/lib/catalog";
+import { compactItemName, itemDetails } from "@/lib/item-presentation";
 
 type PrintType = "entrega" | "cozinha";
 type Verification = {
@@ -43,67 +43,11 @@ function safeNote(value?: string | null) {
   return note.slice(0, 500);
 }
 
-function labelMass(value: unknown) {
-  if (value === "traditional") return "Massa Tradicional de Longa Fermentação";
-  if (value === "integral") return "Massa Integral";
-  return typeof value === "string" && value ? value : "";
-}
-
-function labelFlavor(id: unknown) {
-  if (typeof id !== "string" || !id) return "";
-  return findFlavor(id)?.name || id.replaceAll("-", " ");
-}
-
-function itemDetails(item: CartItem) {
-  const selection = (item.selection || {}) as Record<string, unknown>;
-  const lines: Array<{ text: string; emphasis?: boolean }> = [];
-  const mass = labelMass(selection.mass);
-  if (mass) lines.push({ text: `-1x ${mass}` });
-
-  const flavorA = labelFlavor(selection.flavorA || selection.grandeFlavor);
-  const flavorB = labelFlavor(selection.flavorB || selection.grandeFlavorB);
-  if (flavorA && flavorB) {
-    lines.push({ text: `-1/2 ${flavorA}`, emphasis: true });
-    lines.push({ text: `-1/2 ${flavorB}`, emphasis: true });
-  } else if (flavorA) {
-    lines.push({ text: `- ${flavorA}`, emphasis: true });
-  }
-
-  if(selection.secondGrandeFlavor) lines.push({text:`Grande 2: ${labelFlavor(selection.secondGrandeFlavor)}${selection.secondGrandeFlavorB?` / ${labelFlavor(selection.secondGrandeFlavorB)}`:""}`,emphasis:true});
-  if(selection.sweetFlavor) lines.push({text:`${selection.sweetSize === "grande"?"Grande":"Broto"} doce: ${labelFlavor(selection.sweetFlavor)}`,emphasis:true});
-  if(selection.beverage) lines.push({text:`Bebida: ${String(selection.beverage).replaceAll("-"," ")}`,emphasis:true});
-  const removedA = Array.isArray(selection.removedA) ? selection.removedA.filter((x): x is string => typeof x === "string") : [];
-  const removedB = Array.isArray(selection.removedB) ? selection.removedB.filter((x): x is string => typeof x === "string") : [];
-  if (removedA.length) lines.push({ text: `  SEM ${removedA.join(", ")}`, emphasis: true });
-  if (removedB.length) lines.push({ text: `  2ª METADE SEM ${removedB.join(", ")}`, emphasis: true });
-
-  const addons = selection.addons && typeof selection.addons === "object" ? selection.addons as Record<string, number> : {};
-  const placements = selection.addonPlacements && typeof selection.addonPlacements === "object" ? selection.addonPlacements as Record<string, string> : {};
-  Object.entries(addons).filter(([, qty]) => Number(qty) > 0).forEach(([id, qty]) => {
-    const addon = findAddon(id)?.name || id.replaceAll("-", " ");
-    const placement = placements[id];
-    const suffix = placement === "halfA" ? " • 1ª METADE" : placement === "halfB" ? " • 2ª METADE" : "";
-    lines.push({ text: `+ ${qty}x ${addon}${suffix}`, emphasis: true });
-  });
-
-  if (selection.beverage && typeof selection.beverage === "string") {
-    const beverage = findProduct(selection.beverage)?.name || selection.beverage.replaceAll("-", " ");
-    lines.push({ text: `- Bebida: ${beverage}` });
-  }
-  if (selection.sweetBase === "hazelnut-zero") lines.push({ text: "- Base: Creme de Avelã Zero", emphasis: true });
-  if (selection.cutPreference === "cut") lines.push({ text: "- CORTAR", emphasis: true });
-  if (selection.cutPreference === "uncut") lines.push({ text: "- NÃO CORTAR", emphasis: true });
-
-  const note = safeNote(typeof selection.notes === "string" ? selection.notes : "");
-  if (note) lines.push({ text: `OBS: ${note}`, emphasis: true });
-  return lines;
-}
-
 function dateAndTime(iso: string) {
   const date = new Date(iso);
   return {
-    date: date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-    time: date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    date: date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }),
+    time: date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }),
   };
 }
 
@@ -227,7 +171,7 @@ export default function BrowserPrintPage({ params }: { params: Promise<{ id: str
           <Divider compact />
           <div className="space-y-3">
             {activeItems.map(item => <div key={item.id}>
-              <div className="grid grid-cols-[1fr_auto] gap-2 text-[15px]"><strong>{item.quantity} {item.name}</strong><span>{currency(item.unitPrice * item.quantity).replace("R$ ", "")}</span></div>
+              <div className="grid grid-cols-[1fr_auto] gap-2 text-[15px]"><strong>{item.quantity} {compactItemName(item)}</strong><span>{currency(item.unitPrice * item.quantity).replace("R$ ", "")}</span></div>
               {itemDetails(item).map((line, index) => <p key={`${item.id}-${index}`} className={`pl-3 ${line.emphasis ? "font-bold" : ""}`}>{line.text}</p>)}
             </div>)}
           </div>
@@ -259,7 +203,7 @@ export default function BrowserPrintPage({ params }: { params: Promise<{ id: str
           <Divider />
           <div className="space-y-4">
             {activeItems.map(item => <div key={item.id}>
-              <p className="text-[18px] font-black">{item.quantity} {item.name}</p>
+              <p className="text-[18px] font-black">{item.quantity} {compactItemName(item)}</p>
               {itemDetails(item).map((line, index) => <p key={`${item.id}-k-${index}`} className={`pl-3 text-[13px] ${line.emphasis ? "font-black" : "font-bold"}`}>{line.text}</p>)}
             </div>)}
           </div>

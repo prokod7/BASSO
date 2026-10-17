@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const endIso = `${end}T23:59:59.999Z`;
 
     const [ordersResult, itemsResult, reviewsResult, financeResult] = await Promise.all([
-      db.from("orders").select("id,number,channel,status,payment_status,payment_method,total_cents,discount_cents,delivery_fee_cents,created_at,completed_at,created_by,driver_id").is("deleted_at", null).gte("created_at", startIso).lte("created_at", endIso).order("created_at", { ascending: true }).limit(10000),
+      db.from("orders").select("id,number,daily_number,channel,status,payment_status,payment_method,total_cents,discount_cents,delivery_fee_cents,created_at,completed_at,created_by,driver_id").is("deleted_at", null).gte("created_at", startIso).lte("created_at", endIso).order("created_at", { ascending: true }).limit(10000),
       db.from("order_items").select("order_id,kind,name_snapshot,quantity,unit_price_cents,selection,sector,production_status").gte("created_at", startIso).lte("created_at", endIso).limit(50000),
       db.from("order_reviews").select("rating,created_at").gte("created_at", startIso).lte("created_at", endIso).limit(10000),
       db.from("financial_entries").select("kind,status,amount_cents,due_date").is("deleted_at", null).gte("due_date", start).lte("due_date", end).limit(10000)
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
 
     if (request.nextUrl.searchParams.get("format") === "csv") {
       const header = ["Número", "Data", "Canal", "Status", "Pagamento", "Forma", "Total (centavos)", "Desconto (centavos)", "Taxa entrega (centavos)"];
-      const rows = orders.map((order: any) => [order.number, order.created_at, order.channel, order.status, order.payment_status, order.payment_method, order.total_cents, order.discount_cents, order.delivery_fee_cents]);
+      const rows = orders.map((order: any) => [order.daily_number ?? order.number, order.created_at, order.channel, order.status, order.payment_status, order.payment_method, order.total_cents, order.discount_cents, order.delivery_fee_cents]);
       const csv = "\ufeff" + [header, ...rows].map(row => row.map(csvEscape).join(";")).join("\r\n");
       return new NextResponse(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="relatorio-la-forneria-${start}-${end}.csv"`, "Cache-Control": "no-store" } });
     }

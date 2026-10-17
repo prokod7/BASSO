@@ -12,7 +12,7 @@ import type {
 export function mapOrderRow(row: Record<string, any>, items: ManagedOrderItem[] = []): OrderDetail {
   return {
     id: row.id,
-    number: Number(row.number),
+    number: Number(row.daily_number ?? row.number),
     channel: row.channel,
     status: row.status,
     paymentStatus: row.payment_status,
