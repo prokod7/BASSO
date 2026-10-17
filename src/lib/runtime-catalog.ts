@@ -12,7 +12,7 @@ export function applyRuntimeCatalog(menu: {
 }) {
   promotions = (menu.promotions || []) as PromotionRecord[];
   if (menu.flavors)
-    catalog.flavors.splice(0, catalog.flavors.length, ...menu.flavors);
+    catalog.flavors.splice(0, catalog.flavors.length, ...[...menu.flavors].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })));
   if (menu.addons)
     catalog.addons.splice(0, catalog.addons.length, ...menu.addons);
 }

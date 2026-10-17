@@ -1,5 +1,6 @@
 "use client";
 
+import { itemDetails } from "@/lib/item-presentation";
 import Image from "next/image";
 import Link from "next/link";
 import { Check, Copy, ChevronLeft, KeyRound, MapPin, MessageCircle, Navigation, PackageCheck, RefreshCw, ShieldCheck } from "lucide-react";
@@ -79,7 +80,7 @@ function OrderTrackingContent() {
 
       {order.status === "out_for_delivery" && <section className="surface overflow-hidden p-3"><OperationalMap points={typeof order.address?.latitude === "number" && typeof order.address?.longitude === "number" ? [{ id: `destination-${order.id}`, latitude: order.address.latitude, longitude: order.address.longitude, label: `Destino do pedido #${order.number}`, kind: "destination" }] : []} className="h-72" /><div className="flex items-start gap-2 p-3 text-xs text-black/50"><MapPin className="mt-0.5 shrink-0" size={15} /><p>O botão acima abre o rastreamento temporário com a posição do motoboy. O acesso é encerrado assim que a entrega for confirmada.</p></div></section>}
 
-      <section className="surface p-5"><h2 className="font-display text-xl font-bold">Resumo</h2><div className="mt-4 space-y-3">{order.items.map(item => <div key={item.id} className="flex justify-between gap-4 text-sm"><span><strong>{item.quantity}×</strong> {item.name}</span><strong>{currency(item.unitPrice * item.quantity)}</strong></div>)}</div><div className="mt-4 flex justify-between border-t pt-4"><strong>Total</strong><strong className="text-lg text-basso-wine">{currency(order.total)}</strong></div></section>
+      <section className="surface p-5"><h2 className="font-display text-xl font-bold">Resumo</h2><div className="mt-4 space-y-3">{order.items.map(item => <div key={item.id} className="flex justify-between gap-4 text-sm"><div><p><strong>{item.quantity}×</strong> {item.name}</p><div className="mt-1 space-y-1 whitespace-pre-wrap text-xs text-black/65">{itemDetails(item).map((line, i) => <p key={i} className={line.emphasis ? "font-semibold" : ""}>{line.text}</p>)}</div></div><strong>{currency(item.unitPrice * item.quantity)}</strong></div>)}</div><div className="mt-4 flex justify-between border-t pt-4"><strong>Total</strong><strong className="text-lg text-basso-wine">{currency(order.total)}</strong></div></section>
 
       <div className="grid gap-3 sm:grid-cols-2"><a className="btn-secondary" href={`https://wa.me/5511998805533?text=${encodeURIComponent(`Olá! Gostaria de falar sobre o pedido #${order.number}.`)}`} target="_blank"><MessageCircle size={18} />Falar manualmente no WhatsApp</a><button className="btn-secondary" onClick={() => location.reload()}><RefreshCw size={18} />Atualizar</button>{order.status === "completed" && <Link className="btn-primary sm:col-span-2" href={`/avaliar/${order.id}${token ? `?token=${encodeURIComponent(token)}` : ""}`}>Avaliar pedido</Link>}</div>
     </div>

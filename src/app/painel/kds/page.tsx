@@ -8,7 +8,7 @@ import { useStableDemoState } from "@/lib/stable-store";
 import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client/api";
 import { statusLabel } from "@/lib/order-validation";
 import { isDemoMode } from "@/lib/utils";
-import { findAddon, findFlavor } from "@/lib/catalog";
+import { compactItemName, itemDetails } from "@/lib/item-presentation";
 import type { CartItem, Order, OrderStatus } from "@/types";
 
 type OperationalCartItem = CartItem & { sector?: "kitchen" | "bar" | "counter"; productionStatus?: string };
@@ -31,46 +31,6 @@ function targetForKds(order: Order): OrderStatus | null {
   if (order.status === "confirmed") return "preparing";
   if (order.status === "preparing") return "ready";
   return null;
-}
-
-function addonLines(item: CartItem): string[] {
-  const selection = item.selection;
-  if (!selection || typeof selection !== "object" || !("addons" in selection)) return [];
-  const addons = selection.addons && typeof selection.addons === "object" ? selection.addons : {};
-  const placements = (selection as { addonPlacements?: Record<string, "whole" | "halfA" | "halfB"> }).addonPlacements || {};
-  const flavorAId = "flavorA" in selection ? selection.flavorA : "grandeFlavor" in selection ? selection.grandeFlavor : undefined;
-  const flavorBId = "flavorB" in selection ? selection.flavorB : "grandeFlavorB" in selection ? selection.grandeFlavorB : undefined;
-  const flavorA = typeof flavorAId === "string" ? findFlavor(flavorAId) : undefined;
-  const flavorB = typeof flavorBId === "string" ? findFlavor(flavorBId) : undefined;
-  return Object.entries(addons)
-    .filter(([, quantity]) => Number(quantity) > 0)
-    .map(([id, quantity]) => {
-      const addon = findAddon(id);
-      const placement = placements[id] || "whole";
-      const target = placement === "halfA"
-        ? `METADE ${flavorA?.name || "1"}`
-        : placement === "halfB"
-          ? `METADE ${flavorB?.name || "2"}`
-          : "PIZZA INTEIRA";
-      return `${Number(quantity)}× ${addon?.name || id} • ${target}`;
-    });
-}
-
-function removalLines(item: CartItem) {
-  const selection = item.selection;
-  if (!selection || typeof selection !== "object") return [];
-  const lines: string[] = [];
-  if ("removedA" in selection && Array.isArray(selection.removedA) && selection.removedA.length) {
-    const flavorAId = "flavorA" in selection ? selection.flavorA : undefined;
-    const flavor = typeof flavorAId === "string" ? findFlavor(flavorAId) : undefined;
-    lines.push(`${flavor ? `${flavor.name}: ` : ""}SEM ${selection.removedA.join(", ")}`);
-  }
-  if ("removedB" in selection && Array.isArray(selection.removedB) && selection.removedB.length) {
-    const flavorBId = "flavorB" in selection ? selection.flavorB : undefined;
-    const flavor = typeof flavorBId === "string" ? findFlavor(flavorBId) : undefined;
-    lines.push(`${flavor ? `${flavor.name}: ` : ""}SEM ${selection.removedB.join(", ")}`);
-  }
-  return lines;
 }
 
 function channelBadge(order: Order) {
@@ -220,7 +180,7 @@ export default function KdsPage() {
               const badge = channelBadge(order);
               return <article key={order.id} className={`surface overflow-hidden ${minutes >= 45 ? "border-red-300 ring-1 ring-red-200" : minutes >= 30 ? "border-amber-300" : ""}`}>
                 <div className="flex items-center justify-between bg-basso-black px-4 py-3 text-white"><div className="flex min-w-0 items-center gap-2"><strong>#{order.number}</strong><span className={`max-w-40 truncate rounded-full px-2 py-1 text-[9px] font-black ${badge.className}`}>{badge.label}</span></div><span className={`flex items-center gap-1 text-xs ${minutes >= 45 ? "font-black text-red-300" : minutes >= 30 ? "font-black text-amber-300" : "text-white/55"}`}><Clock3 size={13} />{minutes} min</span></div>
-                <div className="p-4"><p className="font-bold">{order.customerName || "Cliente"}</p>{order.notes && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs font-bold text-amber-900">OBS PEDIDO: {order.notes}</p>}<div className="mt-3 space-y-2">{(order.items || []).map((item) => <div key={item.id} className="rounded-xl bg-basso-paper p-3"><p className="text-sm"><strong>{item.quantity}×</strong> {item.name || "Item"}</p>{removalLines(item).map((line) => <p key={line} className="mt-1 text-xs font-black text-red-700">{line}</p>)}{addonLines(item).map((line) => <p key={line} className="mt-1 text-xs font-black text-emerald-800">+ {line}</p>)}{item.selection && "notes" in item.selection && typeof item.selection.notes === "string" && item.selection.notes && <p className="mt-1 text-xs font-bold text-amber-800">OBS: {item.selection.notes}</p>}</div>)}</div><div className="mt-3 flex gap-2"><button className="btn-secondary min-h-9 flex-1 text-xs" disabled={working === `print_${order.id}` || busy} onClick={() => print(order)}>{working === `print_${order.id}` ? <Loader2 className="animate-spin" size={14} /> : <Printer size={14} />}Imprimir</button>{target ? <button className="btn-primary min-h-9 flex-1 text-xs" disabled={busy || working === `print_${order.id}`} onClick={() => advance(order)}>{busy ? <Loader2 className="animate-spin" size={14} /> : null}{statusLabel[target]}</button> : order.status === "received" ? <span className="flex flex-1 items-center justify-center rounded-xl bg-amber-50 px-2 text-center text-[11px] font-bold text-amber-800">Aguardando confirmação</span> : <span className="flex flex-1 items-center justify-center rounded-xl bg-emerald-50 px-2 text-center text-[11px] font-bold text-emerald-800">Aguardando expedição</span>}</div></div>
+                <div className="p-4"><p className="font-bold">{order.customerName || "Cliente"}</p>{order.notes && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs font-bold text-amber-900">OBS PEDIDO: {order.notes}</p>}<div className="mt-3 space-y-2">{(order.items || []).map((item) => <div key={item.id} className="rounded-xl bg-basso-paper p-3"><p className="text-sm"><strong>{item.quantity}×</strong> {compactItemName(item) || "Item"}</p>{itemDetails(item).map((line, i) => <p key={i} className={`mt-1 whitespace-pre-wrap text-xs ${line.emphasis ? "font-black text-basso-wine" : "text-black/60"}`}>{line.text}</p>)}</div>)}</div><div className="mt-3 flex gap-2"><button className="btn-secondary min-h-9 flex-1 text-xs" disabled={working === `print_${order.id}` || busy} onClick={() => print(order)}>{working === `print_${order.id}` ? <Loader2 className="animate-spin" size={14} /> : <Printer size={14} />}Imprimir</button>{target ? <button className="btn-primary min-h-9 flex-1 text-xs" disabled={busy || working === `print_${order.id}`} onClick={() => advance(order)}>{busy ? <Loader2 className="animate-spin" size={14} /> : null}{statusLabel[target]}</button> : order.status === "received" ? <span className="flex flex-1 items-center justify-center rounded-xl bg-amber-50 px-2 text-center text-[11px] font-bold text-amber-800">Aguardando confirmação</span> : <span className="flex flex-1 items-center justify-center rounded-xl bg-emerald-50 px-2 text-center text-[11px] font-bold text-emerald-800">Aguardando expedição</span>}</div></div>
               </article>;
             })}
             {!columnOrders.length && <div className="rounded-2xl border border-dashed border-black/10 bg-white/60 p-6 text-center text-xs text-black/40">Nenhum pedido nesta etapa.</div>}

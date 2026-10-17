@@ -101,7 +101,7 @@ export async function GET() {
 
     const orders = rawOrders.map((order: any) => ({
       id: String(order.id),
-      number: Number(order.number || 0),
+      number: Number(order.daily_number ?? order.number ?? 0),
       channel: order.channel,
       status: order.status,
       paymentStatus: order.payment_status || "pending",

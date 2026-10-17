@@ -1,3 +1,4 @@
+import { hydratePrintJobs } from "@/lib/print-presentation";
 import { NextResponse } from "next/server";
 import { requireOperationalRole } from "@/lib/authz";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -12,7 +13,7 @@ export async function GET(){
     const {data:connection}=await db.from("integration_connections").select("active,last_health_at,last_health_status,last_error_message,metadata").eq("provider","printer").maybeSingle();
     const lastHealth=connection?.last_health_at?Date.parse(connection.last_health_at):0;
     const bridgeOnline=Boolean(connection?.active&&connection?.last_health_status==="operational"&&lastHealth&&Date.now()-lastHealth<60_000);
-    return NextResponse.json({jobs:data||[],bridgeConfigured:Boolean(process.env.PRINT_BRIDGE_KEY),bridgeOnline,lastHealthAt:connection?.last_health_at||null,bridgeStatus:connection?.last_health_status||"unknown",bridgeMetadata:connection?.metadata||{}},{headers:{"Cache-Control":"no-store"}});
+    return NextResponse.json({jobs:await hydratePrintJobs(db,data||[]),bridgeConfigured:Boolean(process.env.PRINT_BRIDGE_KEY),bridgeOnline,lastHealthAt:connection?.last_health_at||null,bridgeStatus:connection?.last_health_status||"unknown",bridgeMetadata:connection?.metadata||{}},{headers:{"Cache-Control":"no-store"}});
   }catch(error){
     return NextResponse.json({error:error instanceof Error?error.message:"Falha ao carregar impressão."},{status:400});
   }

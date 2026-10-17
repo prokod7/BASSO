@@ -10,7 +10,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
 
     const [{ data: order, error: orderError }, { data: verification, error: verificationError }] = await Promise.all([
-      db.from("orders").select("id,number,channel,status,driver_id").eq("id", id).is("deleted_at", null).single(),
+      db.from("orders").select("id,number,daily_number,channel,status,driver_id").eq("id", id).is("deleted_at", null).single(),
       db.from("delivery_verifications").select("pickup_token,pickup_code,pickup_verified_at,pickup_verified_driver_id,delivery_verified_at").eq("order_id", id).maybeSingle(),
     ]);
     if (orderError) throw orderError;
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({
       applicable: true,
       orderId: id,
-      number: Number(order.number),
+      number: Number(order.daily_number ?? order.number),
       status: order.status,
       pickupCode: verification.pickup_code,
       pickupToken: verification.pickup_token,

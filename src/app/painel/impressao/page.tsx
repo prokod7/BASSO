@@ -1,5 +1,6 @@
 "use client";
 
+import { compactItemName, itemDetails } from "@/lib/item-presentation";
 import { useEffect, useMemo, useState } from "react";
 import {
   Check,
@@ -22,6 +23,7 @@ type JobPayload = {
   order?: {
     id?: string;
     number?: string | number;
+    daily_number?: number;
     channel?: string;
     customer_name?: string;
     customer_phone?: string;
@@ -36,6 +38,7 @@ type JobPayload = {
     address?: Record<string, unknown> | null;
   };
   items?: Array<{
+    kind?: import("@/types").CartItem["kind"];
     quantity?: number;
     name_snapshot?: string;
     unit_price_cents?: number;
@@ -235,15 +238,11 @@ function receiptHtml(job: Job) {
   const items = payload.items || [];
   const money = (cents: unknown) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(cents || 0) / 100);
   const rows = items.map(item => {
-    const selection = item.selection || {};
-    const extras: string[] = [];
-    if (selection.size) extras.push(`${escapeHtml(selection.size)} • massa ${escapeHtml(selection.mass || "traditional")}`);
-    if (selection.flavorA) extras.push(`Sabor: ${escapeHtml(selection.flavorA)}${selection.flavorB ? ` / ${escapeHtml(selection.flavorB)}` : ""}`);
-    if (Array.isArray(selection.removedA) && selection.removedA.length) extras.push(`SEM: ${escapeHtml(selection.removedA.join(", "))}`);
-    if (selection.notes) extras.push(`OBS: ${escapeHtml(selection.notes)}`);
-    return `<section class="item"><strong>${escapeHtml(item.quantity || 1)}x ${escapeHtml(item.name_snapshot || "Item")}</strong><span>${money(item.unit_price_cents)}</span>${extras.map(line => `<small>${line}</small>`).join("")}</section>`;
+    const normalized = { ...item, name: String(item.name_snapshot || "Item"), kind: item.kind || "product" } as import("@/types").CartItem;
+    const extras = itemDetails(normalized);
+    return `<section class="item"><strong>${escapeHtml(item.quantity || 1)}x ${escapeHtml(compactItemName(normalized))}</strong><span>${money(item.unit_price_cents)}</span>${extras.map(line => `<small style="white-space:pre-wrap">${escapeHtml(line.text)}</small>`).join("")}</section>`;
   }).join("");
   const address = order.address || {};
   const addressText = [address.street, address.number, address.district, address.city, address.state].filter(Boolean).map(escapeHtml).join(" • ");
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido ${escapeHtml(order.number || order.id || job.order_id || job.id)}</title><style>@page{margin:4mm}*{box-sizing:border-box}body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:0 auto;padding:4mm;max-width:80mm;color:#000;font-size:12px}.center{text-align:center}.line{border-top:1px dashed #000;margin:8px 0}.item{padding:7px 0;border-bottom:1px dashed #777}.item strong,.item span,.item small{display:block}.item span{margin-top:2px}.item small{margin-top:3px}.total{font-size:16px;font-weight:800}.muted{font-size:10px}@media print{button{display:none}}</style></head><body><div class="center"><strong>LA FORNERIA BASSO</strong><div>${escapeHtml(job.sector).toUpperCase()}${job.is_reprint ? " • REIMPRESSÃO" : ""}</div></div><div class="line"></div><strong>PEDIDO #${escapeHtml(order.number || order.id || job.order_id || "")}</strong><div>Cliente: ${escapeHtml(order.customer_name || "")}</div>${order.customer_phone ? `<div>Telefone: ${escapeHtml(order.customer_phone)}</div>` : ""}${order.table_number ? `<div>Mesa: ${escapeHtml(order.table_number)}</div>` : ""}<div class="line"></div>${rows}<div class="line"></div>${order.subtotal_cents != null ? `<div>Subtotal: ${money(order.subtotal_cents)}</div>` : ""}${Number(order.discount_cents || 0) ? `<div>Desconto: -${money(order.discount_cents)}</div>` : ""}${Number(order.delivery_fee_cents || 0) ? `<div>Entrega: ${money(order.delivery_fee_cents)}</div>` : ""}${order.total_cents != null ? `<div class="total">TOTAL: ${money(order.total_cents)}</div>` : ""}${order.payment_method ? `<div>Pagamento: ${escapeHtml(order.payment_method).toUpperCase()}</div>` : ""}${addressText ? `<div class="line"></div><strong>ENDEREÇO</strong><div>${addressText}</div>${address.cep ? `<div>CEP: ${escapeHtml(address.cep)}</div>` : ""}` : ""}${order.notes ? `<div class="line"></div><strong>OBS:</strong><div>${escapeHtml(order.notes)}</div>` : ""}<div class="line"></div><div class="center muted">${new Date().toLocaleString("pt-BR")}</div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido ${escapeHtml(order.daily_number || order.number || order.id || job.order_id || job.id)}</title><style>@page{margin:4mm}*{box-sizing:border-box}body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:0 auto;padding:4mm;max-width:80mm;color:#000;font-size:12px}.center{text-align:center}.line{border-top:1px dashed #000;margin:8px 0}.item{padding:7px 0;border-bottom:1px dashed #777}.item strong,.item span,.item small{display:block}.item span{margin-top:2px}.item small{margin-top:3px}.total{font-size:16px;font-weight:800}.muted{font-size:10px}@media print{button{display:none}}</style></head><body><div class="center"><strong>LA FORNERIA BASSO</strong><div>${escapeHtml(job.sector).toUpperCase()}${job.is_reprint ? " • REIMPRESSÃO" : ""}</div></div><div class="line"></div><strong>PEDIDO #${escapeHtml(order.daily_number || order.number || order.id || job.order_id || "")}</strong><div>Cliente: ${escapeHtml(order.customer_name || "")}</div>${order.customer_phone ? `<div>Telefone: ${escapeHtml(order.customer_phone)}</div>` : ""}${order.table_number ? `<div>Mesa: ${escapeHtml(order.table_number)}</div>` : ""}<div class="line"></div>${rows}<div class="line"></div>${order.subtotal_cents != null ? `<div>Subtotal: ${money(order.subtotal_cents)}</div>` : ""}${Number(order.discount_cents || 0) ? `<div>Desconto: -${money(order.discount_cents)}</div>` : ""}${Number(order.delivery_fee_cents || 0) ? `<div>Entrega: ${money(order.delivery_fee_cents)}</div>` : ""}${order.total_cents != null ? `<div class="total">TOTAL: ${money(order.total_cents)}</div>` : ""}${order.payment_method ? `<div>Pagamento: ${escapeHtml(order.payment_method).toUpperCase()}</div>` : ""}${addressText ? `<div class="line"></div><strong>ENDEREÇO</strong><div>${addressText}</div>${address.cep ? `<div>CEP: ${escapeHtml(address.cep)}</div>` : ""}` : ""}${order.notes ? `<div class="line"></div><strong>OBS:</strong><div>${escapeHtml(order.notes)}</div>` : ""}<div class="line"></div><div class="center muted">${new Date().toLocaleString("pt-BR")}</div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`;
 }

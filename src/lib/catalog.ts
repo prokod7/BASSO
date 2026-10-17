@@ -35,7 +35,7 @@ const combo = {
     allowAddonPlacement: true,
   },
 };
-export const catalog: BaseCatalog = { ...source, flavors, beverages: [...beverages, ...delValle], combo };
+export const catalog: BaseCatalog = { ...source, flavors: flavors.sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })), beverages: [...beverages, ...delValle], combo };
 
 export const productImages: Record<string, string> = {
   "agua-tonica-fys-lata-350-ml": "/assets/products/agua-tonica-fys-lata-350ml.jpg",

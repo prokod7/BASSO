@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
     const { error: accessError } = await db.from("order_access_tokens").insert({ order_id: createdId, token_hash: createHash("sha256").update(accessToken).digest("hex") });
     if (accessError) throw accessError;
     await db.rpc("enqueue_order_print_jobs", { p_order_id: createdId });
-    const { data: created, error: createdError } = await db.from("orders").select("number,status,payment_status,total_cents").eq("id", createdId).single();
+    const { data: created, error: createdError } = await db.from("orders").select("daily_number,number,status,payment_status,total_cents").eq("id", createdId).single();
     if (createdError) throw createdError;
-    const response = { id: createdId, number: Number(created.number), status: created.status, paymentStatus: created.payment_status, total: created.total_cents, accessToken, quote: { ...quote, discount, total: order.total } };
+    const response = { id: createdId, number: Number(created.daily_number ?? created.number), status: created.status, paymentStatus: created.payment_status, total: created.total_cents, accessToken, quote: { ...quote, discount, total: order.total } };
     await db.from("idempotency_keys").insert({ key, scope: "orders:create-internal", response_body: response, status_code: 201 });
     return NextResponse.json(response, { status: 201 });
   } catch (error) {
