@@ -25,16 +25,13 @@ const roleAllowedTargets: Record<OperationalRole, OrderStatus[]> = {
 export function validTransitions(current: OrderStatus, channel: OrderChannel, role: OperationalRole): OrderStatus[] {
   return orderTransitionMatrix[current].filter((target) => {
     if (target === "out_for_delivery" && !["own_delivery", "ifood", "99food"].includes(channel)) return false;
-    // Conclusão excepcional: somente gestor/caixa, com motivo obrigatório e histórico auditado.
-    if (target === "completed" && ["received", "confirmed", "preparing"].includes(current) && !["manager", "counter"].includes(role)) return false;
-    // Para delivery, gestor/caixa pode concluir diretamente de "Pronto",
-    // desde que informe o motivo da etapa pulada. Motoboy mantém fluxo restrito.
-    if (current === "ready" && target === "completed" && ["own_delivery", "ifood", "99food"].includes(channel) && !["manager", "counter"].includes(role)) return false;
+    if (target === "completed") return true;
     return roleAllowedTargets[role].includes(target);
   });
 }
 
 export function requiresTransitionReason(current: OrderStatus, target: OrderStatus): boolean {
+  if (target === "completed" && current !== "cancelled") return false;
   if (target === "cancelled") return true;
   const forward: Record<OrderStatus, number> = {
     received: 1,

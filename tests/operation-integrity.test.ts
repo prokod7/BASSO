@@ -40,6 +40,8 @@ describe('auditoria 032 — transações PostgreSQL em ambiente isolado',()=>{
   if(!open)throw new Error('Fixture open_table_tab ausente');
   await db.exec(open);
   await db.exec(read('supabase/migrations/032_audit_operation_integrity.sql'));
+  await db.exec(read('supabase/migrations/037_complete_order_without_auto_payment.sql'));
+  await db.exec(read('supabase/migrations/039_direct_order_completion.sql'));
  });
  afterAll(async()=>{await db?.close();});
  beforeEach(async()=>{
@@ -163,4 +165,36 @@ describe('auditoria 032 — transações PostgreSQL em ambiente isolado',()=>{
   expect(await value("select has_function_privilege('authenticated','public.add_order_item_transaction(text,jsonb,uuid)','EXECUTE')")).toBe(false);
   expect(await value("select has_function_privilege('anon','public.manage_tab_transaction(uuid,text,text,text,uuid)','EXECUTE')")).toBe(false);
  });
+ it.each(['received','confirmed','preparing','ready','out_for_delivery'])('conclui %s sem motivo, sem recebimento e com autor no histórico',async status=>{
+  await create('complete-direct',{channel:'own_delivery',address:{street:'Rua de teste',number:'1',district:'Centro',city:'Teste',state:'SP',cep:'00000000'}});
+  await db.query('update orders set status=$1::order_status where id=$2',[status,'complete-direct']);
+  const beforePayments=await value('select count(*) from payments');
+  const beforeCash=await value('select count(*) from cash_movements');
+  await value("select public.change_order_status_controlled($1,'completed',null,$2::uuid,1)",['complete-direct',actor]);
+  const result=await row('orders','complete-direct');
+  expect(result).toMatchObject({status:'completed',payment_status:'pending',updated_by:actor,version:2});expect(result.completed_at).toBeTruthy();
+  expect(await value('select count(*) from payments')).toBe(beforePayments);expect(await value('select count(*) from cash_movements')).toBe(beforeCash);
+  expect(await value("select actor_id from order_status_history where order_id='complete-direct' and to_status='completed'")).toBe(actor);
+  expect(await value("select actor_id from audit_logs where entity_id='complete-direct' and action='ORDER_STATUS_CHANGED'")).toBe(actor);
+  await value("select public.change_order_status_controlled($1,'completed',null,$2::uuid,2)",['complete-direct',actor]);
+  expect(await value("select count(*) from order_status_history where order_id='complete-direct' and to_status='completed'")).toBe(1);
+ });
+ it('não altera pagamento parcial ou valores da comanda ao concluir',async()=>{
+  await tabOrder('partial-complete');await value('select public.open_cash_session(0,$1::uuid)',[actor]);await payTab('payment-before-completion',200);
+  const paidBefore=await row('tabs',tabId);const count=await value('select count(*) from payments');
+  const version=(await row('orders','partial-complete')).version;
+  await value("select public.change_order_status_controlled($1,'completed',null,$2::uuid,$3)",['partial-complete',actor,version]);
+  expect((await row('orders','partial-complete')).payment_status).toBe('partial');expect((await row('tabs',tabId)).paid_cents).toBe(paidBefore.paid_cents);expect(await value('select count(*) from payments')).toBe(count);
+ });
+ it('recusa concluir cancelado e mantém motivo no retorno',async()=>{
+  await create('cancelled-complete');await db.exec("update orders set status='cancelled' where id='cancelled-complete'");
+  await expect(value("select public.change_order_status_controlled('cancelled-complete','completed',null,$1::uuid,1)",[actor])).rejects.toThrow(/Reabra/);
+  await create('backward');await db.exec("update orders set status='preparing' where id='backward'");
+  await expect(value("select public.change_order_status_controlled('backward','confirmed',null,$1::uuid,1)",[actor])).rejects.toThrow(/Motivo/);
+ });
+ it('mantém a função restrita ao servidor',async()=>{
+  expect(await value("select has_function_privilege('anon','public.change_order_status_controlled(text,public.order_status,text,uuid,integer)','execute')")).toBe(false);
+  expect(await value("select has_function_privilege('authenticated','public.change_order_status_controlled(text,public.order_status,text,uuid,integer)','execute')")).toBe(false);
+ });
+
 });

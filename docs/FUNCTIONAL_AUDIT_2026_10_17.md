@@ -71,3 +71,20 @@ Correções adicionais:
 Validação desta etapa: 336 testes em 28 arquivos, incluindo 17 novos cenários de totais, API, componentes e downloads simulados. Os testes exercitam o atalho de atrasados e seu CSV filtrado, recebimento de serviço restante, aviso de impressão, reordenação da prévia, conflitos da fila, falhas/respostas antigas do CRM e solicitação de CSV de relatórios com nome/período corretos. A suíte anterior continua cobrindo erro de exportação de relatórios e os contratos das rotas.
 
 Limites mantidos: downloads foram verificados em DOM de testes, sem comprovar salvamento em Chrome/Safari reais. Não houve teste físico de impressora nem processamento real de pagamento nesta etapa. O indicador A receber continua limitado aos pedidos presentes no snapshot operacional (250 recentes mais os vinculados a comandas abertas); não substitui o contas a receber histórico. Não se afirma que todas as variantes de todos os botões foram executadas em produção.
+
+
+## Conclusão direta e Kanban — 17/10/2026
+
+Conferido o relato trazido de outro chat: a conclusão sem baixa automática já existia na migration 037, mas a API ainda restringia perfis/motoboy e o banco ainda exigia motivo ao saltar etapas. O Kanban não tinha alça separada, seletor móvel, botão de conclusão nem controle de versão na requisição.
+
+Implementado:
+
+- Todos os oito perfis autenticados e ativos do painel podem concluir qualquer etapa ativa diretamente, inclusive visualizador e motoboy, sem `orders.edit`, motivo, código de entrega ou pagamento. Sessões inválidas/inativas continuam bloqueadas. Pedidos cancelados devem ser reabertos antes. A navegação de Pedidos também fica disponível ao motoboy.
+- Migration 039 remove o requisito de justificativa para conclusão e preserva o autor/horário em histórico e auditoria, as transações, o controle de versão e a separação financeira. A função continua restrita ao servidor, sem acesso direto de anon/authenticated. Cancelamento e retorno de etapas mantêm suas regras.
+- Kanban: alça separada do botão de abrir, colunas com contadores e destaque de destino, rolagem horizontal e seletor Mover para, conclusão verde em um toque, Salvando, confirmação e erro acessível. O card só muda após resposta de sucesso; falha/conflito solicita nova sincronização. Respostas e snapshots com versões antigas não sobrescrevem versão confirmada.
+- Detalhe da comanda também possui conclusão direta. A conclusão usa a versão do pedido em vez de depender da trava temporária de edição. Mensagens da operação são preservadas no recarregamento imediato.
+- O modo demonstração deixa de marcar como pago ao concluir. Destaque de atrasados dos cards usa a mesma regra do painel.
+
+Validação: 374 testes em 30 arquivos, incluindo testes da API com autenticação/perfis, transações PostgreSQL isoladas e interação do Kanban em DOM de testes. Os testes verificam pagamento pendente/parcial, inexistência de novos recebimentos/caixa, autor no histórico/auditoria, concorrência, restrições de sessão e ausência de permissão direta à função SQL.
+
+Esta validação não utiliza login em produção, não conclui pedidos reais e não comprova gestos em um iPhone físico. O fluxo separado de comprovação de entrega por código no aplicativo do motoboy permanece disponível; a conclusão operacional pelo painel não depende dele.

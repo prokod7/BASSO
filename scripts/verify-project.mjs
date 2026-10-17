@@ -150,7 +150,7 @@ const deliveryAssign = read("src/app/api/delivery/assign/route.ts");
 const statusApi = read("src/app/api/orders/[id]/status/route.ts");
 check("Retirada exige QR ou código e motoboy atribuído", /verify_delivery_pickup/.test(sql) && /pickupToken/.test(driverPwa) && /pickupCode/.test(driverPwa) && /verify_delivery_pickup/.test(pickupApi));
 check("Entrega exige código privado do cliente", /confirm_delivery_with_code/.test(sql) && /deliveryCode/.test(customerOrder) && /confirm_delivery_with_code/.test(completeApi));
-check("Motoboy não pode pular validações", /Valide a retirada pelo QR Code/.test(statusApi) && /código de confirmação do cliente/.test(statusApi));
+check("Retirada validada e conclusão operacional disponível a todos os perfis", /Valide a retirada pelo QR Code/.test(statusApi) && /body.status === "completed"/.test(statusApi) && /"finance", "viewer"/.test(statusApi));
 check("Tentativas inválidas possuem bloqueio", /pickup_attempts\+1>=5/.test(sql) && /delivery_attempts\+1>=5/.test(sql) && /interval '5 minutes'/.test(sql));
 check("Token de rastreio é preservado fora do navegador", /token_value/.test(sql) && /token_value: token/.test(deliveryAssign));
 check("Tracking token não tem SELECT direto para browser", /revoke all on table public\.tracking_tokens from anon, authenticated/i.test(sql));

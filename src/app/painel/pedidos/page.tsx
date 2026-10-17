@@ -7,9 +7,8 @@ import { PageHeader } from "@/components/internal/PageHeader";
 import { OrderCard } from "@/components/internal/OrderCard";
 import { OrderDetailPanel } from "@/components/internal/OrderDetailPanel";
 import { useDemoState, demoActions } from "@/lib/demo-store";
-import { allowedStatuses, channelLabel, statusLabel } from "@/lib/order-validation";
-import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client/api";
-import { requiresTransitionReason } from "@/lib/operational-state";
+import { channelLabel, statusLabel } from "@/lib/order-validation";
+import { OrderKanban } from "@/components/internal/OrderKanban";
 import { currency, isDemoMode, shortDateTime } from "@/lib/utils";
 import { isOrderDelayed, pendingPaymentTotal } from "@/lib/operational-totals";
 import type { Order, OrderChannel, OrderStatus } from "@/types";
@@ -86,8 +85,8 @@ function OrdersContent() {
       {advanced && <div className="mt-3 grid gap-3 border-t border-black/5 pt-3 sm:grid-cols-3"><select aria-label="Pagamento do pedido" className="input" value={payment} onChange={(event) => setPayment(event.target.value)}><option value="all">Todos os pagamentos</option><option value="pending">Pendente</option><option value="partial">Parcial</option><option value="paid">Pago</option><option value="refunded">Estornado</option><option value="cancelled">Cancelado</option></select><label className="flex h-11 items-center gap-3 rounded-xl border border-black/10 bg-white px-3 text-sm font-semibold"><input type="checkbox" checked={attention} onChange={(event) => setAttention(event.target.checked)}/>Somente pedidos que exigem atenção</label><label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={delayed} onChange={event => setDelayed(event.target.checked)}/>Somente pedidos atrasados</label><button className="btn-ghost" onClick={() => { setDelayed(false); setQuery(""); setStatus("all"); setChannel("all"); setPayment("all"); setAttention(false); }}>Limpar filtros</button></div>}
     </section>
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold text-black/50">{filtered.length} pedido(s) encontrado(s)</p><div className="flex rounded-xl border bg-white p-1"><ViewButton active={view === "kanban"} onClick={() => changeView("kanban")} icon={<KanbanSquare size={16}/>} label="Kanban"/><ViewButton active={view === "list"} onClick={() => changeView("list")} icon={<List size={16}/>} label="Lista"/><ViewButton active={view === "cards"} onClick={() => changeView("cards")} icon={<Grid2X2 size={16}/>} label="Cards"/></div></div>
-    {view === "kanban" && <Kanban orders={filtered} onOpen={(order) => setSelectedId(order.id)}/>} 
-    {view === "list" && <OrderList orders={filtered} onOpen={(order) => setSelectedId(order.id)}/>} 
+    {view === "kanban" && <OrderKanban orders={filtered} onOpen={(order) => setSelectedId(order.id)}/>}
+    {view === "list" && <OrderList orders={filtered} onOpen={(order) => setSelectedId(order.id)}/>}
     {view === "cards" && <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">{filtered.map((order) => <OrderCard key={order.id} order={order} onOpen={() => setSelectedId(order.id)}/>)}</div>}
     {!filtered.length && <div className="surface p-10 text-center"><p className="font-display text-2xl font-bold">Nenhum pedido encontrado</p><p className="mt-2 text-sm text-black/50">Altere os filtros para visualizar outros pedidos.</p></div>}
     <OrderDetailPanel orderId={selectedId} onClose={() => setSelectedId(null)}/>
@@ -96,27 +95,6 @@ function OrdersContent() {
 
 export default function OrdersPage() {
   return <Suspense fallback={<div className="surface p-8 text-center"><p className="font-display text-xl font-bold">Carregando pedidos…</p><p className="mt-2 text-sm text-black/50">Preparando filtros e comandas.</p></div>}><OrdersContent/></Suspense>;
-}
-
-function Kanban({ orders, onOpen }: { orders: Order[]; onOpen: (order: Order) => void }) {
-  const [dragging,setDragging]=useState<string | null>(null);
-  const [working,setWorking]=useState<string | null>(null);
-  const [message,setMessage]=useState("");
-  const columns: Array<{ status: OrderStatus; label: string }> = [
-    { status: "received", label: "Recebidos" }, { status: "confirmed", label: "Confirmados" }, { status: "preparing", label: "Em preparo" }, { status: "ready", label: "Prontos" }, { status: "out_for_delivery", label: "Em entrega" }, { status: "completed", label: "Concluídos" },
-  ];
-  async function move(order:Order,target:OrderStatus){
-    if(order.status===target)return;
-    let reason:string|undefined;
-    if(requiresTransitionReason(order.status,target)){reason=window.prompt(`Informe o motivo para mover de ${statusLabel[order.status]} para ${statusLabel[target]}:`)?.trim()||undefined;if(!reason)return;}
-    setWorking(order.id);setMessage("");
-    try{
-      if(isDemoMode()) demoActions.updateOrderStatus(order.id,target,"Operação Kanban");
-      else {await apiJson(`/api/orders/${order.id}/status`,{method:"PATCH",body:JSON.stringify({status:target,reason:reason||"Movido pelo Kanban"})});requestOperationalRefresh();}
-    }catch(error){setMessage(formatApiError(error,"Não foi possível mover o pedido."));}
-    finally{setWorking(null);setDragging(null);}
-  }
-  return <>{message&&<p className="mb-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{message}</p>}<div className="scrollbar-none flex gap-4 overflow-x-auto pb-4">{columns.map((column)=>{const rows=orders.filter(order=>order.status===column.status);return <section key={column.status} onDragOver={e=>e.preventDefault()} onDrop={()=>{const order=orders.find(o=>o.id===dragging);if(order)void move(order,column.status)}} className={`w-[330px] shrink-0 rounded-3xl border p-3 transition ${dragging?"border-basso-gold/50 bg-basso-gold/5":"border-black/5 bg-black/[.025]"}`}><div className="mb-3 flex items-center justify-between px-2"><h2 className="font-display text-xl font-bold">{column.label}</h2><span className="rounded-full bg-white px-2.5 py-1 text-xs font-black">{rows.length}</span></div><div className="space-y-3">{rows.map(order=><div key={order.id} draggable={!working} onDragStart={()=>setDragging(order.id)} onDragEnd={()=>setDragging(null)} className={`${working===order.id?"pointer-events-none opacity-50":"cursor-grab active:cursor-grabbing"}`}><OrderCard order={order} compact onOpen={onOpen}/></div>)}{!rows.length&&<div className="rounded-2xl border border-dashed border-black/10 p-8 text-center text-xs text-black/35">{dragging?"Solte o pedido aqui":"Sem pedidos nesta etapa"}</div>}</div></section>})}<section className="w-[330px] shrink-0 rounded-3xl border border-black/5 bg-black/[.025] p-3"><div className="mb-3 flex items-center justify-between px-2"><h2 className="font-display text-xl font-bold">Cancelados</h2><span className="rounded-full bg-white px-2.5 py-1 text-xs font-black">{orders.filter(order=>order.status==="cancelled").length}</span></div><div className="space-y-3">{orders.filter(order=>order.status==="cancelled").slice(0,12).map(order=><OrderCard key={order.id} order={order} compact onOpen={onOpen}/>)}</div></section></div><p className="mt-2 text-xs text-black/40">Dica: clique e segure um pedido e arraste para a próxima etapa. Transições sensíveis continuam validadas pelo servidor.</p></>;
 }
 
 function OrderList({ orders, onOpen }: { orders: Order[]; onOpen: (order: Order) => void }) { return <div className="surface overflow-hidden"><div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead className="bg-basso-black text-white"><tr>{["Pedido", "Cliente", "Canal", "Etapa", "Itens", "Pagamento", "Total", "Entrada", ""].map((label) => <th key={label} className="px-4 py-3 text-xs uppercase">{label}</th>)}</tr></thead><tbody className="divide-y">{orders.map((order) => <tr key={order.id} className="hover:bg-basso-paper"><td className="px-4 py-3 font-black">#{order.number}</td><td className="px-4 py-3"><strong>{order.customerName}</strong><p className="text-xs text-black/40">{order.customerPhone}</p></td><td className="px-4 py-3"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-bold ${order.channel==="ifood"?"bg-red-600 text-white":order.channel==="99food"?"bg-yellow-300 text-black":"bg-basso-paper text-black/65"}`}>{channelLabel[order.channel]}</span>{order.externalId&&["ifood","99food"].includes(order.channel)&&<p className="mt-1 max-w-40 truncate text-[11px] font-semibold text-black/45" title={order.externalId}>Cód. {order.externalId}</p>}</td><td className="px-4 py-3"><span className="rounded-full bg-basso-paper px-2 py-1 text-xs font-bold">{statusLabel[order.status]}</span></td><td className="px-4 py-3">{order.items.reduce((sum, item) => sum + item.quantity, 0)}</td><td className="px-4 py-3">{order.paymentStatus}</td><td className="px-4 py-3 font-bold text-basso-wine">{currency(order.total)}</td><td className="px-4 py-3 text-xs text-black/50">{shortDateTime(order.createdAt)}</td><td className="px-4 py-3"><button className="btn-ghost" onClick={() => onOpen(order)}>Administrar</button></td></tr>)}</tbody></table></div></div>; }
