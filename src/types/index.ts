@@ -38,6 +38,8 @@ export interface Product { id: string; name: string; description: string; price:
 export interface MenuCategory { id: string; name: string; kind: string; sortOrder: number; active: boolean; image?: string; }
 export type AddonPlacement = "whole" | "halfA" | "halfB";
 export interface PizzaSelection {
+  sweetBase?: "standard" | "hazelnut-zero";
+  cutPreference?: "uncut" | "cut";
   labels?: Record<string, string>;
   size: "grande" | "broto";
   mass: "traditional" | "integral";

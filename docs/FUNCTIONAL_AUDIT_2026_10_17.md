@@ -96,3 +96,15 @@ O áudio embutido é Opus mono de 4,35 s, cerca de 6 kbps, com taxa de origem de
 Havia duas fontes simultâneas: a campainha global e um oscilador de 620 Hz no KDS, sem envelope de entrada/saída. Além disso, o painel reiniciava a campainha em andamento quando chegava outro pedido. Painel e KDS agora compartilham um único reprodutor da mesma campainha, sem sobreposição nem reinício durante reprodução. A busca/troca de setor do KDS não dispara avisos para pedidos já conhecidos. Desativar/reativar o som continua disponível; bloqueio de autoplay não interrompe o recebimento de pedidos.
 
 Foram acrescentados testes para solicitações simultâneas, reprodução em andamento, término, autoplay bloqueado, filtro/setor da cozinha e controle de som. Não foi alterado o conteúdo da campainha nem se afirma recuperar qualidade perdida na compressão. Para melhorar o próprio arquivo é necessário reenviar o MP3 original. Não houve teste nos alto-falantes do aparelho do usuário.
+
+## MP3 original, bebidas do salão e base doce visível — 17/10/2026
+
+Recebido `SOM BASSO 2.zip`. O MP3 de 64.787 bytes, estéreo/44,1 kHz, foi colocado na campainha sem recompressão; conferência byte a byte confirmou identidade com o arquivo extraído. Mantido o reprodutor compartilhado da etapa anterior, sem cortes/sobreposição. Isso substitui a versão Opus de aproximadamente 6 kbps.
+
+A consulta do catálogo confirmou ausência de chopp, baldes e itens exclusivos do salão. A imagem `02-IMG_9312.png` permite ler chopp Pilsen e de vinho, caneca 500 ml a R$ 20,00, e baldes com seis long necks a R$ 55,00 (Spaten, Heineken, Budweiser e Corona). A migration 040 cadastra somente esses seis produtos nos canais dine_in/table_qr, sem alterar produtos já existentes. A parte de taças/copos está cortada; nenhum nome/preço foi inventado para esses itens. É necessária uma foto completa dessa parte do cardápio para terminar o cadastro.
+
+O Creme de Avelã Zero estava em uma etapa extra de finalização após Adicionar. A escolha foi integrada à montagem principal, visível antes da confirmação e com acréscimo de R$ 25,00. O mesmo componente atende cardápio, garçom, PDV e edição do carrinho. Corte e base são preservados na seleção; pizzas salgadas não recebem esses metadados nem acréscimo. O antigo EnhancedPizzaBuilder mantém compatibilidade dos imports, delegando ao montador único.
+
+Regressões adicionais: escolha e retirada da base, edição, preço final e ausência de cobrança em salgada; cadastro idempotente e canais/preços das bebidas em PostgreSQL isolado. Não foram lançados pedidos ou pagamentos reais para teste. Taças/copos e a audição nos aparelhos físicos permanecem pendentes.
+
+Validação desta etapa: `npm run verify` aprovado, 387 testes em 34 arquivos, TypeScript e build de produção. A migration 040 foi aplicada e a consulta de retorno confirmou os seis itens ativos com preços e canais corretos.
