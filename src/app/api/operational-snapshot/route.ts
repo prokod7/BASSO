@@ -43,7 +43,7 @@ export async function GET() {
     let tabOrders: any[] = [];
     if (openTabIds.length) {
       const tabOrdersR = await db.from("orders").select("*").is("deleted_at", null).in("tab_id", openTabIds);
-      if (tabOrdersR.error) warnings.push(warningFrom("Pedidos de comandas", tabOrdersR.error));
+      if (tabOrdersR.error) throw new Error(warningFrom("Pedidos de comandas", tabOrdersR.error));
       else tabOrders = tabOrdersR.data || [];
     }
 
@@ -58,6 +58,15 @@ export async function GET() {
       const itemsR = await db.from("order_items").select("*").in("order_id", orderIds).order("created_at", { ascending: true });
       if (itemsR.error) throw new Error(warningFrom("Itens dos pedidos", itemsR.error));
       rawItems = itemsR.data || [];
+    }
+
+    // Pagamentos de comanda são contabilizados por tab.paid_cents, sem duplicar por pedido.
+    const partialIds = rawOrders.filter(order => !order.tab_id && order.payment_status === "partial").map(order => String(order.id));
+    const paidByOrder = new Map<string, number>();
+    if (partialIds.length) {
+      const paymentsR = await db.from("payments").select("order_id,amount_cents").in("order_id", partialIds).eq("status", "paid");
+      if (paymentsR.error) throw new Error(warningFrom("Pagamentos parciais", paymentsR.error));
+      for (const payment of paymentsR.data || []) paidByOrder.set(String(payment.order_id), (paidByOrder.get(String(payment.order_id)) || 0) + Number(payment.amount_cents || 0));
     }
 
     // Domínios auxiliares não podem derrubar KDS/Delivery/Salão caso uma consulta isolada falhe.
@@ -116,6 +125,8 @@ export async function GET() {
       discount: Number(order.discount_cents || 0),
       deliveryFee: Number(order.delivery_fee_cents || 0),
       total: Number(order.total_cents || 0),
+      paidAmount: order.payment_status === "paid" ? Number(order.total_cents || 0) : paidByOrder.get(String(order.id)) ?? 0,
+      balanceDue: order.tab_id ? undefined : order.payment_status === "paid" ? 0 : Math.max(0, Number(order.total_cents || 0) - (paidByOrder.get(String(order.id)) ?? 0)),
       paymentMethod: order.payment_method || "cash",
       changeFor: order.change_for_cents || undefined,
       notes: order.notes || undefined,
@@ -145,7 +156,7 @@ export async function GET() {
         items: tabOrdersForCurrent.flatMap((order: any) => order.items),
         paidCents: Number(tab.paid_cents || 0),
         totalCents: tabOrdersForCurrent.reduce((sum: number, order: any) => sum + Number(order.total || 0), 0),
-        serviceChargeRate: Number(tab.service_charge_rate_percent || 10),
+        serviceChargeRate: Number(tab.service_charge_rate_percent ?? 10),
         serviceChargeApplied: tab.service_charge_applied !== false,
         serviceChargeCents: Number(tab.service_charge_cents || 0),
         waiter: "Equipe",

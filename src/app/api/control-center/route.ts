@@ -1,3 +1,4 @@
+import { isOrderDelayed } from "@/lib/operational-totals";
 import { NextResponse } from "next/server";
 import { requireOperationalRole } from "@/lib/authz";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -24,7 +25,6 @@ export async function GET() {
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
 
     const today = startOfTodayIso();
-    const delayedCutoff = new Date(Date.now() - 60 * 60_000).toISOString();
     const activeStatuses = ["received", "confirmed", "preparing", "ready", "out_for_delivery"];
 
     const [
@@ -91,10 +91,10 @@ export async function GET() {
     const completedToday = todayOrders.filter((order) => order.status === "completed").length;
     const cancelledToday = todayOrders.filter((order) => order.status === "cancelled").length;
     const averageTicket = paidToday.length ? Math.round(revenueToday / paidToday.length) : 0;
-    const delayed = activeOrders.filter((order) => {
-      if (typeof order.estimated_ready_at === "string") return new Date(order.estimated_ready_at).getTime() < Date.now();
-      return typeof order.created_at === "string" && order.created_at < delayedCutoff;
-    }).length;
+    const delayed = activeOrders.filter(order => isOrderDelayed({
+      status: String(order.status), createdAt: String(order.created_at),
+      estimatedReadyAt: typeof order.estimated_ready_at === "string" ? order.estimated_ready_at : undefined,
+    })).length;
 
     const tables = (tablesResult.data || []) as Array<Record<string, unknown>>;
     const drivers = (driversResult.data || []) as Array<Record<string, unknown>>;

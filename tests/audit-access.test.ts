@@ -40,6 +40,13 @@ describe('limites de autorização',()=>{
   mocks.auth.mockResolvedValue(auth('finance',{'finance.view':false,'cash.manage':false}));
   expect((await (await snapshot()).json()).financialEntries).toEqual([]);
  });
+ it('carrega pagamentos parciais e preserva taxa de serviço zero',async()=>{
+  mocks.auth.mockResolvedValue(auth('manager'));
+  mocks.admin.mockReturnValue(client({orders:[{id:'partial',payment_status:'partial',total_cents:10000,status:'preparing'}],payments:[{order_id:'partial',amount_cents:6000,status:'paid'}],tabs:[{id:'tab',table_number:1,status:'open',service_charge_rate_percent:0}],restaurant_tables:[{number:1}]}));
+  const body=await (await snapshot()).json();
+  expect(body.orders[0]).toMatchObject({paidAmount:6000,balanceDue:4000});
+  expect(body.tables[0].tabs[0].serviceChargeRate).toBe(0);
+ });
  it('mantém todas as áreas disponíveis para gestor',()=>{
   expect(Object.values(snapshotAccess(auth('manager'))).every(Boolean)).toBe(true);
  });

@@ -54,3 +54,20 @@ O login seguro foi concluído no domínio principal cadastrado `basso-seven.verc
 - O diagnóstico visível informou que o Print Bridge local aguarda conexão real. Nenhum trabalho foi enviado às impressoras.
 
 Uma restrição do navegador após a autenticação interrompeu a inspeção durante o teste de relatórios. A tentativa permitida de retomar a aba também foi recusada. Não houve nova entrada de credenciais ou tentativa de contornar a proteção. Não foi possível capturar comprovante visual final nem concluir os cliques restantes. As verificações automatizadas continuam sendo evidência separada dos testes reais acima.
+
+## Continuação pelo código, sem login — 17/10/2026
+
+A pedido do usuário, esta etapa não utilizou sessão autenticada nem fez transações de teste em produção.
+
+Correções adicionais:
+
+- Central de pedidos: o atalho `?filter=delayed` agora aplica um filtro visível e removível. Dashboard e central usam o mesmo prazo: previsão de preparo, quando disponível, ou 60 minutos desde a criação. O filtro é reavaliado a cada 30 segundos e exclui pedidos encerrados.
+- A receber: desconta pagamentos parciais dos pedidos, exclui cancelados e contabiliza cada comanda aberta uma única vez, com serviço e pagamentos da comanda. O snapshot busca os pagamentos dos pedidos parciais sem comanda e preserva taxa de serviço de 0%. Uma falha na consulta das comandas/pagamentos necessários não produz saldo inventado.
+- Salão: Receber permanece disponível quando só resta a taxa de serviço. As opções de vale, rejeitadas pela API de comandas e restritas ao PDV, foram retiradas desse seletor.
+- Impressão: Reprocessar zera as tentativas esgotadas, verifica existência e estado do trabalho, recusa pedidos cancelados/arquivados e usa atualização condicional para detectar concorrência. Trabalhos já na fila/em processamento não são duplicados por esse botão.
+- Impressão: o aviso de teste com Bridge offline permanece após atualizar a fila. A prévia respeita a ordem configurada dos blocos; desativar destaque não apaga retiradas/observações. As setas de ordenação receberam nomes acessíveis.
+- CRM: erros de carregamento não exibem clientes locais como dados de produção. Respostas antigas são ignoradas depois da troca de filtro. Erro de exportação CSV permanece na tela; carregamento e exportação possuem bloqueio de botão.
+
+Validação desta etapa: 336 testes em 28 arquivos, incluindo 17 novos cenários de totais, API, componentes e downloads simulados. Os testes exercitam o atalho de atrasados e seu CSV filtrado, recebimento de serviço restante, aviso de impressão, reordenação da prévia, conflitos da fila, falhas/respostas antigas do CRM e solicitação de CSV de relatórios com nome/período corretos. A suíte anterior continua cobrindo erro de exportação de relatórios e os contratos das rotas.
+
+Limites mantidos: downloads foram verificados em DOM de testes, sem comprovar salvamento em Chrome/Safari reais. Não houve teste físico de impressora nem processamento real de pagamento nesta etapa. O indicador A receber continua limitado aos pedidos presentes no snapshot operacional (250 recentes mais os vinculados a comandas abertas); não substitui o contas a receber histórico. Não se afirma que todas as variantes de todos os botões foram executadas em produção.

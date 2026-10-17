@@ -11,6 +11,7 @@ import { allowedStatuses, channelLabel, statusLabel } from "@/lib/order-validati
 import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client/api";
 import { requiresTransitionReason } from "@/lib/operational-state";
 import { currency, isDemoMode, shortDateTime } from "@/lib/utils";
+import { isOrderDelayed, pendingPaymentTotal } from "@/lib/operational-totals";
 import type { Order, OrderChannel, OrderStatus } from "@/types";
 
 const activeStatuses: OrderStatus[] = ["received", "confirmed", "preparing", "ready", "out_for_delivery"];
@@ -19,6 +20,15 @@ type ViewMode = "kanban" | "list" | "cards";
 function OrdersContent() {
   const searchParams = useSearchParams();
   const orders = useDemoState((state) => state.orders);
+  const tables = useDemoState((state) => state.tables);
+  const requestedFilter = searchParams.get("filter");
+  const [delayed, setDelayed] = useState(requestedFilter === "delayed");
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setDelayed(requestedFilter === "delayed");
+    if (requestedFilter === "delayed") setAdvanced(true);
+  }, [requestedFilter]);
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(timer); }, []);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | OrderStatus>("all");
   const [channel, setChannel] = useState<"all" | OrderChannel>("all");
@@ -37,21 +47,22 @@ function OrdersContent() {
 
   const filtered = useMemo(() => orders.filter((order) => {
     const haystack = `${order.number} ${order.customerName} ${order.customerPhone} ${order.address?.district || ""} ${order.tableNumber || ""}`.toLowerCase();
-    const minutes = (Date.now() - new Date(order.createdAt).getTime()) / 60000;
+    const late = isOrderDelayed(order, now);
     return (status === "all" || order.status === status)
       && (channel === "all" || order.channel === channel)
       && (payment === "all" || order.paymentStatus === payment)
-      && (!attention || (activeStatuses.includes(order.status) && (minutes >= 45 || order.priority === "urgent")))
+      && (!delayed || late)
+      && (!attention || (activeStatuses.includes(order.status) && (late || order.priority === "urgent")))
       && (!query || haystack.includes(query.toLowerCase()));
-  }), [orders, status, channel, payment, attention, query]);
+  }), [orders, status, channel, payment, attention, delayed, query, now]);
 
   const stats = useMemo(() => ({
     new: orders.filter((order) => order.status === "received").length,
     preparing: orders.filter((order) => order.status === "preparing").length,
     ready: orders.filter((order) => order.status === "ready").length,
     delivery: orders.filter((order) => order.status === "out_for_delivery").length,
-    pendingPayment: orders.filter((order) => !["paid", "refunded", "cancelled"].includes(order.paymentStatus)).reduce((sum, order) => sum + order.total, 0),
-  }), [orders]);
+    pendingPayment: pendingPaymentTotal(orders, tables.flatMap(table => table.tabs)),
+  }), [orders, tables]);
 
   function changeView(next: ViewMode) { setView(next); localStorage.setItem("lfb-orders-view", next); }
   function refresh() { if (isDemoMode()) demoActions.reset(); else window.dispatchEvent(new Event("lfb:refresh-operation")); }
@@ -68,11 +79,11 @@ function OrdersContent() {
     <section className="surface mb-5 p-4">
       <div className="grid gap-3 lg:grid-cols-[1fr_190px_190px_auto]">
         <label className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black/35" size={17}/><input className="input pl-9" placeholder="Buscar pedido, cliente, telefone, bairro ou mesa" value={query} onChange={(event) => setQuery(event.target.value)}/></label>
-        <select className="input" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos os status</option>{Object.entries(statusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-        <select className="input" value={channel} onChange={(event) => setChannel(event.target.value as typeof channel)}><option value="all">Todos os canais</option>{Object.entries(channelLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <select aria-label="Status do pedido" className="input" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Todos os status</option>{Object.entries(statusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <select aria-label="Canal do pedido" className="input" value={channel} onChange={(event) => setChannel(event.target.value as typeof channel)}><option value="all">Todos os canais</option>{Object.entries(channelLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
         <button className={`btn-secondary ${advanced ? "border-basso-wine bg-basso-wine/5" : ""}`} onClick={() => setAdvanced((value) => !value)}><SlidersHorizontal size={17}/>Mais filtros</button>
       </div>
-      {advanced && <div className="mt-3 grid gap-3 border-t border-black/5 pt-3 sm:grid-cols-3"><select className="input" value={payment} onChange={(event) => setPayment(event.target.value)}><option value="all">Todos os pagamentos</option><option value="pending">Pendente</option><option value="partial">Parcial</option><option value="paid">Pago</option><option value="refunded">Estornado</option><option value="cancelled">Cancelado</option></select><label className="flex h-11 items-center gap-3 rounded-xl border border-black/10 bg-white px-3 text-sm font-semibold"><input type="checkbox" checked={attention} onChange={(event) => setAttention(event.target.checked)}/>Somente pedidos que exigem atenção</label><button className="btn-ghost" onClick={() => { setQuery(""); setStatus("all"); setChannel("all"); setPayment("all"); setAttention(false); }}>Limpar filtros</button></div>}
+      {advanced && <div className="mt-3 grid gap-3 border-t border-black/5 pt-3 sm:grid-cols-3"><select aria-label="Pagamento do pedido" className="input" value={payment} onChange={(event) => setPayment(event.target.value)}><option value="all">Todos os pagamentos</option><option value="pending">Pendente</option><option value="partial">Parcial</option><option value="paid">Pago</option><option value="refunded">Estornado</option><option value="cancelled">Cancelado</option></select><label className="flex h-11 items-center gap-3 rounded-xl border border-black/10 bg-white px-3 text-sm font-semibold"><input type="checkbox" checked={attention} onChange={(event) => setAttention(event.target.checked)}/>Somente pedidos que exigem atenção</label><label className="flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={delayed} onChange={event => setDelayed(event.target.checked)}/>Somente pedidos atrasados</label><button className="btn-ghost" onClick={() => { setDelayed(false); setQuery(""); setStatus("all"); setChannel("all"); setPayment("all"); setAttention(false); }}>Limpar filtros</button></div>}
     </section>
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold text-black/50">{filtered.length} pedido(s) encontrado(s)</p><div className="flex rounded-xl border bg-white p-1"><ViewButton active={view === "kanban"} onClick={() => changeView("kanban")} icon={<KanbanSquare size={16}/>} label="Kanban"/><ViewButton active={view === "list"} onClick={() => changeView("list")} icon={<List size={16}/>} label="Lista"/><ViewButton active={view === "cards"} onClick={() => changeView("cards")} icon={<Grid2X2 size={16}/>} label="Cards"/></div></div>
     {view === "kanban" && <Kanban orders={filtered} onOpen={(order) => setSelectedId(order.id)}/>} 
