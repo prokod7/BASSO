@@ -41,3 +41,16 @@ As conferências do banco nesta auditoria foram somente leitura. Nenhum pagament
 - 375 é o número de botões mapeados no código, não uma afirmação de 375 cliques comprovados em produção. Variantes condicionais, permissões por perfil e dados específicos ainda exigem homologação autenticada.
 - Impressoras físicas/Print Bridge instalado, GPS, permissões de notificações, maquininha, pagamentos externos, WhatsApp, iFood e 99Food dependem de equipamento, credenciais e/ou homologação. Nenhuma transação externa foi disparada para teste.
 - A pré-conta usa o snapshot operacional da mesa exibida, como o próprio painel. O recebimento continua validado pelo servidor, independentemente do papel impresso.
+
+## Complemento com sessão de gestor — 17/10/2026
+
+O login seguro foi concluído no domínio principal cadastrado `basso-seven.vercel.app`, que expõe a autenticação própria da Basso. Nenhuma proteção foi desativada. O domínio alternativo `basso-pedido-pro.vercel.app` levou à autenticação da Vercel.
+
+- Navegação pelas 36 entradas do menu: as 26 telas de coordenação, relacionamento, gestão e administração foram inspecionadas depois de “Dados sincronizados”; as demais tiveram inspeção inicial ou testes específicos abaixo. Isso não significa executar todos os botões nem todos os estados.
+- Salão: criada a comanda vazia `TESTE AUDITORIA CODEX` na mesa 15; confirmada a mesa ocupada e a comanda vinculada; executado “Fechar mesa”; confirmada a mesa livre e sem comandas abertas. Nenhum item ou pagamento foi registrado.
+- PDV: aberto Alho e Óleo; percorridas montagem, retirada de azeitonas pretas, adicional Bacon na pizza inteira e revisão. O resumo mostrou a retirada no sabor correto e o adicional com localização; total passou de R$ 60,00 para R$ 70,00. Item adicionado somente à venda local; a venda não foi finalizada.
+- Cardápio: abertura real de “Nova categoria”, com criação desabilitada enquanto o nome estava vazio. A inspeção encontrou links de promoções/configurações aninhados no botão “Novo produto”. Corrigido o agrupamento; acrescentada regressão contra controles interativos aninhados nas páginas do painel. Os modais locais de cadastro passam a ter rolagem limitada à tela e botão de fechar identificado.
+- Relatórios: dados do período padrão carregaram; alteração do início para o dia corrente e atualização chegaram ao estado de carregamento. A conclusão do novo período e o download CSV não foram confirmados.
+- O diagnóstico visível informou que o Print Bridge local aguarda conexão real. Nenhum trabalho foi enviado às impressoras.
+
+Uma restrição do navegador após a autenticação interrompeu a inspeção durante o teste de relatórios. A tentativa permitida de retomar a aba também foi recusada. Não houve nova entrada de credenciais ou tentativa de contornar a proteção. Não foi possível capturar comprovante visual final nem concluir os cliques restantes. As verificações automatizadas continuam sendo evidência separada dos testes reais acima.
