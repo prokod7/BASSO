@@ -31,6 +31,7 @@ describe('painel: renderização e atualização com backend indisponível', () 
   const Page = (await load() as any).default;
   await act(async () => { render(React.createElement(CartProvider, null, React.createElement(Page))); });
   expect(document.body.textContent?.trim().length).toBeGreaterThan(10);
+  expect(document.querySelectorAll('button a, button button, a button')).toHaveLength(0);
   const refresh = screen.queryAllByRole('button', { name: /Atualizar/i }).find(button => !button.hasAttribute('disabled'));
   if (refresh) await act(async () => { fireEvent.click(refresh); });
   expect(document.body.textContent).not.toContain('Application error');
