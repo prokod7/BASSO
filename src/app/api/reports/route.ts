@@ -1,11 +1,8 @@
+import { reportPeriod, saoPauloDate } from "@/lib/report-period";
 import { NextRequest, NextResponse } from "next/server";
 import { requireOperationalRole } from "@/lib/authz";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-function isoDate(value: string | null, fallback: Date) {
-  if (!value) return fallback.toISOString().slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback.toISOString().slice(0, 10);
-}
 function csvEscape(value: unknown) { return `"${String(value ?? "").replaceAll('"', '""')}"`; }
 
 export async function GET(request: NextRequest) {
@@ -13,12 +10,7 @@ export async function GET(request: NextRequest) {
     await requireOperationalRole(["manager", "finance", "viewer"], "reports.view");
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const start = isoDate(request.nextUrl.searchParams.get("start"), monthStart);
-    const end = isoDate(request.nextUrl.searchParams.get("end"), now);
-    const startIso = `${start}T00:00:00.000Z`;
-    const endIso = `${end}T23:59:59.999Z`;
+    const { start, end, startIso, endIso } = reportPeriod(request.nextUrl.searchParams.get("start"), request.nextUrl.searchParams.get("end"));
 
     const [ordersResult, itemsResult, reviewsResult, financeResult] = await Promise.all([
       db.from("orders").select("id,number,daily_number,channel,status,payment_status,payment_method,total_cents,discount_cents,delivery_fee_cents,created_at,completed_at,created_by,driver_id").is("deleted_at", null).gte("created_at", startIso).lte("created_at", endIso).order("created_at", { ascending: true }).limit(10000),
@@ -46,7 +38,7 @@ export async function GET(request: NextRequest) {
       byChannel[order.channel].orders += 1; byChannel[order.channel].revenue += order.total_cents;
       byPayment[order.payment_method] ||= { orders: 0, revenue: 0 };
       byPayment[order.payment_method].orders += 1; byPayment[order.payment_method].revenue += order.total_cents;
-      const day = order.created_at.slice(0, 10);
+      const day = saoPauloDate(order.created_at);
       byDay[day] ||= { orders: 0, revenue: 0 };
       byDay[day].orders += 1; byDay[day].revenue += order.total_cents;
     }
@@ -55,12 +47,12 @@ export async function GET(request: NextRequest) {
     const productMap: Record<string, { quantity: number; revenue: number }> = {};
     const addonMap: Record<string, number> = {};
     for (const item of (itemsResult.data || []) as any[]) {
-      if (!validOrderIds.has(item.order_id)) continue;
+      if (!validOrderIds.has(item.order_id) || item.production_status === "cancelled") continue;
       productMap[item.name_snapshot] ||= { quantity: 0, revenue: 0 };
       productMap[item.name_snapshot].quantity += Number(item.quantity);
       productMap[item.name_snapshot].revenue += Number(item.quantity) * Number(item.unit_price_cents);
       const addons = item.selection?.addons || {};
-      for (const [id, quantity] of Object.entries(addons)) addonMap[id] = (addonMap[id] || 0) + Number(quantity);
+      for (const [id, quantity] of Object.entries(addons)) addonMap[id] = (addonMap[id] || 0) + Number(quantity) * Number(item.quantity);
     }
     const topProducts = Object.entries(productMap).map(([name, metrics]) => ({ name, ...metrics })).sort((a, b) => b.quantity - a.quantity).slice(0, 20);
     const topAddons = Object.entries(addonMap).map(([id, quantity]) => ({ id, quantity })).sort((a, b) => b.quantity - a.quantity).slice(0, 20);

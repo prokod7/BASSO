@@ -24,6 +24,8 @@ jobs:
         run: npm run check:migrations
       - name: Button audit
         run: npm run audit:buttons
+      - name: UI API contracts
+        run: npm run audit:routes
       - name: TypeScript
         run: npm run typecheck
       - name: Unit tests
