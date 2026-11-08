@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { parseIncomingOrder } from "@/lib/server-orders";
 import { parsePublicCheckout } from "@/lib/public-checkout";
 import { quoteCommercialTerms } from "@/lib/server-quote";
 import { requireOperationalRole } from "@/lib/authz";
-import { loadBusinessSettings } from "@/lib/business-settings";
-import { storeStatus } from "@/lib/opening-hours";
-import { createHash, randomBytes } from "crypto";
+import { createQuotedOrder, storeAcceptance } from "@/lib/checkout-order";
 
 const PUBLIC_PAYMENT_METHODS = ["pix", "cash", "debit", "credit"] as const;
 
@@ -26,41 +23,9 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await db.from("idempotency_keys").select("response_body,status_code").eq("key", key).maybeSingle();
     if (existing) return NextResponse.json(existing.response_body, { status: existing.status_code || 200 });
 
-    const { data: runtime, error: runtimeError } = await db
-      .from("store_runtime_status")
-      .select("operational_status,accepting_orders,pause_reason,manual_override")
-      .eq("id", true)
-      .maybeSingle();
-    if (runtimeError) throw runtimeError;
-
-    let effectiveStatus = runtime?.operational_status || "closed";
-    let effectiveAccepting = Boolean(runtime?.accepting_orders);
-
-    if (runtime && runtime.manual_override === false) {
-      const business = await loadBusinessSettings(db);
-      const schedule = storeStatus(new Date(),business.openingHours);
-      effectiveStatus = schedule.open ? "open" : "closed";
-      effectiveAccepting = schedule.open;
-
-      if (runtime.operational_status !== effectiveStatus || runtime.accepting_orders !== effectiveAccepting) {
-        await db
-          .from("store_runtime_status")
-          .update({
-            operational_status: effectiveStatus,
-            accepting_orders: effectiveAccepting,
-            pause_reason: null,
-            temporary_until: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", true);
-      }
-    }
-
-    if (!effectiveAccepting) {
-      const detail = effectiveStatus === "paused"
-        ? (runtime?.pause_reason || "Pedidos temporariamente pausados.")
-        : "A loja está fechada no momento.";
-      return NextResponse.json({ error: detail, operationalStatus: effectiveStatus }, { status: 409 });
+    const store = await storeAcceptance(db);
+    if (!store.accepting) {
+      return NextResponse.json({ error: store.message, operationalStatus: store.status }, { status: 409 });
     }
 
     const quote = await quoteCommercialTerms({
@@ -76,18 +41,8 @@ export async function POST(request: NextRequest) {
     if (supplied.paymentMethod === "cash" && supplied.changeFor != null && supplied.changeFor < quote.total) {
       throw new Error(`O valor para troco deve ser igual ou maior que R$ ${(quote.total / 100).toFixed(2).replace(".", ",")}.`);
     }
-    const order = parseIncomingOrder({ ...supplied, items: quote.items, subtotal: quote.subtotal, discount: quote.discount, deliveryFee: quote.deliveryFee, total: quote.total, couponCode: quote.couponCode });
-    const { data: transaction, error } = await db.rpc("create_order_transaction", { p_order: order });
-    if (error) throw error;
-    const createdId = String(transaction?.id || order.id);
-    const accessToken = randomBytes(24).toString("base64url");
-    const tokenHash = createHash("sha256").update(accessToken).digest("hex");
-    const { error: accessError } = await db.from("order_access_tokens").insert({ order_id: createdId, token_hash: tokenHash });
-    if (accessError) throw accessError;
-    await db.rpc("enqueue_order_print_jobs", { p_order_id: createdId });
-    const { data: created, error: createdError } = await db.from("orders").select("daily_number,number,status,tab_id").eq("id", createdId).single();
-    if (createdError) throw createdError;
-    const response = { id: createdId, number: Number(created.daily_number ?? created.number), status: created.status, tabId: created.tab_id || undefined, quote, accessToken };
+    const created = await createQuotedOrder(db, supplied, quote);
+    const response = { id: created.id, number: created.number, status: created.status, tabId: created.tabId, quote, accessToken: created.accessToken };
     await db.from("idempotency_keys").insert({ key, scope: "orders:create", response_body: response, status_code: 201 });
     return NextResponse.json(response, { status: 201 });
   } catch (error) {

@@ -6,6 +6,7 @@ import { requireOperationalRole } from "@/lib/authz";
 import { assertOrderTransition } from "@/lib/operational-state";
 import { IfoodAdapter } from "@/lib/integrations/ifood";
 import type { OrderChannel, OrderStatus } from "@/types";
+import { scheduleStatusNotice } from "@/lib/whatsapp/notify";
 
 const schema = z.object({
   status: z.enum(["received", "confirmed", "preparing", "ready", "out_for_delivery", "completed", "cancelled"]),
@@ -90,6 +91,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         status: "pending",
       });
     }
+
+    // Aviso automático ao cliente pelo WhatsApp (só com o robô ligado e janela de 24 h aberta).
+    scheduleStatusNotice(id, body.status);
 
     const { data: updated } = await db.from("orders").select("version,status").eq("id", id).single();
     return NextResponse.json({ id, status: updated?.status || body.status, version: Number(updated?.version || Number(order.version || 1) + 1) });
