@@ -1,3 +1,4 @@
+import { massName, pizzaOptions } from "@/lib/pizza-options";
 import { findAddon, findFlavor, findProduct } from "@/lib/catalog";
 import type { CartItem } from "@/types";
 
@@ -16,7 +17,7 @@ export function itemDetails(item: Pick<CartItem, "selection">): Detail[] {
   const flavor = (id: string) => names[id] || findFlavor(id)?.name || id?.replaceAll("-", " ") || "";
   const addon = (id: string) => names[id] || findAddon(id)?.name || id.replaceAll("-", " ");
   const lines: Detail[] = [];
-  if (s.mass) lines.push({ text: s.mass === "integral" ? "Massa integral" : "Massa tradicional" });
+  if (s.mass) lines.push({ text: `Massa: ${massName(s.mass)}` });
   const a = s.flavorA || s.grandeFlavor, b = s.flavorB || s.grandeFlavorB;
   const extras = (place: string) => {
     for (const [id, qty] of Object.entries(s.addons || {})) {
@@ -36,7 +37,7 @@ export function itemDetails(item: Pick<CartItem, "selection">): Detail[] {
   if (s.secondGrandeFlavor) lines.push({ text: `Grande 2: ${flavor(s.secondGrandeFlavor)}${s.secondGrandeFlavorB ? ` / ${flavor(s.secondGrandeFlavorB)}` : ""}`, emphasis: true });
   if (s.sweetFlavor) lines.push({ text: `${s.sweetSize === "grande" ? "Grande" : "Broto"} doce: ${flavor(s.sweetFlavor)}`, emphasis: true });
   if (s.beverage) lines.push({ text: `Bebida: ${names[s.beverage] || findProduct(s.beverage)?.name || s.beverage.replaceAll("-", " ")}` });
-  if (s.sweetBase === "hazelnut-zero") lines.push({ text: "Base: Creme de Avelã Zero", emphasis: true });
+  if (s.sweetBase === "hazelnut-zero") lines.push({ text: `Base: ${pizzaOptions().hazelnut.name}`, emphasis: true });
   const cut = s.cutPreference || s.sweetCutPreference;
   if (cut === "cut" || cut === "uncut") lines.push({ text: cut === "cut" ? "CORTAR" : "NÃO CORTAR", emphasis: true });
   if (typeof s.notes === "string" && s.notes.trim()) lines.push({ text: `OBS: ${s.notes.trim()}`, emphasis: true });

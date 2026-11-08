@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { isTableNumber } from "@/lib/tables";
+import { pizzaOptions } from "@/lib/pizza-options";
 import Link from "next/link";
 import { Copy, Minus, Pencil, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -22,7 +24,7 @@ export function CartDrawer() {
 
   useEffect(() => {
     const table = Number(new URLSearchParams(window.location.search).get("mesa"));
-    setCheckoutHref(Number.isInteger(table) && table >= 1 && table <= 15 ? `/checkout?mesa=${table}` : "/checkout");
+    setCheckoutHref(isTableNumber(table) ? `/checkout?mesa=${table}` : "/checkout");
   }, []);
 
   if (!cart.open) return null;
@@ -138,7 +140,7 @@ function CartItemDetails({ item }: { item: CartItem }) {
     <div className="mt-1 space-y-0.5 text-[11px] leading-relaxed text-black/48">
       <p>{selection.size === "grande" ? "Grande" : "Broto"} • {first?.name || selection.flavorA}{second ? ` + ${second.name}` : ""}</p>
       {hasSweetFlavor && <p className="font-bold text-basso-wine">Corte: {selection.cutPreference === "cut" ? "Cortar" : "Não cortar"}</p>}
-      {hasSweetFlavor && selection.sweetBase === "hazelnut-zero" && <p className="font-bold text-basso-wine">Base: Creme de Avelã Zero (+ R$ 25,00)</p>}
+      {hasSweetFlavor && selection.sweetBase === "hazelnut-zero" && <p className="font-bold text-basso-wine">Base: {pizzaOptions().hazelnut.name} (+ {currency(pizzaOptions().hazelnut.price)})</p>}
       {addons.length > 0 && <p className="text-emerald-700">+ {addons.join(" • ")}</p>}
       {removals.length > 0 && <p className="text-red-700">{removals.join(" • ")}</p>}
       {selection.notes && <p className="line-clamp-2 italic">Obs.: {selection.notes}</p>}

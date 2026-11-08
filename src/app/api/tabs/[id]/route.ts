@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireOperationalRole } from "@/lib/authz";
 import { createAdminClient } from "@/lib/supabase/admin";
 const schema = z.discriminatedUnion("action", [
-  z.object({action:z.literal("transfer"),targetTable:z.number().int().min(1).max(15)}),
+  z.object({action:z.literal("transfer"),targetTable:z.number().int().min(1).max(999)}),
   z.object({action:z.literal("rename"),name:z.string().trim().min(1).max(120)}),
   z.object({action:z.literal("cancel"),reason:z.string().trim().min(2).max(300)}),
 ]);

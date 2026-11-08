@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { massName, pizzaOptions } from "@/lib/pizza-options";
 import { Minus, Plus } from "lucide-react";
 import { catalog, categoryImages } from "@/lib/catalog";
 import {
@@ -66,7 +67,7 @@ export function ComboBuilder({
   useEffect(() => {
     if (open)
       setSelection({
-        mass: config.masses[0],
+        mass: config.masses.find((id) => pizzaOptions().masses[id]?.active !== false) || config.masses[0],
         grandeFlavor: savory[0]?.id || "",
         secondGrandeFlavor:
           config.grandeQuantity === 2 ? savory[0]?.id : undefined,
@@ -171,9 +172,9 @@ export function ComboBuilder({
           label="Massa"
           value={selection.mass}
           onChange={(v) => update("mass", v as ComboSelection["mass"])}
-          options={config.masses.map((id) => [
+          options={config.masses.filter((id) => pizzaOptions().masses[id]?.active !== false).map((id) => [
             id,
-            id === "integral" ? "Integral" : "Tradicional",
+            massName(id),
           ])}
         />
         {pizza(false)}

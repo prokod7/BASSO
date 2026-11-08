@@ -7,6 +7,7 @@ const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const dayHours = z.tuple([time,time]).refine(v=>v[0]!==v[1],"Horário de abertura e fechamento devem ser diferentes.").nullable();
 const schema = z.object({
   name: z.string().trim().min(2).max(180).optional(),
+  cnpj: z.string().trim().max(20).regex(/^[\d./-]*$/, "CNPJ: use apenas números, ponto, barra e hífen.").optional(),
   phone: z.string().trim().min(8).max(30).optional(),
   contactPhones: z.array(z.string().trim().min(8).max(30)).max(5).optional(),
   instagram: z.string().trim().max(120).regex(/^@?[A-Za-z0-9_.]*$/,"Informe apenas o @ do Instagram.").optional(),
@@ -30,7 +31,15 @@ const schema = z.object({
     fiscalMode: z.enum(["non_fiscal", "nfce", "external"]).optional(),
     preparationCapacityPerSlot: z.number().int().positive().nullable().optional(),
     whatsapp: z.string().trim().max(20).regex(/^\d{0,20}$/, "WhatsApp: use apenas números com DDI e DDD (ex.: 5511999999999).").nullable().optional(),
+    pizzaOptions: z.object({
+      hazelnut: z.object({ name: z.string().trim().min(2, "Informe o nome da base doce.").max(80), price: z.number().int().min(0).max(100_000), active: z.boolean() }),
+      masses: z.object({
+        traditional: z.object({ name: z.string().trim().min(2, "Informe o nome da massa.").max(80), price: z.number().int().min(0).max(100_000), active: z.boolean() }),
+        integral: z.object({ name: z.string().trim().min(2, "Informe o nome da massa.").max(80), price: z.number().int().min(0).max(100_000), active: z.boolean() }),
+      }).refine(m => m.traditional.active || m.integral.active, "Deixe pelo menos uma massa disponível."),
+    }).optional(),
     site: z.object({
+      sectionSubtitles: z.record(z.enum(["featured","traditional","premium","sweet"]), z.string().max(240).nullable()).optional(),
       heroBadge: z.string().max(80).nullable().optional(),
       heroTitle: z.string().max(120).nullable().optional(),
       heroSubtitle: z.string().max(300).nullable().optional(),
@@ -70,6 +79,7 @@ export async function PATCH(request: NextRequest) {
     if (body.phone !== undefined) payload.phone=body.phone;
     if (body.instagram !== undefined) payload.instagram=body.instagram;
     if (body.address !== undefined) payload.address = body.address;
+    if (body.cnpj !== undefined) payload.cnpj = body.cnpj;
     if (body.config !== undefined || body.contactPhones !== undefined) {
       const currentConfig = (current.config || {}) as Record<string, unknown>;
       const currentSite = (currentConfig.site && typeof currentConfig.site === "object" ? currentConfig.site : {}) as Record<string, unknown>;

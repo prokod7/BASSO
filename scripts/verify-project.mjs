@@ -129,7 +129,7 @@ const browserPrintMode = read("src/components/internal/BrowserPrintMode.tsx");
 const browserPrintPage = read("src/app/imprimir/[id]/page.tsx");
 check("Impressão manual usa diálogo padrão do navegador", /window\.open\(printUrl/.test(browserPrintMode) && /window\.print\(\)/.test(browserPrintPage));
 check("Comprovante térmico possui layout de 80 mm", /80mm/.test(browserPrintPage) && /@page/.test(browserPrintPage));
-check("Comanda de entrega replica estrutura operacional", /CNPJ: 62\.332\.415\/0001-10/.test(browserPrintPage) && /Qt\. Descrição/.test(browserPrintPage) && /Forma de pagamento/.test(browserPrintPage) && /RETIRADA DO MOTOBOY/.test(browserPrintPage));
+check("Comanda de entrega replica estrutura operacional", /CNPJ: (62\.332\.415\/0001-10|\{store\.cnpj)/.test(browserPrintPage) && /Qt\. Descrição/.test(browserPrintPage) && /Forma de pagamento/.test(browserPrintPage) && /RETIRADA DO MOTOBOY/.test(browserPrintPage));
 check("Comanda da cozinha é separada e sem financeiro", /printType === "cozinha"/.test(browserPrintPage) && /CÓDIGO DE RETIRADA/.test(browserPrintPage) && /safeNote/.test(browserPrintPage));
 check("Comanda imprime QR de retirada", /QRCodeSVG/.test(browserPrintPage) && /pickupUrl/.test(browserPrintPage));
 check("Print Bridge permanece opcional", exists("bridge/print-bridge.mjs") && exists("bridge/config.example.json"));

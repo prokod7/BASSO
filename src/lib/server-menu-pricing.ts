@@ -1,3 +1,4 @@
+import { applyPizzaOptions, normalizePizzaOptions, pizzaOptions, pizzaSurcharges, type PizzaOptions } from "@/lib/pizza-options";
 import { catalog } from "@/lib/catalog";
 import { addonPrice, comboTotal, pizzaTotal, validatePizzaSelection } from "@/lib/pricing";
 import { bestPizzaPromotion, bestProductPromotion, loadActivePromotions } from "@/lib/promotions";
@@ -32,6 +33,7 @@ interface RuntimeProduct {
 }
 
 export interface RuntimeMenu {
+  pizzaOptions: PizzaOptions;
   categories: MenuCategory[];
   flavors: Flavor[];
   addons: Addon[];
@@ -67,17 +69,22 @@ export function scheduleAllows(schedule: unknown, date = new Date()): boolean {
 }
 
 export async function loadRuntimeMenu(db: any): Promise<RuntimeMenu> {
-  const [categoriesResult, flavorsResult, addonsResult, productsResult, inventoryResult] = await Promise.all([
+  const [categoriesResult, flavorsResult, addonsResult, productsResult, inventoryResult, settingsResult] = await Promise.all([
     db.from("categories").select("id,name,kind,sort_order,active,image_url").is("deleted_at", null).order("sort_order").order("name"),
     db.from("pizza_flavors").select("id,name,category,price_grande_cents,price_broto_cents,ingredients,description,featured,active,available_channels,available_schedule,allergens"),
     db.from("addons").select("id,name,price_cents,max_quantity,active"),
     db.from("products").select("id,name,category,description,variant,price_cents,image_url,allergens,stock_tracked,active,available_channels,available_schedule,config").is("deleted_at", null),
-    db.from("inventory_items").select("product_id,quantity,allow_negative")
+    db.from("inventory_items").select("product_id,quantity,allow_negative"),
+    db.from("business_settings").select("config").order("created_at").limit(1).maybeSingle()
   ]);
   const failed = [categoriesResult, flavorsResult, addonsResult, productsResult, inventoryResult].find(result => result.error);
   if (failed?.error) throw failed.error;
+  // Configuração ausente usa os valores padrão; nunca bloqueia o cardápio.
+  const pizzaOptionsValue = normalizePizzaOptions(settingsResult?.error ? null : settingsResult?.data?.config?.pizzaOptions);
+  applyPizzaOptions(pizzaOptionsValue);
   const inventory = new Map((inventoryResult.data || []).map((row: any) => [row.product_id, row]));
   return {
+    pizzaOptions: pizzaOptionsValue,
     categories: (categoriesResult.data || []).map((row: any) => ({
       id: row.id,
       name: row.name,
@@ -118,12 +125,8 @@ function protectedPizzaExtras(
   flavors: Flavor[],
   addons: Addon[],
 ) {
-  const addonCents = addonPrice(selection.addons, addons, selection.addonPlacements || {});
-  if (selection.sweetBase !== "hazelnut-zero") return addonCents;
-  const withoutPremiumBase = { ...selection, sweetBase: "standard" as const };
-  const standardTotal = pizzaTotal(withoutPremiumBase, flavors, addons);
-  const currentTotal = pizzaTotal(selection, flavors, addons);
-  return Math.max(0, addonCents + (currentTotal - standardTotal));
+  // Promoções substituem só o preço do sabor; adicionais, base de avelã e massa continuam cobrados.
+  return addonPrice(selection.addons, addons, selection.addonPlacements || {}) + pizzaSurcharges(selection).total;
 }
 
 export async function priceItemsWithRuntime(db: any, items: CartItem[], channel: OrderChannel, allowReward = false): Promise<{ items: CartItem[]; subtotal: number; menu: RuntimeMenu }> {
@@ -162,7 +165,7 @@ export async function priceItemsWithRuntime(db: any, items: CartItem[], channel:
       const b = selection.flavorB ? flavors.find(row => row.id === selection.flavorB) : undefined;
       const hasSweet = a.category === "sweet" || b?.category === "sweet";
       const cutLabel = hasSweet ? ` • ${selection.cutPreference === "cut" ? "CORTAR" : "NÃO CORTAR"}` : "";
-      const baseLabel = hasSweet && selection.sweetBase === "hazelnut-zero" ? " • Base Avelã Zero" : "";
+      const baseLabel = hasSweet && selection.sweetBase === "hazelnut-zero" ? ` • Base ${pizzaOptions().hazelnut.name}` : "";
       name = `Pizza ${selection.size === "grande" ? "Grande" : "Broto"} • ${a.name}${b ? ` / ${b.name}` : ""}${cutLabel}${baseLabel}`;
       promotion = bestPizzaPromotion(activePromotions, selection, unitPrice, protectedPizzaExtras(selection, flavors, addons));
       if (promotion) unitPrice = promotion.promoUnitPrice;

@@ -1,6 +1,7 @@
 "use client";
 
 import { tabBalance } from "@/lib/operational-totals";
+import { isTableNumber } from "@/lib/tables";
 import { printTabPrebill } from "@/lib/tab-prebill";
 import { FormEvent, useEffect, useState } from "react";
 import { Clock3, CreditCard, Loader2, Plus, Printer, QrCode, Table2, Users } from "lucide-react";
@@ -19,7 +20,7 @@ export default function SalaoPage() {
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
   useEffect(() => {
     const number = Number(new URLSearchParams(window.location.search).get("mesa"));
-    if (Number.isInteger(number) && number >= 1 && number <= 15) setSelectedNumber(number);
+    if (isTableNumber(number)) setSelectedNumber(number);
   }, []);
   const selected = tables.find((table) => table.number === selectedNumber) || null;
 

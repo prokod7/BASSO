@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { isTableNumber } from "@/lib/tables";
 import Link from "next/link";
 import { ArrowLeft, Crosshair, Loader2, LockKeyhole, ShoppingBag } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -85,7 +86,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const table = Number(new URLSearchParams(window.location.search).get("mesa"));
-    if (!Number.isInteger(table) || table < 1 || table > 15) return;
+    if (!isTableNumber(table)) return;
     setTableNumber(table);
     setChannel("table_qr");
     const storedTab = localStorage.getItem(tableTabKey(table)) || undefined;

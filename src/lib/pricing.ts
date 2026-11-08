@@ -1,7 +1,9 @@
 import type { Addon, ComboSelection, Flavor, PizzaSelection } from "@/types";
 import { catalog } from "@/lib/catalog";
+import { DEFAULT_PIZZA_OPTIONS, pizzaOptions, pizzaSurcharges } from "@/lib/pizza-options";
 
-export const SWEET_HAZELNUT_ZERO_SURCHARGE = 2500;
+/** Valor padrão; o valor em uso vem de pizzaOptions().hazelnut.price (editável no painel). */
+export const SWEET_HAZELNUT_ZERO_SURCHARGE = DEFAULT_PIZZA_OPTIONS.hazelnut.price;
 
 type SweetPizzaMetadata = PizzaSelection & {
   sweetBase?: "standard" | "hazelnut-zero";
@@ -31,6 +33,7 @@ export function arePizzaFlavorsCompatible(_a: Flavor, _b: Flavor): boolean {
 export function validatePizzaSelection(selection: PizzaSelection, flavorList: Flavor[] = catalog.flavors, addonList: Addon[] = catalog.addons): void {
   if (!selection || !["grande","broto"].includes(selection.size)) throw new PricingError("Tamanho de pizza inválido.");
   if (!["traditional","integral"].includes(selection.mass)) throw new PricingError("Massa inválida.");
+  if (!pizzaOptions().masses[selection.mass].active) throw new PricingError(`A massa ${pizzaOptions().masses[selection.mass].name} está indisponível no momento.`);
   if (!Array.isArray(selection.removedA) || !Array.isArray(selection.removedB) || !selection.addons || typeof selection.addons !== "object") throw new PricingError("Configuração de pizza inválida.");
   if (typeof selection.notes !== "string") throw new PricingError("Observação inválida.");
   const a = flavorList.find(flavor => flavor.id === selection.flavorA);
@@ -46,6 +49,7 @@ export function validatePizzaSelection(selection: PizzaSelection, flavorList: Fl
   const sweetSelection = selection as SweetPizzaMetadata;
   const hasSweetFlavor = a.category === "sweet" || b?.category === "sweet";
   if (sweetSelection.sweetBase !== undefined && !["standard", "hazelnut-zero"].includes(sweetSelection.sweetBase)) throw new PricingError("Base da pizza doce inválida.");
+  if (sweetSelection.sweetBase === "hazelnut-zero" && !pizzaOptions().hazelnut.active) throw new PricingError(`A base ${pizzaOptions().hazelnut.name} está indisponível no momento.`);
   if (sweetSelection.cutPreference !== undefined && !["uncut", "cut"].includes(sweetSelection.cutPreference)) throw new PricingError("Preferência de corte inválida.");
   if (!hasSweetFlavor && (sweetSelection.sweetBase !== undefined || sweetSelection.cutPreference !== undefined)) throw new PricingError("Base ou corte de pizza doce informado em pizza salgada.");
 
@@ -95,13 +99,13 @@ export function addonPrice(addons: Record<string, number>, list: Addon[] = catal
 }
 
 export function pizzaTotal(selection: PizzaSelection, flavorList: Flavor[] = catalog.flavors, addonList: Addon[] = catalog.addons): number {
-  const sweetSelection = selection as SweetPizzaMetadata;
-  const sweetBaseSurcharge = sweetSelection.sweetBase === "hazelnut-zero" ? SWEET_HAZELNUT_ZERO_SURCHARGE : 0;
-  return pizzaBasePrice(selection, flavorList, addonList) + addonPrice(selection.addons, addonList, selection.addonPlacements || {}) + sweetBaseSurcharge;
+  const surcharges = pizzaSurcharges(selection as SweetPizzaMetadata);
+  return pizzaBasePrice(selection, flavorList, addonList) + addonPrice(selection.addons, addonList, selection.addonPlacements || {}) + surcharges.total;
 }
 
 export function comboTotal(selection: ComboSelection, addonList: Addon[] = catalog.addons, comboPrice: number = catalog.combo.price, availableBeverages: string[] = catalog.combo.options.beverages, flavorList: Flavor[] = catalog.flavors): number {
   if (!selection || !["traditional","integral"].includes(selection.mass)) throw new PricingError("Massa inválida para o combo.");
+  if (pizzaOptions().masses[selection.mass]?.active === false) throw new PricingError("A massa escolhida está indisponível no momento.");
   if (!["chocolate-ao-leite","creme-de-avela"].includes(selection.brigadeiroBase)) throw new PricingError("Base do brigadeiro inválida para o combo.");
   const comboSelection = selection as ComboSweetMetadata;
   if (comboSelection.sweetCutPreference !== undefined && !["uncut", "cut"].includes(comboSelection.sweetCutPreference)) throw new PricingError("Preferência de corte do Broto doce inválida.");
