@@ -31,7 +31,7 @@ export const checkoutSchema = z.object({
   tabId: z.string().min(4).max(100).optional(),
   tabName: z.string().trim().max(120).optional(),
   address: z.object({
-    cep: z.string().regex(/^\d{8}$/, "CEP inválido."), street: z.string().min(2), number: z.string().min(1), district: z.string().min(2), complement: z.string().optional(), reference: z.string().optional(), city: z.string().min(2), state: z.string().length(2), latitude: z.number().optional(), longitude: z.number().optional()
+    cep: z.string().regex(/^(\d{8})?$/, "CEP inválido: use 8 números ou deixe em branco."), street: z.string().trim().min(2, "Informe a rua."), number: z.string().trim().min(1, "Informe o número da casa."), district: z.string().min(2, "Selecione o bairro."), complement: z.string().optional(), reference: z.string().optional(), city: z.string().min(2, "Selecione a cidade."), state: z.string().length(2, "UF inválida."), latitude: z.number().optional(), longitude: z.number().optional()
   }).optional()
 }).superRefine((v, ctx) => {
   if (v.channel === "own_delivery") {

@@ -24,5 +24,8 @@ export async function loadBusinessSettings(db: any) {
     address: data.address,
     openingHours: data.opening_hours as OpeningHours,
     hoursLabel: openingHoursLabel(data.opening_hours as OpeningHours),
+    // Chave Pix é informação pública de recebimento; exibida ao cliente que paga por Pix.
+    pixKey: typeof data.config?.pixKey === "string" && data.config.pixKey.trim() ? data.config.pixKey.trim() : null,
+    pixKeyType: typeof data.config?.pixKeyType === "string" ? data.config.pixKeyType : null,
   };
 }

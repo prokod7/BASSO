@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AlertTriangle, ChevronRight, Clock3, CreditCard, MapPin, Package, UserRound } from "lucide-react";
 import { channelLabel, statusLabel } from "@/lib/order-validation";
 import { isOrderDelayed } from "@/lib/operational-totals";
-import { currency, shortDateTime } from "@/lib/utils";
+import { currency, formatElapsedMinutes, shortDateTime } from "@/lib/utils";
 import type { Order } from "@/types";
 
 const statusClass: Record<string, string> = {
@@ -32,7 +32,7 @@ export function OrderCard({ order, compact = false, onOpen }: { order: Order; co
     <div className="space-y-3 p-4">
       <div className="grid grid-cols-2 gap-2 text-xs text-black/50"><span className="flex items-center gap-1"><Clock3 size={14}/>{minutes < 60 ? `${minutes} min` : shortDateTime(order.createdAt)}</span><span className="flex items-center gap-1"><Package size={14}/>{itemCount} item(ns)</span><span className="flex items-center gap-1"><UserRound size={14}/>{order.customerPhone || "Sem telefone"}</span>{order.address ? <span className="flex items-center gap-1"><MapPin size={14}/>{order.address.district}</span> : <span className="flex items-center gap-1"><CreditCard size={14}/>{order.paymentStatus === "paid" ? "Pago" : order.paymentStatus === "partial" ? "Parcial" : "Pendente"}</span>}</div>
       {!compact && <div className="rounded-xl bg-basso-paper p-3">{order.items.slice(0, 3).map((item) => <p key={item.id} className="line-clamp-1 text-sm"><strong>{item.quantity}×</strong> {item.name}</p>)}{order.items.length > 3 && <p className="mt-1 text-xs font-bold text-black/40">+ {order.items.length - 3} item(ns)</p>}</div>}
-      {late && <p className="flex items-center gap-2 rounded-xl bg-amber-50 p-2 text-xs font-bold text-amber-800"><AlertTriangle size={15}/>Pedido há {minutes} minutos; confira a operação.</p>}
+      {late && <p className="flex items-center gap-2 rounded-xl bg-amber-50 p-2 text-xs font-bold text-amber-800"><AlertTriangle size={15}/>Pedido há {formatElapsedMinutes(minutes)}; confira a operação.</p>}
       <div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase text-black/35">Total</p><strong className="text-lg text-basso-wine">{currency(order.total)}</strong></div><span className="flex items-center gap-1 text-xs font-bold text-basso-wine">Administrar <ChevronRight size={16}/></span></div>
     </div>
   </article>;
