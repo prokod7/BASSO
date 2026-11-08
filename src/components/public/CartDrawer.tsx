@@ -62,12 +62,12 @@ export function CartDrawer() {
               <div className="min-w-0 flex-1">
                 <p className="line-clamp-2 text-sm font-bold">{item.name}</p>
                 <CartItemDetails item={item} />
-                <div className="mt-2 flex items-end justify-between gap-2">
+                <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
                   <div>
                     <p className="text-[10px] uppercase tracking-wide text-black/35">Subtotal</p>
                     <p className="text-sm font-black text-basso-wine">{currency(item.unitPrice * item.quantity)}</p>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="ml-auto flex items-center gap-1">
                     {isPizzaSelection(item.selection) && <button className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white" onClick={() => setEditing(item)} aria-label={`Editar ${item.name}`} title="Editar pizza"><Pencil size={15} /></button>}
                     <button className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white" onClick={() => cart.duplicateItem(item.id)} aria-label={`Duplicar ${item.name}`} title="Duplicar item"><Copy size={15} /></button>
                     <div className="flex h-9 items-center rounded-lg border border-black/10 bg-white">

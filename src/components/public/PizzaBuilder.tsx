@@ -213,6 +213,9 @@ export function PizzaBuilder({
   const [flavorQuery, setFlavorQuery] = useState("");
   const [flavorCategory, setFlavorCategory] = useState<FlavorCategoryFilter>("all");
   const [pendingPlacement, setPendingPlacement] = useState<string | null>(null);
+  // Ao abrir pelo card genérico ("Pizza Grande"), nenhum sabor vem pré-escolhido:
+  // o cliente precisa tocar no sabor antes de avançar.
+  const [flavorChosen, setFlavorChosen] = useState(() => Boolean(flavor || initialSelection));
 
   const currentA = findFlavor(selection.flavorA) || seedFlavor;
   const currentB = selection.flavorB ? findFlavor(selection.flavorB) : undefined;
@@ -289,10 +292,12 @@ export function PizzaBuilder({
       setFlavorCategory("all");
       setPendingPlacement(null);
       setError("");
+      setFlavorChosen(true);
       return;
     }
     const nextFlavor = flavor || entryFlavors[0] || catalog.flavors.find((item) => item.active);
     if (nextFlavor) resetFor(nextFlavor, entry?.size || "grande");
+    setFlavorChosen(Boolean(flavor));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalKey, open, initialSelection]);
 
@@ -372,6 +377,7 @@ export function PizzaBuilder({
           : normalizePlacementsWithoutSecondHalf(current.addonPlacements),
       };
     });
+    if (slot === "A") setFlavorChosen(true);
     closeFlavorPicker();
     setError("");
   };
@@ -387,6 +393,7 @@ export function PizzaBuilder({
   };
 
   const startHalfHalf = () => {
+    if (!flavorChosen) { openFlavorPicker("A"); return; }
     if (selection.size === "broto" && currentA.category === "sweet") return;
     if (currentB) return;
     openFlavorPicker("B");
@@ -449,6 +456,10 @@ export function PizzaBuilder({
   };
 
   const goToCustomize = () => {
+    if (!flavorChosen) {
+      openFlavorPicker("A");
+      return;
+    }
     try {
       validatePizzaSelection({ ...pricedSelection, addons: {}, addonPlacements: {} });
       setStep("customize");
@@ -557,7 +568,7 @@ export function PizzaBuilder({
             {!flavorPicker && (
               <div className="shrink-0 text-right">
                 <span className="block text-[9px] font-bold uppercase tracking-wide text-black/30">Total</span>
-                <strong className="text-base text-basso-wine sm:text-lg">{currency(total)}</strong>
+                <strong className="text-base text-basso-wine sm:text-lg">{flavorChosen ? currency(total) : "—"}</strong>
               </div>
             )}
           </div>
@@ -580,6 +591,7 @@ export function PizzaBuilder({
 
         {flavorPicker ? (
           <FlavorPickerView
+            flavorChosen={flavorChosen}
             slot={flavorPicker}
             size={selection.size}
             currentA={currentA}
@@ -614,10 +626,11 @@ export function PizzaBuilder({
                     onHalfHalf={startHalfHalf}
                     onFlavorA={() => openFlavorPicker("A")}
                     onFlavorB={() => openFlavorPicker("B")}
+                    flavorChosen={flavorChosen}
                   />
                 )}
 
-                {hasSweetFlavor && !customizeView && <fieldset className="my-4 rounded-2xl border border-basso-gold/30 bg-basso-gold/10 p-4">
+                {hasSweetFlavor && flavorChosen && !customizeView && <fieldset className="my-4 rounded-2xl border border-basso-gold/30 bg-basso-gold/10 p-4">
                   <legend className="px-1 text-sm font-bold">Opções da pizza doce</legend>
                   <p className="mb-3 text-xs text-black/60">A base original do sabor está inclusa. A base de Creme de Avelã Zero é opcional.</p>
                   <label className="flex min-h-12 items-center justify-between gap-3 rounded-xl border bg-white p-3 text-sm font-bold">
@@ -705,7 +718,7 @@ export function PizzaBuilder({
                   </button>
                 ) : step === "pizza" ? (
                   <button type="button" className="btn-primary min-h-14 w-full rounded-2xl text-base" onClick={goToCustomize}>
-                    Continuar <ChevronRight size={19} />
+                    {flavorChosen ? "Continuar" : "Escolher sabor"} <ChevronRight size={19} />
                   </button>
                 ) : step === "customize" ? (
                   <button type="button" className="btn-primary min-h-14 w-full rounded-2xl text-base" onClick={goToReview}>
@@ -761,6 +774,7 @@ function PizzaStep({
   onHalfHalf,
   onFlavorA,
   onFlavorB,
+  flavorChosen = true,
 }: {
   entry: PizzaMenuEntry | null;
   scopeLabel: string;
@@ -775,6 +789,7 @@ function PizzaStep({
   onHalfHalf: () => void;
   onFlavorA: () => void;
   onFlavorB: () => void;
+  flavorChosen?: boolean;
 }) {
   const isHalfHalf = Boolean(currentB);
 
@@ -787,7 +802,7 @@ function PizzaStep({
         </div>
         <div className="flex flex-col justify-center p-5 text-white">
           <p className="text-[10px] font-black uppercase tracking-[.18em] text-basso-goldLight">{scopeLabel}</p>
-          <p className="mt-1 font-display text-2xl font-black">{currentA.name}{currentB ? ` + ${currentB.name}` : ""}</p>
+          <p className="mt-1 font-display text-2xl font-black">{flavorChosen ? `${currentA.name}${currentB ? ` + ${currentB.name}` : ""}` : `Pizza ${sizeLabel}`}</p>
         </div>
       </div>
 
@@ -829,13 +844,22 @@ function PizzaStep({
         )}
 
         <div className="mt-3 space-y-2">
-          <FlavorSelectionCard
+          {!flavorChosen ? (
+            <button type="button" onClick={onFlavorA} className="flex min-h-20 w-full items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-basso-wine/40 bg-white px-4 py-4 text-left transition hover:border-basso-wine">
+              <span>
+                <span className="block text-[10px] font-black uppercase tracking-[.14em] text-basso-wine">{selection.size === "broto" ? "Sabor da Broto" : "Pizza inteira"}</span>
+                <span className="mt-1 block font-display text-xl font-black">Escolha o sabor</span>
+                <span className="mt-0.5 block text-xs text-black/45">Toque para ver os sabores disponíveis</span>
+              </span>
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-basso-wine text-xl font-black text-white">+</span>
+            </button>
+          ) : <FlavorSelectionCard
             slotLabel={isHalfHalf ? "Metade 1" : selection.size === "broto" ? "Sabor da Broto" : "Pizza inteira"}
             flavor={currentA}
             size={selection.size}
             half={isHalfHalf}
             onClick={onFlavorA}
-          />
+          />}
           {isHalfHalf && currentB && (
             <FlavorSelectionCard slotLabel="Metade 2" flavor={currentB} size={selection.size} half onClick={onFlavorB} />
           )}
@@ -1088,6 +1112,7 @@ function FlavorPickerView({
   onCategory,
   onQuery,
   onChoose,
+  flavorChosen = true,
 }: {
   slot: FlavorSlot;
   size: PizzaSelection["size"];
@@ -1100,8 +1125,9 @@ function FlavorPickerView({
   onCategory: (category: FlavorCategoryFilter) => void;
   onQuery: (value: string) => void;
   onChoose: (flavor: Flavor) => void;
+  flavorChosen?: boolean;
 }) {
-  const selectedId = slot === "A" ? currentA.id : currentB?.id;
+  const selectedId = slot === "A" ? (flavorChosen ? currentA.id : undefined) : currentB?.id;
   const isHalf = slot === "B" || Boolean(currentB);
 
   return (
