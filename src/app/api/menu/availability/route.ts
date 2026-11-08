@@ -71,6 +71,10 @@ export async function PATCH(request: NextRequest) {
     if (body.entity === "flavor") {
       if (body.ingredients !== undefined) extra.ingredients = body.ingredients;
       if (body.featured !== undefined) extra.featured = body.featured;
+      if (body.category !== undefined) {
+        if (!["traditional","premium","sweet"].includes(body.category)) throw new Error("Categoria de sabor inválida.");
+        extra.category = body.category;
+      }
     }
     if (body.entity === "product") {
       if (body.variant !== undefined) extra.variant = body.variant;

@@ -11,6 +11,13 @@ const schema = z.object({
   contactPhones: z.array(z.string().trim().min(8).max(30)).max(5).optional(),
   instagram: z.string().trim().max(120).regex(/^@?[A-Za-z0-9_.]*$/,"Informe apenas o @ do Instagram.").optional(),
   minimumOrder: z.number().int().nonnegative().optional(),
+  address: z.object({
+    street: z.string().trim().min(2, "Informe a rua da loja.").max(160),
+    number: z.string().trim().min(1, "Informe o número da loja.").max(20),
+    district: z.string().trim().max(120).default(""),
+    city: z.string().trim().min(2, "Informe a cidade da loja.").max(120),
+    state: z.string().trim().length(2, "UF com 2 letras."),
+  }).optional(),
   openingHours: z.object({sunday:dayHours,monday:dayHours,tuesday:dayHours,wednesday:dayHours,thursday:dayHours,friday:dayHours,saturday:dayHours}).optional(),
   config: z.object({
     pixKey: z.string().max(200).nullable().optional(),
@@ -21,7 +28,13 @@ const schema = z.object({
     schedulingEnabled: z.boolean().optional(),
     maximumDeliveryKm: z.number().nonnegative().nullable().optional(),
     fiscalMode: z.enum(["non_fiscal", "nfce", "external"]).optional(),
-    preparationCapacityPerSlot: z.number().int().positive().nullable().optional()
+    preparationCapacityPerSlot: z.number().int().positive().nullable().optional(),
+    whatsapp: z.string().trim().max(20).regex(/^\d{0,20}$/, "WhatsApp: use apenas números com DDI e DDD (ex.: 5511999999999).").nullable().optional(),
+    site: z.object({
+      heroBadge: z.string().max(80).nullable().optional(),
+      heroTitle: z.string().max(120).nullable().optional(),
+      heroSubtitle: z.string().max(300).nullable().optional(),
+    }).optional(),
   }).partial().optional()
 });
 
@@ -56,7 +69,14 @@ export async function PATCH(request: NextRequest) {
     if (body.name !== undefined) payload.name=body.name;
     if (body.phone !== undefined) payload.phone=body.phone;
     if (body.instagram !== undefined) payload.instagram=body.instagram;
-    if (body.config !== undefined || body.contactPhones !== undefined) payload.config = { ...(current.config || {}), ...body.config, ...(body.contactPhones !== undefined?{contactPhones:body.contactPhones}:{}) };
+    if (body.address !== undefined) payload.address = body.address;
+    if (body.config !== undefined || body.contactPhones !== undefined) {
+      const currentConfig = (current.config || {}) as Record<string, unknown>;
+      const currentSite = (currentConfig.site && typeof currentConfig.site === "object" ? currentConfig.site : {}) as Record<string, unknown>;
+      // Textos do site são mesclados; as fotos (site.images) só mudam pela rota de imagens.
+      const site = body.config?.site !== undefined ? { ...currentSite, ...body.config.site, images: currentSite.images || {} } : currentSite;
+      payload.config = { ...currentConfig, ...body.config, site, ...(body.contactPhones !== undefined?{contactPhones:body.contactPhones}:{}) };
+    }
     const { error } = await db.from("business_settings").update(payload).eq("id", current.id);
     if (error) throw error;
     await db.from("audit_logs").insert({ actor_id: auth.userId === "demo" ? null : auth.userId, actor_label: auth.displayName, action: "BUSINESS_SETTINGS_UPDATED", entity_type: "business_settings", entity_id: current.id, before_data: current, after_data: payload });
