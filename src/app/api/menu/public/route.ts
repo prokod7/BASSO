@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
         generatedAt: new Date().toISOString(),
         categories: menu.categories.filter(category => category.active),
         flavors: visibleFlavors,
+        pizzaOptions: menu.pizzaOptions,
         addons: menu.addons.filter(addon => addon.active),
         products:pricedProducts,
         promotions,

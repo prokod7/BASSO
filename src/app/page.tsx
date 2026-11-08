@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { isTableNumber } from "@/lib/tables";
 import Link from "next/link";
 import { ChevronRight, Clock3, Instagram, MapPin, Search, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -14,6 +15,7 @@ import { ComboBuilder, type ComboOffer } from "@/components/public/ComboBuilder"
 import { ProductCard } from "@/components/public/ProductCard";
 import { applySiteImages, catalog, categoryImages } from "@/lib/catalog";
 import { applyRuntimeCatalog } from "@/lib/runtime-catalog";
+import { pizzaOptions } from "@/lib/pizza-options";
 import { DailyPromotions,type PublicPromotion } from "@/components/public/DailyPromotions";
 import type { Addon, Flavor } from "@/types";
 import { currency, normalizeSearchText } from "@/lib/utils";
@@ -29,7 +31,7 @@ const pizzaSections:Array<{id:string;title:string;subtitle:string;scope:PizzaMen
 
 type RuntimeProduct={id:string;name:string;description?:string;category:string;price:number;active?:boolean;stockTracked?:boolean;image?:string;variant?:string;config?:ComboOffer["config"]};
 type RuntimeMenuResponse={categories?:MenuCategory[];flavors?:Flavor[];addons?:Addon[];products?:RuntimeProduct[];promotions?:PublicPromotion[]};
-type SiteContentResponse={heroBadge?:string|null;heroTitle?:string|null;heroSubtitle?:string|null;heroImage?:string|null;images?:Record<string,string>};
+type SiteContentResponse={sectionSubtitles?:Partial<Record<string,string|null>>;heroBadge?:string|null;heroTitle?:string|null;heroSubtitle?:string|null;heroImage?:string|null;images?:Record<string,string>};
 type BusinessResponse={name?:string;phone?:string;phones?:string[];hoursLabel?:string;instagram?:string;addressLabel?:string;site?:SiteContentResponse};
 type StoreStatusResponse={deliveryAvailable?:boolean;publicMessage?:string;business?:BusinessResponse};
 
@@ -53,7 +55,7 @@ export default function HomePage(){
   useEffect(()=>{const refresh=()=>{if(document.visibilityState === "visible")setRefreshVersion(v=>v+1)};const timer=window.setInterval(refresh,15000);window.addEventListener("focus",refresh);return()=>{window.clearInterval(timer);window.removeEventListener("focus",refresh)}},[]);
   const [menuError,setMenuError]=useState("");
 
-  useEffect(()=>{const table=Number(new URLSearchParams(window.location.search).get("mesa"));if(Number.isInteger(table)&&table>=1&&table<=15)setTableNumber(table)},[]);
+  useEffect(()=>{const table=Number(new URLSearchParams(window.location.search).get("mesa"));if(isTableNumber(table))setTableNumber(table)},[]);
   useEffect(()=>{let mounted=true;fetch("/api/store-status",{cache:"no-store"}).then(async response=>{if(!response.ok)throw new Error("Não foi possível consultar a cobertura de entrega.");return response.json() as Promise<StoreStatusResponse>}).then(body=>{if(!mounted)return;const available=body.deliveryAvailable===true;setDeliveryAvailable(available);if(!available)setMode("pickup");applySiteImages(body.business?.site?.images);setPublicMessage(body.publicMessage||"");setBusiness(body.business||{})}).catch(()=>{if(!mounted)return;setDeliveryAvailable(false);setMode("pickup")});return()=>{mounted=false}},[refreshVersion]);
 
   useEffect(()=>{
@@ -64,7 +66,7 @@ export default function HomePage(){
       setRuntimeCategories(body.categories||[]);
       setRuntimeCombos(products.filter(product=>product.category==="combo").map(product=>({id:product.id,name:product.name,description:product.description||"",price:Number(product.price||0),config:product.config,image:product.image})));
       setRuntimeProducts(products.filter(product=>product.category!=="combo").map(product=>({id:product.id,name:product.name,description:product.description||"",category:product.category,price:Number(product.price||0),active:product.active!==false,stockTracked:product.stockTracked===true,image:product.image,variant:product.variant})));
-      applyRuntimeCatalog({flavors:body.flavors||[],addons:body.addons||[],promotions:body.promotions||[]});setRuntimePromotions(body.promotions||[]);
+      applyRuntimeCatalog({flavors:body.flavors||[],addons:body.addons||[],promotions:body.promotions||[],pizzaOptions:(body as {pizzaOptions?:unknown}).pizzaOptions});setRuntimePromotions(body.promotions||[]);
       setMenuReady(true);
     }).catch(error=>{if((error as Error).name==="AbortError")return;for(const flavor of catalog.flavors)flavor.active=false;for(const addon of catalog.addons)addon.active=false;setRuntimeCombos([]);setRuntimeProducts([]);setRuntimeCategories([]);setMenuError(error instanceof Error?error.message:"Cardápio temporariamente indisponível.");setMenuReady(true)});
     return()=>controller.abort();
@@ -92,7 +94,7 @@ export default function HomePage(){
 
     <div className="mx-auto max-w-7xl space-y-10 px-4 py-6 md:space-y-14 md:px-6 md:py-12">
       {menuError&&<div className="surface border border-amber-200 bg-amber-50 p-5 text-center"><p className="font-bold text-amber-900">Cardápio temporariamente indisponível</p><p className="mt-1 text-sm text-amber-800/70">{menuError} Tente novamente em instantes.</p></div>}
-      {menuReady&&!menuError&&pizzaSections.map(section=>{const entries=(["grande","broto"] as const).map(size=>({scope:section.scope,size})).filter(entry=>matchingCount(entry)>0);if(!entries.length)return null;const runtimeTitle=section.categoryId?runtimeCategories.find(category=>category.id===section.categoryId)?.name:undefined;return <MenuSection key={section.id} id={section.id} title={runtimeTitle||section.title} subtitle={section.subtitle}><div className="grid gap-3 md:grid-cols-2 md:gap-4">{entries.map(entry=><PizzaMenuCard key={`${entry.scope}-${entry.size}`} entry={entry} onOpen={entry=>{setSelectedPromotionFlavor(null);setSelectedPizza(entry)}} resultCount={normalized?matchingCount(entry):undefined}/>)}</div>{section.scope==="sweet"&&<div className="mt-4 rounded-2xl border border-basso-gold/30 bg-basso-gold/10 p-4 text-sm"><strong>Base adicional: Creme de Avelã Zero</strong><span className="ml-2 text-basso-wine">{currency(2500)}</span><p className="mt-1 text-xs text-black/55">A base pode ser selecionada ao finalizar a pizza. Pizzas doces vão sem corte por padrão para evitar vazamento do recheio, mas o cliente pode pedir para cortar.</p></div>}</MenuSection>})}
+      {menuReady&&!menuError&&pizzaSections.map(section=>{const entries=(["grande","broto"] as const).map(size=>({scope:section.scope,size})).filter(entry=>matchingCount(entry)>0);if(!entries.length)return null;const runtimeTitle=section.categoryId?runtimeCategories.find(category=>category.id===section.categoryId)?.name:undefined;return <MenuSection key={section.id} id={section.id} title={runtimeTitle||section.title} subtitle={business.site?.sectionSubtitles?.[section.scope]||section.subtitle}><div className="grid gap-3 md:grid-cols-2 md:gap-4">{entries.map(entry=><PizzaMenuCard key={`${entry.scope}-${entry.size}`} entry={entry} onOpen={entry=>{setSelectedPromotionFlavor(null);setSelectedPizza(entry)}} resultCount={normalized?matchingCount(entry):undefined}/>)}</div>{section.scope==="sweet"&&<div className="mt-4 rounded-2xl border border-basso-gold/30 bg-basso-gold/10 p-4 text-sm">{pizzaOptions().hazelnut.active&&<><strong>Base adicional: {pizzaOptions().hazelnut.name}</strong><span className="ml-2 text-basso-wine">{currency(pizzaOptions().hazelnut.price)}</span></>}<p className="mt-1 text-xs text-black/55">{pizzaOptions().hazelnut.active?"A base pode ser selecionada ao finalizar a pizza. ":""}Pizzas doces vão sem corte por padrão para evitar vazamento do recheio, mas o cliente pode pedir para cortar.</p></div>}</MenuSection>})}
       {comboSections.map(section=><MenuSection key={section.id} id={section.id} title={section.title} subtitle="Promoções aparecem somente quando todos os componentes obrigatórios possuem opção disponível no estoque."><div className="grid gap-4 lg:grid-cols-2">{section.items.map(combo=><article key={combo.id} className="surface grid overflow-hidden sm:grid-cols-[180px_1fr]"><div className="relative min-h-44 sm:min-h-52"><Image src={combo.image||categoryImages.combo} alt={combo.name} fill className="object-cover"/></div><div className="flex flex-col justify-center p-4 sm:p-5"><p className="text-xs font-black uppercase tracking-[.18em] text-basso-gold">Promoção</p><h3 className="mt-2 font-display text-xl font-bold sm:text-2xl">{combo.name}</h3><p className="mt-2 text-sm leading-relaxed text-black/55">{combo.description}</p><div className="mt-4 flex items-center justify-between gap-4 sm:mt-5"><strong className="text-xl text-basso-wine">{currency(combo.price)}</strong><button type="button" className="btn-primary" onClick={()=>setSelectedCombo(combo)}>Configurar <ChevronRight size={18}/></button></div></div></article>)}</div></MenuSection>)}
       {productCategories.map(category=>{const categoryProducts=products.filter(product=>product.category===category.id);if(!categoryProducts.length)return null;return <MenuSection key={category.id} id={category.id} title={category.name} subtitle={`${categoryProducts.length} item(ns) disponível(is) agora.`}><div className="grid gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3">{categoryProducts.map(product=><ProductCard key={product.id} product={product}/>)}</div></MenuSection>})}
       {menuReady&&!menuError&&normalized&&!hasPizzaResult&&products.length===0&&comboMatches.length===0&&<div className="surface p-10 text-center"><p className="font-display text-2xl font-bold">Nenhum item encontrado</p><p className="mt-2 text-sm text-black/50">Tente buscar por outro nome ou ingrediente.</p></div>}

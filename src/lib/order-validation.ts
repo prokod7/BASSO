@@ -27,7 +27,7 @@ export const checkoutSchema = z.object({
   paymentMethod: z.enum(["pix", "cash", "debit", "credit"]),
   couponCode: z.string().max(30).optional(),
   notes: z.string().max(500).optional(),
-  tableNumber: z.number().int().min(1).max(15).optional(),
+  tableNumber: z.number().int().min(1).max(999).optional(),
   tabId: z.string().min(4).max(100).optional(),
   tabName: z.string().trim().max(120).optional(),
   address: z.object({

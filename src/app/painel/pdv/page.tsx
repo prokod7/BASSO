@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { isTableNumber } from "@/lib/tables";
 import { useSearchParams } from "next/navigation";
 import { Banknote, CreditCard, Gift, Minus, Plus, Search, ShoppingCart, Trash2, Truck, Store, UtensilsCrossed, PackageCheck } from "lucide-react";
 import { PageHeader } from "@/components/internal/PageHeader";
@@ -169,7 +170,7 @@ function PdvContent() {
     if (channel === "own_delivery" && (!selectedCity || !selectedDistrict)) { setMessage("Selecione uma cidade e um bairro atendidos."); return; }
     if (quoteError) { setMessage(quoteError); return; }
     if (!isDemoMode() && !quote && !items.some(item => item.kind === "reward")) { setMessage("Aguarde a validação dos preços antes de finalizar."); return; }
-    if (channel === "dine_in" && (tableNumber < 1 || tableNumber > 15)) { setMessage("Mesa inválida."); return; }
+    if (channel === "dine_in" && !isTableNumber(tableNumber)) { setMessage("Mesa inválida."); return; }
     if (discountCents > 0 && discountReason.trim().length < 2) { setMessage("Informe o motivo do desconto manual."); return; }
     const hasReward = items.some(item => item.kind === "reward"); if (hasReward && !rewardAuth) { setMessage("A recompensa exige autorização interna."); return; }
     if (payment === "cash" && needsChange && (!changeFor.trim() || changeForCents < displayedTotal)) { setMessage(`O valor para troco deve ser igual ou maior que ${currency(displayedTotal)}.`); return; }

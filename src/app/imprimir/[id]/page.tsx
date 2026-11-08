@@ -148,8 +148,8 @@ export default function BrowserPrintPage({ params }: { params: Promise<{ id: str
       {printType === "entrega" ? (
         <>
           <header>
-            <p className="font-black">La Forneria Basso</p>
-            <p>CNPJ: 62.332.415/0001-10</p>
+            <p className="font-black">{store.businessName || "La Forneria Basso"}</p>
+            <p>CNPJ: {store.cnpj || "62.332.415/0001-10"}</p>
             <p>{store.addressLabel || "Rua do Progresso, 407 — Centro — Rio Grande da Serra/SP"}</p>
           </header>
           <Divider />

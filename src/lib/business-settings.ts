@@ -2,13 +2,14 @@ import { openingHoursLabel, type OpeningHours } from "@/lib/opening-hours";
 export async function loadBusinessSettings(db: any) {
   const { data, error } = await db
     .from("business_settings")
-    .select("name,phone,instagram,address,opening_hours,config")
+    .select("name,cnpj,phone,instagram,address,opening_hours,config")
     .order("created_at")
     .limit(1)
     .single();
   if (error) throw error;
   return {
     name: data.name,
+    cnpj: typeof data.cnpj === "string" ? data.cnpj : null,
     phone: data.phone,
     phones: [
       ...new Set(
@@ -38,6 +39,8 @@ export type SiteContent = {
   heroTitle: string | null;
   heroSubtitle: string | null;
   heroImage: string | null;
+  /** Textos abaixo do título das seções de pizza; null usa o texto padrão. */
+  sectionSubtitles: Record<"featured" | "traditional" | "premium" | "sweet", string | null>;
   /** Fotos dos cards de pizza no cardápio. Chaves: "traditional.grande", "featured.broto" etc. */
   images: Record<string, string>;
 };
@@ -67,6 +70,10 @@ export function normalizeSiteContent(raw: unknown): SiteContent {
     heroTitle: text(site.heroTitle, 120),
     heroSubtitle: text(site.heroSubtitle, 300),
     heroImage: images.hero || null,
+    sectionSubtitles: (() => {
+      const raw = site.sectionSubtitles && typeof site.sectionSubtitles === "object" ? site.sectionSubtitles as Record<string, unknown> : {};
+      return { featured: text(raw.featured, 240), traditional: text(raw.traditional, 240), premium: text(raw.premium, 240), sweet: text(raw.sweet, 240) };
+    })(),
     images,
   };
 }

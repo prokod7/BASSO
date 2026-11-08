@@ -165,7 +165,8 @@ export async function GET() {
       tabsByTable.set(Number(tab.table_number), array);
     }
 
-    const tables = (tablesR.data || []).map((table: any) => ({
+    // Mesas desativadas pelo gestor não aparecem na operação (coluna criada na migration 041).
+    const tables = (tablesR.data || []).filter((table: any) => table.active !== false).map((table: any) => ({
       number: Number(table.number),
       capacity: Number(table.capacity || 2),
       status: table.status || "free",

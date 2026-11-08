@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { isTableNumber } from "@/lib/tables";
 import Link from "next/link";
 import { Bell, MapPin, Menu, ShoppingBag, UserRound } from "lucide-react";
 import { useCart } from "@/context/CartContext";
@@ -35,7 +36,7 @@ export function PublicHeader() {
     void refreshStatus();
     const timer = window.setInterval(() => void refreshStatus(), 30_000);
     const table = Number(new URLSearchParams(window.location.search).get("mesa"));
-    if (Number.isInteger(table) && table >= 1 && table <= 15) setHomeHref(`/?mesa=${table}`);
+    if (isTableNumber(table)) setHomeHref(`/?mesa=${table}`);
     return () => { mounted = false; window.clearInterval(timer); };
   }, []);
 

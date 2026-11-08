@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const [orders, customers, tables, products, drivers, tasks, financial] = await Promise.all([
       db.from("orders").select("id,number,daily_number,customer_name,customer_phone,status,channel,total_cents").or(Number.isFinite(numeric) && numeric > 0 ? `number.eq.${numeric},daily_number.eq.${numeric},customer_name.ilike.%${term}%,customer_phone.ilike.%${term}%` : `customer_name.ilike.%${term}%,customer_phone.ilike.%${term}%`).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
       db.from("customers").select("id,name,phone,email").or(`name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%`).limit(8),
-      Number.isFinite(numeric) && numeric > 0 && numeric <= 15
+      Number.isFinite(numeric) && numeric > 0 && numeric <= 999
         ? db.from("restaurant_tables").select("number,status,people_count,group_id").eq("number", numeric).limit(1)
         : Promise.resolve({ data: [], error: null }),
       db.from("products").select("id,name,category,price_cents,active").ilike("name", `%${term}%`).limit(8),

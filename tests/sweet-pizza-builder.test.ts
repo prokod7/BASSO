@@ -18,7 +18,7 @@ describe('base zero visível durante a montagem da pizza doce',()=>{
   const {add,close}=mount();const option=screen.getByRole('checkbox',{name:/Adicionar Creme de Avelã Zero/});expect((option as HTMLInputElement).checked).toBe(false);
   fireEvent.click(option);finish();expect(add).toHaveBeenCalledOnce();expect(close).toHaveBeenCalledOnce();
   expect(add.mock.calls[0][0]).toMatchObject({unitPrice:pizzaTotal(base('brigadeiro'))+2500,selection:{sweetBase:'hazelnut-zero',cutPreference:'uncut'}});
-  expect(add.mock.calls[0][0].name).toContain('Base Avelã Zero');
+  expect(add.mock.calls[0][0].name).toContain('Base Creme de Avelã Zero');
  });
  it('mantém base inclusa sem acréscimo quando não selecionada',()=>{const {add}=mount();finish();expect(add.mock.calls[0][0].unitPrice).toBe(pizzaTotal(base('brigadeiro')));expect(add.mock.calls[0][0].selection.sweetBase).toBe('standard');});
  it('preserva a base e o corte na edição e permite retirar o acréscimo',()=>{
