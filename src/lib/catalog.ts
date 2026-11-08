@@ -70,13 +70,31 @@ export const productImages: Record<string, string> = {
   "combo-grande-broto-refri": "/assets/products/combo-r-79-99-pizza-grande-broto-doce-refrigerante-2-litros.png",
 };
 
-export const categoryImages = {
+type PizzaImageScope = "traditional" | "premium" | "sweet" | "featured";
+type PizzaImageSize = "grande" | "broto";
+export const defaultCategoryImages = {
   traditional: { grande: "/assets/products/pizzas-tradicionais-pizza-grande.jpeg", broto: "/assets/products/pizzas-tradicionais-pizza-broto.jpeg" },
   premium: { grande: "/assets/products/pizzas-premium-pizza-grande.png", broto: "/assets/products/pizzas-premium-pizza-broto.jpeg" },
   sweet: { grande: "/assets/products/pizzas-doces-pizza-grande.jpeg", broto: "/assets/products/pizzas-doces-pizza-broto.jpeg" },
   featured: { grande: "/assets/products/as-mais-pedidas-pizza-grande.png", broto: "/assets/products/as-mais-pedidas-pizza-broto.jpeg" },
   combo: "/assets/products/combo-r-79-99-pizza-grande-broto-doce-refrigerante-2-litros.png",
 } as const;
+/** Fotos em uso no cardápio; o painel pode substituir cada uma (Configurações → Fotos do cardápio). */
+export const categoryImages: { [K in PizzaImageScope]: Record<PizzaImageSize, string> } & { combo: string } = {
+  traditional: { ...defaultCategoryImages.traditional },
+  premium: { ...defaultCategoryImages.premium },
+  sweet: { ...defaultCategoryImages.sweet },
+  featured: { ...defaultCategoryImages.featured },
+  combo: defaultCategoryImages.combo,
+};
+/** Aplica as fotos personalizadas (chaves "traditional.grande" etc.); ausentes voltam ao padrão. */
+export function applySiteImages(images: Record<string, string> | undefined | null) {
+  for (const scope of ["traditional", "premium", "sweet", "featured"] as const) {
+    for (const size of ["grande", "broto"] as const) {
+      categoryImages[scope][size] = images?.[`${scope}.${size}`] || defaultCategoryImages[scope][size];
+    }
+  }
+}
 
 export const allProducts: Product[] = [...catalog.beverages, ...catalog.desserts]
   .filter((product) => product.active)

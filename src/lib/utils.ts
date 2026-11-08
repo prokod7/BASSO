@@ -10,6 +10,12 @@ export const formatElapsedMinutes = (minutes: number) => {
   if (days > 0) return hours ? `${days}d ${hours}h` : `${days}d`;
   return `${hours}h ${String(total % 60).padStart(2, "0")}min`;
 };
+/** Converte "55", "55,9", "1.234,50" ou "12.5" em centavos. */
+export const parseMoneyInput = (text: string) => {
+  const cleaned = text.replace(/[^0-9,.]/g, "");
+  const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : cleaned;
+  return Math.max(0, Math.round((Number(normalized) || 0) * 100));
+};
 export const shortDateTime = (iso: string) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
 export const uid = (prefix = "id") => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 export const normalizePhone = (v: string) => v.replace(/\D/g, "").slice(0, 13);

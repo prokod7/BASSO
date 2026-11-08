@@ -13,6 +13,7 @@ import { allowedStatuses, statusLabel } from "@/lib/order-validation";
 import { currency, shortDateTime } from "@/lib/utils";
 import { paymentMethodLabels } from "@/lib/payment-methods";
 import { PixPaymentCard } from "@/components/public/PixPaymentCard";
+import { useStoreAvailability } from "@/components/public/useStoreAvailability";
 import { customerDeviceActions, useCustomerDeviceState } from "@/lib/customer-device-store";
 
 const OperationalMap = dynamic(() => import("@/components/maps/OperationalMap").then(module => module.OperationalMap), { ssr: false });
@@ -22,6 +23,7 @@ function OrderTrackingContent() {
   const search = useSearchParams();
   const savedToken=useCustomerDeviceState(state=>state.orders.find(order=>order.id===id)?.token);
   const token = search.get("token") || savedToken;
+  const store=useStoreAvailability();
   const [connection,setConnection]=useState("Conectando ao acompanhamento…");
   const [copied,setCopied]=useState(false);
   const localOrder = useDemoState(state => state.orders.find(order => order.id === id));
@@ -85,7 +87,7 @@ function OrderTrackingContent() {
       <section className="surface p-5"><h2 className="font-display text-xl font-bold">Resumo</h2><div className="mt-4 space-y-3">{order.items.map(item => <div key={item.id} className="flex justify-between gap-4 text-sm"><div><p><strong>{item.quantity}×</strong> {item.name}</p><div className="mt-1 space-y-1 whitespace-pre-wrap text-xs text-black/65">{itemDetails(item).map((line, i) => <p key={i} className={line.emphasis ? "font-semibold" : ""}>{line.text}</p>)}</div></div><strong>{currency(item.unitPrice * item.quantity)}</strong></div>)}</div><div className="mt-4 space-y-1.5 border-t pt-4 text-sm"><div className="flex justify-between"><span className="text-black/60">Subtotal</span><span>{currency(order.subtotal)}</span></div>{order.discount > 0 && <div className="flex justify-between text-emerald-700"><span>Desconto</span><span>− {currency(order.discount)}</span></div>}{order.channel === "own_delivery" && <div className="flex justify-between"><span className="text-black/60">Entrega</span><span>{order.deliveryFee ? currency(order.deliveryFee) : "Grátis"}</span></div>}{order.paymentMethod && <div className="flex justify-between"><span className="text-black/60">Pagamento</span><span>{paymentMethodLabels[order.paymentMethod] || order.paymentMethod}{order.changeFor ? ` (troco para ${currency(order.changeFor)})` : ""}</span></div>}</div><div className="mt-3 flex justify-between border-t pt-3"><strong>Total</strong><strong className="text-lg text-basso-wine">{currency(order.total)}</strong></div></section>
       {order.paymentMethod === "pix" && order.paymentStatus !== "paid" && order.status !== "cancelled" && order.channel !== "table_qr" && <PixPaymentCard total={order.total}/>}
 
-      <div className="grid gap-3 sm:grid-cols-2"><a className="btn-secondary" href={`https://wa.me/5511998805533?text=${encodeURIComponent(`Olá! Gostaria de falar sobre o pedido #${order.number}.`)}`} target="_blank"><MessageCircle size={18} />Falar manualmente no WhatsApp</a><button className="btn-secondary" onClick={() => location.reload()}><RefreshCw size={18} />Atualizar</button>{order.status === "completed" && <Link className="btn-primary sm:col-span-2" href={`/avaliar/${order.id}${token ? `?token=${encodeURIComponent(token)}` : ""}`}>Avaliar pedido</Link>}</div>
+      <div className="grid gap-3 sm:grid-cols-2"><a className="btn-secondary" href={`https://wa.me/${store.whatsapp || "5511998805533"}?text=${encodeURIComponent(`Olá! Gostaria de falar sobre o pedido #${order.number}.`)}`} target="_blank"><MessageCircle size={18} />Falar manualmente no WhatsApp</a><button className="btn-secondary" onClick={() => location.reload()}><RefreshCw size={18} />Atualizar</button>{order.status === "completed" && <Link className="btn-primary sm:col-span-2" href={`/avaliar/${order.id}${token ? `?token=${encodeURIComponent(token)}` : ""}`}>Avaliar pedido</Link>}</div>
     </div>
   </main>;
 }

@@ -10,6 +10,8 @@ export type StoreAvailability = {
   message: string;
   preparationMinutes?: number;
   deliveryMinutes?: number;
+  addressLabel?: string;
+  whatsapp?: string;
 };
 
 type StoreStatusBody = {
@@ -20,6 +22,7 @@ type StoreStatusBody = {
   scheduleLabel?: string;
   preparationMinutes?: number;
   deliveryMinutes?: number;
+  business?: { addressLabel?: string; whatsapp?: string | null };
 };
 
 const OPEN: StoreAvailability = { loaded: true, open: true, message: "" };
@@ -40,7 +43,7 @@ export function useStoreAvailability(): StoreAvailability {
         const message = open ? "" : body.operationalStatus === "paused"
           ? (body.pauseReason || body.publicMessage || "Pedidos pausados por alguns instantes.")
           : `Estamos fechados agora${body.scheduleLabel && /abre/i.test(body.scheduleLabel) ? ` — ${body.scheduleLabel.toLowerCase()}` : ""}.`;
-        if (active) setState({ loaded: true, open, message, preparationMinutes: body.preparationMinutes, deliveryMinutes: body.deliveryMinutes });
+        if (active) setState({ loaded: true, open, message, preparationMinutes: body.preparationMinutes, deliveryMinutes: body.deliveryMinutes, addressLabel: body.business?.addressLabel, whatsapp: body.business?.whatsapp || undefined });
       } catch {
         // Sem resposta, não bloqueia: o servidor ainda valida no envio do pedido.
         if (active) setState(OPEN);

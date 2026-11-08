@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useMemo, useState } from "react";
+import { useStoreAvailability } from "@/components/public/useStoreAvailability";
 import { QRCodeSVG } from "qrcode.react";
 import type { OrderDetail, CartItem } from "@/types";
 import { currency, shortDateTime } from "@/lib/utils";
@@ -53,6 +54,7 @@ function dateAndTime(iso: string) {
 
 export default function BrowserPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const store = useStoreAvailability();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [verification, setVerification] = useState<Verification | null>(null);
   const [verificationReady, setVerificationReady] = useState(false);
@@ -148,8 +150,7 @@ export default function BrowserPrintPage({ params }: { params: Promise<{ id: str
           <header>
             <p className="font-black">La Forneria Basso</p>
             <p>CNPJ: 62.332.415/0001-10</p>
-            <p>Rua do Progresso, 407, Centro</p>
-            <p>Rio Grande da Serra - SP</p>
+            <p>{store.addressLabel || "Rua do Progresso, 407 — Centro — Rio Grande da Serra/SP"}</p>
           </header>
           <Divider />
           <div className="flex items-end justify-between gap-2">

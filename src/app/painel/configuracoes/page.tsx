@@ -1,11 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Building2, CreditCard, Edit3, MapPin, PauseCircle, PlayCircle, Plus, Save, Settings, Trash2, Truck, Users, X } from "lucide-react";
+import { Building2, Clock3, CreditCard, Edit3, Image as ImageIcon, MapPin, PauseCircle, PlayCircle, Plus, Save, Settings, Trash2, Truck, Users, X } from "lucide-react";
 import { PageHeader } from "@/components/internal/PageHeader";
 import { currency, isDemoMode, uid } from "@/lib/utils";
 
-import { catalog } from "@/lib/catalog";
+import { catalog, defaultCategoryImages } from "@/lib/catalog";
 import { dayKeys,weekdayPt,type OpeningHours } from "@/lib/opening-hours";
 
 type FormState = {
@@ -20,10 +20,25 @@ type FormState = {
   schedulingEnabled: boolean;
   fiscalMode: "non_fiscal" | "nfce" | "external";
   preparationCapacityPerSlot: string;
+  street: string; number: string; district: string; city: string; state: string;
+  whatsapp: string;
+  heroBadge: string; heroTitle: string; heroSubtitle: string;
 };
+type Runtime = { operationalStatus: "open"|"paused"|"closed"; acceptingOrders: boolean; pauseReason?: string; manualOverride: boolean; preparationMinutes: number; deliveryMinutes: number; publicMessage?: string };
+const SITE_SLOTS: Array<{ key: string; label: string; fallback: string }> = [
+  { key: "hero", label: "Foto do topo do site", fallback: "/assets/brand/banner-institucional.png" },
+  { key: "featured.grande", label: "Mais pedidas — Grande", fallback: defaultCategoryImages.featured.grande },
+  { key: "featured.broto", label: "Mais pedidas — Broto", fallback: defaultCategoryImages.featured.broto },
+  { key: "traditional.grande", label: "Tradicionais — Grande", fallback: defaultCategoryImages.traditional.grande },
+  { key: "traditional.broto", label: "Tradicionais — Broto", fallback: defaultCategoryImages.traditional.broto },
+  { key: "premium.grande", label: "Premium — Grande", fallback: defaultCategoryImages.premium.grande },
+  { key: "premium.broto", label: "Premium — Broto", fallback: defaultCategoryImages.premium.broto },
+  { key: "sweet.grande", label: "Doces — Grande", fallback: defaultCategoryImages.sweet.grande },
+  { key: "sweet.broto", label: "Doces — Broto", fallback: defaultCategoryImages.sweet.broto },
+];
 type Zone = { id: string; name: string; city: string; districts: string[]; fee_cents: number; minimum_order_cents: number; max_distance_km: number | null; active: boolean };
 const DEMO_KEY = "lfb-settings-v31";
-const defaults: FormState = { name:"La Forneria Basso",phone:"(11) 97235-6751",contactPhones:"",instagram:"@laforneriabasso",openingHours:catalog.business.hours as OpeningHours, minimumOrder: "0", maximumDeliveryKm: "", pixKey: "", pixKeyType: "cpf_cnpj", pixConfirmation: "manual", serviceFeePercent: "0", waiterCommissionPercent: "0", schedulingEnabled: true, fiscalMode: "non_fiscal", preparationCapacityPerSlot: "" };
+const defaults: FormState = { name:"La Forneria Basso",phone:"(11) 97235-6751",contactPhones:"",instagram:"@laforneriabasso",openingHours:catalog.business.hours as OpeningHours, minimumOrder: "0", maximumDeliveryKm: "", pixKey: "", pixKeyType: "cpf_cnpj", pixConfirmation: "manual", serviceFeePercent: "0", waiterCommissionPercent: "0", schedulingEnabled: true, fiscalMode: "non_fiscal", preparationCapacityPerSlot: "", street: "Rua do Progresso", number: "407", district: "Centro", city: "Rio Grande da Serra", state: "SP", whatsapp: "", heroBadge: "", heroTitle: "", heroSubtitle: "" };
 
 export default function SettingsPage() {
   const [form, setForm] = useState(defaults);
@@ -38,6 +53,9 @@ export default function SettingsPage() {
   const [districts, setDistricts] = useState("");
   const [zoneFee, setZoneFee] = useState("");
   const [zoneMinimum, setZoneMinimum] = useState("");
+  const [siteImages, setSiteImages] = useState<Record<string, string>>({});
+  const [imageBusy, setImageBusy] = useState("");
+  const [runtime, setRuntime] = useState<Runtime | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,10 +78,17 @@ export default function SettingsPage() {
               pixConfirmation: config.pixConfirmation || "manual",
               serviceFeePercent: String(config.serviceFeePercent || 0), waiterCommissionPercent: String(config.waiterCommissionPercent || 0),
               schedulingEnabled: config.schedulingEnabled !== false, fiscalMode: config.fiscalMode || "non_fiscal",
-              preparationCapacityPerSlot: config.preparationCapacityPerSlot == null ? "" : String(config.preparationCapacityPerSlot)
+              preparationCapacityPerSlot: config.preparationCapacityPerSlot == null ? "" : String(config.preparationCapacityPerSlot),
+              street: body.settings.address?.street || defaults.street, number: body.settings.address?.number || defaults.number, district: body.settings.address?.district || "", city: body.settings.address?.city || defaults.city, state: body.settings.address?.state || "SP",
+              whatsapp: config.whatsapp || "",
+              heroBadge: config.site?.heroBadge || "", heroTitle: config.site?.heroTitle || "", heroSubtitle: config.site?.heroSubtitle || "",
             });
+            setSiteImages(config.site?.images || {});
             setZones((body.deliveryZones || []).map((zone: Zone) => ({ ...zone, city: zone.city || zone.name.split(" — ")[0] || "" })));
           }
+          const statusResponse = await fetch("/api/store-status", { cache: "no-store" });
+          const statusBody = await statusResponse.json().catch(() => null);
+          if (!cancelled && statusResponse.ok && statusBody) setRuntime({ operationalStatus: statusBody.operationalStatus, acceptingOrders: Boolean(statusBody.acceptingOrders), pauseReason: statusBody.pauseReason, manualOverride: Boolean(statusBody.manualOverride), preparationMinutes: Number(statusBody.preparationMinutes || 45), deliveryMinutes: Number(statusBody.deliveryMinutes || 60), publicMessage: statusBody.publicMessage || "" });
         }
       } catch (error) { if (!cancelled) setMessage(error instanceof Error ? error.message : "Falha ao carregar."); }
       finally { if (!cancelled) setLoading(false); }
@@ -78,12 +103,37 @@ export default function SettingsPage() {
     try {
       if (isDemoMode()) persistDemo();
       else {
-        const response = await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({name:form.name,phone:form.phone,contactPhones:form.contactPhones.split(/[\n;,]/).map(p=>p.trim()).filter(Boolean),instagram:form.instagram,openingHours:form.openingHours, minimumOrder: numberValue(form.minimumOrder, 100), config: { pixKey: form.pixKey || null, pixKeyType: form.pixKeyType || null, pixConfirmation: form.pixConfirmation, serviceFeePercent: numberValue(form.serviceFeePercent), waiterCommissionPercent: numberValue(form.waiterCommissionPercent), schedulingEnabled: form.schedulingEnabled, maximumDeliveryKm: form.maximumDeliveryKm ? Number(form.maximumDeliveryKm.replace(",", ".")) : null, fiscalMode: form.fiscalMode, preparationCapacityPerSlot: form.preparationCapacityPerSlot ? Number(form.preparationCapacityPerSlot) : null } }) });
+        const response = await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({address:{street:form.street,number:form.number,district:form.district,city:form.city,state:form.state.toUpperCase()},name:form.name,phone:form.phone,contactPhones:form.contactPhones.split(/[\n;,]/).map(p=>p.trim()).filter(Boolean),instagram:form.instagram,openingHours:form.openingHours, minimumOrder: numberValue(form.minimumOrder, 100), config: { pixKey: form.pixKey || null, pixKeyType: form.pixKeyType || null, pixConfirmation: form.pixConfirmation, serviceFeePercent: numberValue(form.serviceFeePercent), waiterCommissionPercent: numberValue(form.waiterCommissionPercent), schedulingEnabled: form.schedulingEnabled, maximumDeliveryKm: form.maximumDeliveryKm ? Number(form.maximumDeliveryKm.replace(",", ".")) : null, fiscalMode: form.fiscalMode, preparationCapacityPerSlot: form.preparationCapacityPerSlot ? Number(form.preparationCapacityPerSlot) : null, whatsapp: form.whatsapp.replace(/\D/g, "") || null, site: { heroBadge: form.heroBadge.trim() || null, heroTitle: form.heroTitle.trim() || null, heroSubtitle: form.heroSubtitle.trim() || null } } }) });
         const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao salvar.");
+        if (runtime) {
+          const statusResponse = await fetch("/api/store-status", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ operationalStatus: runtime.operationalStatus, acceptingOrders: runtime.acceptingOrders, pauseReason: runtime.pauseReason || null, manualOverride: runtime.manualOverride, preparationMinutes: runtime.preparationMinutes, deliveryMinutes: runtime.deliveryMinutes, publicMessage: runtime.publicMessage?.trim() || null }) });
+          const statusBody = await statusResponse.json(); if (!statusResponse.ok) throw new Error(statusBody.error || "Falha ao salvar tempos de preparo e entrega.");
+        }
       }
       setMessage("Configurações salvas e registradas na auditoria.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao salvar."); }
     finally { setSaving(false); }
+  }
+
+  async function uploadSiteImage(key: string, file: File) {
+    setImageBusy(key); setMessage("");
+    try {
+      if (isDemoMode()) throw new Error("O envio de fotos exige o banco configurado.");
+      const data = new FormData(); data.append("key", key); data.append("file", file);
+      const response = await fetch("/api/settings/site-images", { method: "POST", body: data });
+      const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao enviar foto.");
+      setSiteImages(current => ({ ...current, [key]: body.url })); setMessage("Foto atualizada. Ela já aparece no cardápio.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao enviar foto."); }
+    finally { setImageBusy(""); }
+  }
+  async function removeSiteImage(key: string) {
+    setImageBusy(key); setMessage("");
+    try {
+      const response = await fetch("/api/settings/site-images", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key }) });
+      const body = await response.json(); if (!response.ok) throw new Error(body.error || "Falha ao remover foto.");
+      setSiteImages(current => { const next = { ...current }; delete next[key]; return next; }); setMessage("Foto personalizada removida. O cardápio voltou a usar a foto padrão.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao remover foto."); }
+    finally { setImageBusy(""); }
   }
 
   async function addZone(event: FormEvent) {
@@ -132,12 +182,17 @@ export default function SettingsPage() {
     <PageHeader title="Configurações da operação" icon={Settings} description="Controle cobertura, cidades, bairros, taxas, pedido mínimo, Pix, salão e parâmetros operacionais." actions={<button className="btn-primary" onClick={save} disabled={saving || loading}><Save size={17}/>{saving ? "Salvando..." : "Salvar alterações"}</button>} />
     {message && <p className="mb-5 rounded-xl bg-blue-50 p-4 text-sm font-semibold text-blue-800">{message}</p>}
     <div className="grid gap-5 xl:grid-cols-2">
-      <Section icon={<Building2/>} title="Estabelecimento"><Grid><Field label="Nome fantasia" value={form.name} onChange={name=>setForm({...form,name})}/><ReadOnly label="CNPJ" value="62.332.415/0001-10"/><Field label="Telefone principal" value={form.phone} onChange={phone=>setForm({...form,phone})}/><Field label="Instagram" value={form.instagram} onChange={instagram=>setForm({...form,instagram})}/><label className="sm:col-span-2"><span className="label">Outros telefones (um por linha)</span><textarea className="textarea" value={form.contactPhones} onChange={e=>setForm({...form,contactPhones:e.target.value})}/></label></Grid></Section>
+      <Section icon={<Building2/>} title="Estabelecimento"><Grid><Field label="Nome fantasia" value={form.name} onChange={name=>setForm({...form,name})}/><ReadOnly label="CNPJ" value="62.332.415/0001-10"/><Field label="Telefone principal" value={form.phone} onChange={phone=>setForm({...form,phone})}/><Field label="Instagram" value={form.instagram} onChange={instagram=>setForm({...form,instagram})}/><label className="sm:col-span-2"><span className="label">Outros telefones (um por linha)</span><textarea className="textarea" value={form.contactPhones} onChange={e=>setForm({...form,contactPhones:e.target.value})}/></label><label className="sm:col-span-2"><span className="label">WhatsApp de atendimento (com DDI e DDD)</span><input className="input" inputMode="numeric" placeholder="5511999999999" value={form.whatsapp} onChange={e=>setForm({...form,whatsapp:e.target.value})}/><span className="mt-1 block text-xs text-black/45">Usado no botão “Falar no WhatsApp” do acompanhamento do pedido.</span></label><Field label="Rua da loja" value={form.street} onChange={street=>setForm({...form,street})}/><Field label="Número" value={form.number} onChange={number=>setForm({...form,number})}/><Field label="Bairro" value={form.district} onChange={district=>setForm({...form,district})}/><Field label="Cidade" value={form.city} onChange={city=>setForm({...form,city})}/><Field label="UF" value={form.state} onChange={state=>setForm({...form,state:state.slice(0,2)})}/></Grid><p className="mt-3 text-xs text-black/45">O endereço aparece no site, no checkout (retirada) e nas comandas impressas.</p></Section>
       <Section icon={<Settings/>} title="Horários de atendimento"><p className="mb-3 text-sm text-black/50">Fuso de São Paulo. Desmarque os dias fechados. Horários que passam da meia-noite são aceitos. Para seguir estes horários, use o modo automático no controle da loja.</p><div className="space-y-3">{dayKeys.map(day=>{const hours=form.openingHours[day];return <div key={day} className="grid grid-cols-[1fr_100px_100px] items-center gap-2"><label className="flex items-center gap-2 text-sm capitalize"><input type="checkbox" checked={Boolean(hours)} onChange={e=>setForm({...form,openingHours:{...form.openingHours,[day]:e.target.checked?["18:00","23:00"]:null}})}/>{weekdayPt[day]}</label><input aria-label={`Abre ${weekdayPt[day]}`} className="input" type="time" disabled={!hours} value={hours?.[0]||""} onChange={e=>setForm({...form,openingHours:{...form.openingHours,[day]:[e.target.value,hours?.[1]||"23:00"]}})}/><input aria-label={`Fecha ${weekdayPt[day]}`} className="input" type="time" disabled={!hours} value={hours?.[1]||""} onChange={e=>setForm({...form,openingHours:{...form.openingHours,[day]:[hours?.[0]||"18:00",e.target.value]}})}/></div>})}</div></Section>
       <Section icon={<Truck/>} title="Delivery"><Grid><Field label="Pedido mínimo geral (R$)" value={form.minimumOrder} onChange={value=>setForm({...form,minimumOrder:value})}/><Field label="Área máxima (km)" value={form.maximumDeliveryKm} onChange={value=>setForm({...form,maximumDeliveryKm:value})}/><Field label="Capacidade por faixa" value={form.preparationCapacityPerSlot} onChange={value=>setForm({...form,preparationCapacityPerSlot:value})}/><label className="flex items-end gap-3 rounded-xl border p-3"><input type="checkbox" checked={form.schedulingEnabled} onChange={event=>setForm({...form,schedulingEnabled:event.target.checked})}/><span className="text-sm font-bold">Agendamento habilitado</span></label></Grid><button className="btn-secondary mt-4" onClick={()=>setShowZone(value=>!value)}><MapPin size={16}/>{showZone ? "Fechar cadastro" : "Adicionar cidade/bairro"}</button></Section>
       <Section icon={<CreditCard/>} title="Pagamentos"><Grid><Field label="Chave Pix" value={form.pixKey} onChange={value=>setForm({...form,pixKey:value})}/><label><span className="label">Conferência Pix</span><select className="input" value={form.pixConfirmation} onChange={event=>setForm({...form,pixConfirmation:event.target.value as FormState["pixConfirmation"]})}><option value="manual">Manual</option><option value="automatic">Automática (somente com gateway homologado)</option></select></label><ReadOnly label="Integração Rede" value="Aguardando SDK/App2App e homologação da Laranjinha"/><label><span className="label">Modo fiscal</span><select className="input" value={form.fiscalMode} onChange={event=>setForm({...form,fiscalMode:event.target.value as FormState["fiscalMode"]})}><option value="non_fiscal">Comprovante não fiscal</option><option value="nfce">NFC-e</option><option value="external">Integração fiscal externa</option></select></label></Grid></Section>
       <Section icon={<Users/>} title="Salão e permissões"><Grid><ReadOnly label="Mesas" value="15 (10×5 + 5×2 lugares)"/><Field label="Taxa de serviço (%)" value={form.serviceFeePercent} onChange={value=>setForm({...form,serviceFeePercent:value})}/><Field label="Comissão garçom (%)" value={form.waiterCommissionPercent} onChange={value=>setForm({...form,waiterCommissionPercent:value})}/><ReadOnly label="Junção de mesas" value="Permitida com auditoria"/></Grid></Section>
     </div>
+
+    <div className="mt-6"><Section icon={<Clock3/>} title="Tempos e aviso no cardápio">{runtime ? <Grid><label><span className="label">Tempo de preparo para retirada (min)</span><input className="input" type="number" min={5} max={240} value={runtime.preparationMinutes} onChange={e=>setRuntime({...runtime,preparationMinutes:Number(e.target.value)})}/></label><label><span className="label">Tempo estimado de entrega (min)</span><input className="input" type="number" min={10} max={300} value={runtime.deliveryMinutes} onChange={e=>setRuntime({...runtime,deliveryMinutes:Number(e.target.value)})}/></label><label className="sm:col-span-2"><span className="label">Aviso no topo do cardápio (opcional)</span><textarea className="textarea min-h-20" maxLength={500} value={runtime.publicMessage || ""} onChange={e=>setRuntime({...runtime,publicMessage:e.target.value})} placeholder="Ex.: Hoje temos borda recheada grátis!"/></label></Grid> : <p className="text-sm text-black/50">{loading ? "Carregando..." : "Não foi possível carregar os tempos agora."}</p>}<p className="mt-3 text-xs text-black/45">Salvar aqui não abre nem fecha a loja; isso continua no botão de status no topo do painel.</p></Section></div>
+
+    <div id="site" className="mt-6 scroll-mt-24"><Section icon={<ImageIcon/>} title="Site e fotos do cardápio"><Grid><Field label="Selo do topo" value={form.heroBadge} onChange={heroBadge=>setForm({...form,heroBadge})}/><Field label="Título principal" value={form.heroTitle} onChange={heroTitle=>setForm({...form,heroTitle})}/><label className="sm:col-span-2"><span className="label">Texto de apresentação</span><textarea className="textarea" maxLength={300} value={form.heroSubtitle} onChange={e=>setForm({...form,heroSubtitle:e.target.value})}/></label></Grid><p className="mt-2 text-xs text-black/45">Campos vazios usam o texto padrão: “Massa de longa fermentação”, “Pizza artesanal com alma italiana.” e a apresentação atual. Clique em “Salvar alterações” no topo para publicar os textos.</p>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{SITE_SLOTS.map(slot=>{const custom=siteImages[slot.key];const busy=imageBusy===slot.key;return <div key={slot.key} className="flex items-center gap-3 rounded-2xl border p-3"><img src={custom||slot.fallback} alt="" className="h-20 w-20 shrink-0 rounded-xl object-cover"/><div className="min-w-0 flex-1"><p className="text-sm font-bold">{slot.label}</p><p className="text-[11px] text-black/45">{custom?"Foto personalizada":"Foto padrão"}</p><div className="mt-2 flex flex-wrap gap-2"><label className={`btn-secondary min-h-9 cursor-pointer px-3 text-xs ${busy?"pointer-events-none opacity-50":""}`}><ImageIcon size={14}/>{busy?"Enviando...":"Trocar foto"}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="hidden" disabled={busy} onChange={e=>{const file=e.target.files?.[0];if(file)void uploadSiteImage(slot.key,file);e.currentTarget.value=""}}/></label>{custom&&<button type="button" className="btn-ghost min-h-9 px-2 text-xs text-red-700" disabled={busy} onClick={()=>void removeSiteImage(slot.key)}>Usar padrão</button>}</div></div></div>})}</div><p className="mt-3 text-xs text-black/45">JPG, PNG, WebP ou AVIF até 5 MB. As fotos são publicadas na hora. Fotos de bebidas, sobremesas e combos são trocadas em Cardápio → Administrar.</p></Section></div>
 
     {showZone && <form onSubmit={addZone} className="surface mt-6 p-5"><h2 className="font-display text-xl font-bold">Nova cidade/bairro de entrega</h2><p className="mt-1 text-sm text-black/45">A cidade é usada no checkout; você pode agrupar bairros da mesma cidade quando a taxa for igual.</p><div className="mt-4 grid gap-4 md:grid-cols-5"><Field label="Cidade" value={zoneCity} onChange={setZoneCity}/><Field label="Nome da zona (opcional)" value={zoneName} onChange={setZoneName}/><Field label="Bairros (separados por vírgula)" value={districts} onChange={setDistricts}/><Field label="Taxa (R$)" value={zoneFee} onChange={setZoneFee}/><Field label="Pedido mínimo (R$)" value={zoneMinimum} onChange={setZoneMinimum}/></div><button type="submit" className="btn-primary mt-4" disabled={saving}><Plus size={16}/>Adicionar zona</button></form>}
 
