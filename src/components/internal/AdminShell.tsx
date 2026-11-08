@@ -8,7 +8,7 @@ import {
   AlertCircle, BarChart3, Bell, BellRing, Bike, BookOpen, Boxes, ChefHat, ChevronLeft, ChevronRight,
   CircleDollarSign, CirclePause, CirclePlay, ClipboardCheck, ClipboardList, CloudCog, Contact, Gift,
   HeartPulse, HelpCircle, LayoutDashboard, ListChecks, Loader2, LockKeyhole, LogOut, Menu, Megaphone,
-  MessageCircleMore, PackageCheck, Printer, Receipt, Search, ServerCog, Settings, ShieldCheck,
+  MessageCircle, MessageCircleMore, PackageCheck, Printer, Receipt, Search, ServerCog, Settings, ShieldCheck,
   ShieldQuestion, ShoppingBasket, ShoppingCart, Store, Table2, TicketPercent, UserCog, Users, Volume2, VolumeX, WifiOff, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -49,6 +49,7 @@ const sections: NavSection[] = [
     { href: "/painel/notificacoes", label: "Notificações", icon: Bell, roles: operationRoles },
   ]},
   { label: "Relacionamento", items: [
+    { href: "/painel/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["manager", "counter", "viewer"] },
     { href: "/painel/clientes", label: "Clientes e CRM", icon: Contact, roles: ["manager", "counter", "finance", "viewer"] },
     { href: "/painel/fidelidade", label: "Fidelidade interna", icon: Gift, roles: ["manager", "counter", "finance"] },
     { href: "/painel/cupons", label: "Cupons", icon: TicketPercent, roles: ["manager", "counter", "finance"] },
@@ -112,6 +113,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     seenOrderIdsRef.current = ids;
     if (hasNewOrder && soundEnabled) void playNewOrderSound();
   }, [store.orders, status.status, soundEnabled]);
+
+  // Robô do WhatsApp: o painel aberto na loja retoma mensagens paradas (sem agendador externo).
+  useEffect(() => {
+    if (isDemoMode()) return;
+    const kick = () => { void fetch("/api/whatsapp/kick", { method: "POST" }).catch(() => undefined); };
+    const timer = window.setInterval(kick, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const visibleSections = useMemo(() => sections.map((section) => ({ ...section, items: section.items.filter((item) => !item.roles || item.roles.includes(role)) })).filter((section) => section.items.length), [role]);
   const openSearch = useCallback(() => setSearchOpen(true), []);
