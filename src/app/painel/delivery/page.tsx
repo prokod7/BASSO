@@ -9,7 +9,7 @@ import type { MapPoint } from "@/components/maps/OperationalMap";
 import { demoActions } from "@/lib/demo-store";
 import { useStableDemoState } from "@/lib/stable-store";
 import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client/api";
-import { currency, isDemoMode, shortDateTime } from "@/lib/utils";
+import { currency, formatElapsedMinutes, isDemoMode, shortDateTime } from "@/lib/utils";
 import type { Driver, Order, OrderStatus } from "@/types";
 
 const OperationalMap = dynamic(() => import("@/components/maps/OperationalMap").then((module) => module.OperationalMap), { ssr: false });
@@ -178,7 +178,7 @@ function DeliveryCard({ order, drivers, busy, onAssign, onOpen, onWhatsApp, onSt
     <div className="p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2"><p className="text-xs font-black uppercase text-basso-wine">Pedido #{order.number}</p><span className="rounded-full bg-black/5 px-2 py-1 text-[10px] font-bold">{statusLabel[order.status]}</span>{order.paymentStatus !== "paid" && <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800">Recebimento pendente</span>}{minutes != null && minutes >= 45 && <span className="rounded-full bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700">{minutes} min nesta etapa</span>}</div>
+          <div className="flex flex-wrap items-center gap-2"><p className="text-xs font-black uppercase text-basso-wine">Pedido #{order.number}</p><span className="rounded-full bg-black/5 px-2 py-1 text-[10px] font-bold">{statusLabel[order.status]}</span>{order.paymentStatus !== "paid" && <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800">Recebimento pendente</span>}{minutes != null && minutes >= 45 && <span className="rounded-full bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700">{formatElapsedMinutes(minutes)} nesta etapa</span>}</div>
           <h2 className="mt-2 font-display text-xl font-bold">{order.customerName || "Cliente"}</h2>
           <p className="mt-2 flex items-start gap-2 text-sm text-black/55"><MapPin size={16} className="mt-0.5 shrink-0" />{formatAddress(order)}</p>
           <p className="mt-2 text-xs text-black/40">{currency(order.total || 0)} • {String(order.paymentMethod || "").toUpperCase()} • entrou {shortDateTime(order.createdAt)}</p>

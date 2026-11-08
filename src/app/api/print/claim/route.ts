@@ -1,10 +1,11 @@
 import { hydratePrintJobs } from "@/lib/print-presentation";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAuthorizedPrintBridge } from "@/lib/print-bridge-auth";
 
 export async function POST(request: NextRequest) {
   const key = request.headers.get("x-print-bridge-key");
-  if (!key || key !== process.env.PRINT_BRIDGE_KEY) return NextResponse.json({ error: "Bridge não autorizado." }, { status: 401 });
+  if (!isAuthorizedPrintBridge(key)) return NextResponse.json({ error: "Bridge não autorizado." }, { status: 401 });
   const db = createAdminClient();
   if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
   const body = await request.json().catch(() => ({}));

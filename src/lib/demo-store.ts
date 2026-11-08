@@ -115,7 +115,7 @@ function normalizeState(value: Partial<DemoState> | null): DemoState {
 
 function load(): DemoState {
   if (memory) return memory;
-  if (typeof window === "undefined") return fallbackState();
+  if (typeof window === "undefined") return getServerSnapshot();
   if (!isDemoMode()) {
     memory = emptyState();
     return memory;
@@ -154,8 +154,16 @@ function subscribe(listener: () => void) {
   return () => { listeners.delete(listener); window.removeEventListener("storage", onStorage); channel?.removeEventListener("message", onBroadcast); };
 }
 
+// React exige que getServerSnapshot devolva sempre a mesma referência;
+// recriar o estado a cada chamada dispara o aviso de loop infinito.
+let serverSnapshot: DemoState | null = null;
+function getServerSnapshot(): DemoState {
+  if (!serverSnapshot) serverSnapshot = fallbackState();
+  return serverSnapshot;
+}
+
 export function useDemoState<T>(selector: (state: DemoState) => T): T {
-  return useSyncExternalStore(subscribe, () => selector(load()), () => selector(fallbackState()));
+  return useSyncExternalStore(subscribe, () => selector(load()), () => selector(getServerSnapshot()));
 }
 export const demoActions = {
   reset() { save(fallbackState()); },

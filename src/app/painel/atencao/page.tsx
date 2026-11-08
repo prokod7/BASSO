@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, BellRing, Bike, Boxes, CircleDollarSign, ClipboardList, CreditCard, Loader2, Printer, RefreshCw, ShieldQuestion, Table2, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/internal/PageHeader";
-import { shortDateTime } from "@/lib/utils";
+import { formatElapsedMinutes, shortDateTime } from "@/lib/utils";
 import type { AttentionItem, AttentionKind, AttentionSnapshot } from "@/types";
 
 const kindMeta: Record<AttentionKind, { label: string; icon: LucideIcon }> = {
@@ -60,7 +60,7 @@ export default function AttentionPage() {
 function AttentionRow({ item }: { item: AttentionItem }) {
   const meta = kindMeta[item.kind]; const Icon = meta.icon;
   const tone = item.severity === "danger" ? "bg-red-50 text-red-700" : item.severity === "warning" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-700";
-  return <Link href={item.href} className="flex items-start gap-4 p-4 transition hover:bg-black/[.025] sm:p-5"><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${tone}`}><Icon size={20}/></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong>{item.title}</strong><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${tone}`}>{item.severity === "danger" ? "Crítico" : item.severity === "warning" ? "Atenção" : "Info"}</span></div><p className="mt-1 text-sm text-black/55">{item.detail}</p><p className="mt-2 text-[11px] text-black/35">{meta.label}{typeof item.ageMinutes === "number" ? ` • ${item.ageMinutes} min` : ""}</p></div><span className="mt-2 text-xs font-bold text-basso-wine">Abrir →</span></Link>;
+  return <Link href={item.href} className="flex items-start gap-4 p-4 transition hover:bg-black/[.025] sm:p-5"><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${tone}`}><Icon size={20}/></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong>{item.title}</strong><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${tone}`}>{item.severity === "danger" ? "Crítico" : item.severity === "warning" ? "Atenção" : "Info"}</span></div><p className="mt-1 text-sm text-black/55">{item.detail}</p><p className="mt-2 text-[11px] text-black/35">{meta.label}{typeof item.ageMinutes === "number" ? ` • ${formatElapsedMinutes(item.ageMinutes)}` : ""}</p></div><span className="mt-2 text-xs font-bold text-basso-wine">Abrir →</span></Link>;
 }
 function FilterButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) { return <button className={`rounded-full border px-3 py-2 text-xs font-bold ${active ? "border-basso-wine bg-basso-wine text-white" : "border-black/10 bg-white text-black/55"}`} onClick={onClick}>{label}</button>; }
 function Metric({ label, value, tone = "default" }: { label: string; value: number; tone?: "default" | "danger" | "warning" | "info" }) { const cls = tone === "danger" ? "border-red-200 bg-red-50" : tone === "warning" ? "border-amber-200 bg-amber-50" : tone === "info" ? "border-blue-200 bg-blue-50" : ""; return <div className={`surface p-4 ${cls}`}><p className="text-xs font-black uppercase text-black/40">{label}</p><p className="mt-1 text-3xl font-black">{value}</p></div>; }

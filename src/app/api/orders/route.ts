@@ -103,7 +103,8 @@ export async function GET(request: NextRequest) {
   }
   const db = createAdminClient();
   if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
-  const limit = Math.min(100, Number(request.nextUrl.searchParams.get("limit") || 30));
+  const requested = Number.parseInt(request.nextUrl.searchParams.get("limit") || "30", 10);
+  const limit = Number.isFinite(requested) ? Math.min(100, Math.max(1, requested)) : 30;
   const { data, error } = await db.from("orders").select("*").order("created_at", { ascending: false }).limit(limit);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ orders: data });
