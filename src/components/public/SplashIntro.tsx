@@ -3,9 +3,8 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-export const SPLASH_STORAGE_KEY = "lfb-splash-seen";
 const SPLASH_ID = "basso-splash";
-const DURATION_MS = 2400;
+const DURATION_MS = 2000;
 const EXIT_MS = 600;
 
 const embers = [
@@ -19,17 +18,13 @@ const embers = [
 ];
 
 /**
- * Abertura animada do cardápio público. Exibida uma vez por sessão do navegador;
+ * Abertura animada do cardápio público. Exibida em toda visita (2 s);
  * toque na tela pula a animação. Respeita prefers-reduced-motion.
  */
 export function SplashIntro() {
   const [phase, setPhase] = useState<"show" | "leaving" | "done">("show");
 
   useEffect(() => {
-    let seen = false;
-    try { seen = sessionStorage.getItem(SPLASH_STORAGE_KEY) === "1"; } catch { /* armazenamento bloqueado */ }
-    if (seen) { setPhase("done"); return; }
-    try { sessionStorage.setItem(SPLASH_STORAGE_KEY, "1"); } catch { /* armazenamento bloqueado */ }
     const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const visible = reduce ? 700 : DURATION_MS;
     const leave = window.setTimeout(() => setPhase("leaving"), visible);
@@ -46,14 +41,12 @@ export function SplashIntro() {
   if (phase === "done") return null;
 
   return (
-    <>
       <div
         id={SPLASH_ID}
         role="status"
         aria-live="polite"
         aria-label="Carregando La Forneria Basso"
         onClick={() => setPhase("leaving")}
-        suppressHydrationWarning
         className={`splash-root fixed inset-0 z-[200] flex cursor-pointer flex-col overflow-hidden bg-[#0b0907] text-white ${phase === "leaving" ? "splash-leave" : ""}`}
       >
         {/* Forno ao fundo */}
@@ -89,10 +82,5 @@ export function SplashIntro() {
           <p className="mt-3 text-xs text-white/60">Preparando sua melhor experiência</p>
         </div>
       </div>
-      {/* Esconde antes da pintura se a abertura já foi vista nesta sessão (evita piscar). */}
-      <script
-        dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem("${SPLASH_STORAGE_KEY}")==="1"){var s=document.getElementById("${SPLASH_ID}");if(s)s.style.display="none"}}catch(e){}` }}
-      />
-    </>
   );
 }

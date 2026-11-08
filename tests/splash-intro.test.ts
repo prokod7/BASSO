@@ -4,9 +4,9 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => React.createElement("img", { alt: props.alt as string, src: props.src as string }) }));
-import { SPLASH_STORAGE_KEY, SplashIntro } from "@/components/public/SplashIntro";
+import { SplashIntro } from "@/components/public/SplashIntro";
 
-beforeEach(() => { Object.assign(globalThis, { React }); sessionStorage.clear(); vi.useFakeTimers(); });
+beforeEach(() => { Object.assign(globalThis, { React }); vi.useFakeTimers(); });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("abertura animada", () => {
@@ -14,14 +14,17 @@ describe("abertura animada", () => {
     render(React.createElement(SplashIntro));
     expect(screen.getByRole("status", { name: /Carregando La Forneria Basso/ })).toBeTruthy();
     expect(screen.getByText("Pizzaria artesanal")).toBeTruthy();
-    expect(sessionStorage.getItem(SPLASH_STORAGE_KEY)).toBe("1");
-    act(() => { vi.advanceTimersByTime(4000); });
+    act(() => { vi.advanceTimersByTime(1900); });
+    expect(screen.getByRole("status")).toBeTruthy();
+    act(() => { vi.advanceTimersByTime(800); });
     expect(screen.queryByRole("status")).toBeNull();
   });
-  it("não reaparece na mesma sessão", () => {
-    sessionStorage.setItem(SPLASH_STORAGE_KEY, "1");
+  it("aparece de novo em toda visita", () => {
+    const first = render(React.createElement(SplashIntro));
+    act(() => { vi.advanceTimersByTime(3000); });
+    first.unmount();
     render(React.createElement(SplashIntro));
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("status")).toBeTruthy();
   });
   it("toque pula a abertura", () => {
     render(React.createElement(SplashIntro));
