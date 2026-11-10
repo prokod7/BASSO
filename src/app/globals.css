@@ -98,3 +98,14 @@ input[type="checkbox"], input[type="radio"] { width: 1.15rem; height: 1.15rem; f
   .splash-fire, .splash-ember { animation: none; }
   .splash-progress { animation-duration: .7s !important; }
 }
+
+/* ===== Comanda térmica 80 mm desenhada na própria página (impressão manual e estação) ===== */
+.print-receipt { display: none; }
+@page ticket { size: 80mm auto; margin: 2.5mm; }
+@media print {
+  /* Só a comanda: nada do painel. */
+  body:has(> .print-receipt) > *:not(.print-receipt) { display: none !important; }
+  html:has(body > .print-receipt), body:has(> .print-receipt) { background: #fff !important; margin: 0 !important; padding: 0 !important; min-height: 0 !important; height: auto !important; }
+  body > .print-receipt { display: block !important; page: ticket; width: 75mm !important; margin: 0 auto !important; color: #000; }
+  body > .print-receipt .print-via + .print-via { break-before: page; page-break-before: always; }
+}

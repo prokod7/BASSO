@@ -5,13 +5,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
   sectors: z.array(z.enum(["kitchen", "counter", "bar"])).min(1).max(3),
-  since: z.string().datetime(),
+  since: z.string().datetime().optional(),
 });
 
 /**
- * Estação de impressão no navegador (atalho do Chrome com impressão silenciosa).
- * Reivindica os trabalhos da fila de forma atômica (queued → done): cada comanda sai em
- * uma única estação, mesmo com duas abertas. Nunca pega trabalhos com mais de 2 h.
+ * Estação de impressão (modelo do Restaurante do Adão): pega os pedidos ainda não impressos do
+ * seu setor e só marca como impresso DEPOIS de imprimir (/api/print/browser-done). Via pega e não
+ * confirmada volta para a fila em 2 minutos, então queda de energia/aba não perde comanda.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +19,10 @@ export async function POST(request: NextRequest) {
     const body = schema.parse(await request.json());
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
-    const floor = new Date(Math.max(Date.parse(body.since), Date.now() - 2 * 3600_000)).toISOString();
+    const now = Date.now();
+    // Devolve à fila o que foi pego e não confirmado (estação fechou no meio da impressão).
+    await db.from("print_jobs").update({ status: "queued" }).eq("status", "processing").in("sector", body.sectors).lt("processed_at", new Date(now - 2 * 60_000).toISOString());
+    const floor = new Date(now - 3 * 3600_000).toISOString();
     const { data: waiting, error: readError } = await db
       .from("print_jobs")
       .select("id")
@@ -32,7 +35,7 @@ export async function POST(request: NextRequest) {
     if (!waiting?.length) return NextResponse.json({ jobs: [] });
     const { data: claimed, error } = await db
       .from("print_jobs")
-      .update({ status: "done", processed_at: new Date().toISOString(), last_error: null })
+      .update({ status: "processing", processed_at: new Date().toISOString(), last_error: null })
       .in("id", waiting.map((job) => job.id))
       .eq("status", "queued")
       .select("id,order_id,sector,is_reprint,created_at");
