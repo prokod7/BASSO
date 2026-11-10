@@ -9,7 +9,7 @@ import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client
 import { statusLabel } from "@/lib/order-validation";
 import { formatElapsedMinutes, isDemoMode } from "@/lib/utils";
 import { printHere } from "@/lib/client/print-here";
-import { playNewOrderSound } from "@/lib/order-notification-sound";
+import { playNewOrderSound, ringForNewOrders } from "@/lib/order-notification-sound";
 import { compactItemName, itemDetails } from "@/lib/item-presentation";
 import type { CartItem, Order, OrderStatus } from "@/types";
 
@@ -57,7 +57,6 @@ export default function KdsPage() {
   const [message, setMessage] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
   const [query, setQuery] = useState("");
-  const previousOrdersRef = useRef<Set<string> | null>(null);
 
   const allOrders = useMemo(
     () => store.orders.filter((order) => !["completed", "cancelled", "out_for_delivery"].includes(order.status)),
@@ -76,14 +75,10 @@ export default function KdsPage() {
   }, [allOrders, query, sector]);
 
   useEffect(() => {
-    // O filtro de busca/setor não transforma pedidos já conhecidos em novos.
-    const ids = new Set(store.orders.map(order => order.id));
-    const previous = previousOrdersRef.current;
-    const hasNewOrder = store.orders.some(order => !previous?.has(order.id)
-      && ["received", "confirmed"].includes(order.status)
-      && order.items.some(item => belongsToSector(item as OperationalCartItem, sector)));
-    previousOrdersRef.current = ids;
-    if (previous && hasNewOrder && sound) void playNewOrderSound();
+    // Mesmo registro do painel: cada pedido toca uma única vez neste aparelho.
+    const active = store.orders.filter(order => ["received", "confirmed"].includes(order.status));
+    const mine = new Set(active.filter(order => order.items.some(item => belongsToSector(item as OperationalCartItem, sector))).map(order => order.id));
+    if (ringForNewOrders(active.map(order => order.id), id => mine.has(id)) && sound) void playNewOrderSound();
   }, [store.orders, sector, sound]);
 
   useEffect(() => {

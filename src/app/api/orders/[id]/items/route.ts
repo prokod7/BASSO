@@ -34,7 +34,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const { data: order, error: orderError } = await db.from("orders").select("id,channel,status").eq("id", orderId).single();
     if (orderError) throw orderError;
-    if (["completed", "cancelled"].includes(order.status)) throw new Error("Não é possível adicionar itens a um pedido encerrado.");
+    if (order.status === "cancelled") throw new Error("Pedido cancelado não pode ser alterado.");
     const item: CartItem = supplied as CartItem;
     const priced = await priceItemsWithRuntime(db, [item], order.channel as OrderChannel, false);
     const normalized = priced.items[0];
