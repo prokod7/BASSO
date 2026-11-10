@@ -3,7 +3,8 @@ import { itemDetails } from "@/lib/item-presentation";
 
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { paymentMethodLabels, publicPaymentMethods } from "@/lib/payment-methods";
 import {
   AlertTriangle,
   Bike,
@@ -107,8 +108,12 @@ function dispatchRefresh() {
   window.dispatchEvent(new Event("lfb:refresh-operation"));
 }
 
-export function OrderDetailPanel({ orderId, onClose }: { orderId: string | null; onClose: () => void }) {
+export function OrderDetailPanel({ orderId, onClose, initialTab = "resumo" }: { orderId: string | null; onClose: () => void; initialTab?: Tab }) {
   const demoOrder = useDemoState((state) => state.orders.find((order) => order.id === orderId));
+  // A sincronização automática troca o objeto do pedido a cada atualização; a comanda aberta
+  // não pode reiniciar (voltar para a 1ª aba e mostrar carregando) por causa disso.
+  const demoRef = useRef(demoOrder);
+  demoRef.current = demoOrder;
   const drivers = useDemoState((state) => state.drivers);
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [tab, setTab] = useState<Tab>("resumo");
@@ -125,6 +130,7 @@ export function OrderDetailPanel({ orderId, onClose }: { orderId: string | null;
     if (!preserveFeedback) setFeedback(null);
     try {
       if (isDemoMode()) {
+        const demoOrder = demoRef.current;
         if (!demoOrder) throw new Error("Pedido não encontrado.");
         setOrder((current) => current?.id === demoOrder.id ? { ...current, ...demoOrder, items: current.items } : detailFromOrder(demoOrder));
       } else {
@@ -138,11 +144,11 @@ export function OrderDetailPanel({ orderId, onClose }: { orderId: string | null;
     } finally {
       setLoading(false);
     }
-  }, [demoOrder, orderId]);
+  }, [orderId]);
 
   useEffect(() => {
     if (!orderId) return;
-    setTab("resumo");
+    setTab(initialTab);
     setOrder(null);
     load();
     if (!isDemoMode()) {
@@ -152,7 +158,18 @@ export function OrderDetailPanel({ orderId, onClose }: { orderId: string | null;
         if (response.ok && Array.isArray(body?.templates)) setTemplates(body.templates);
       }).catch(() => undefined);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, orderId]);
+
+  // Alteração feita em outro aparelho: atualiza a comanda aberta em silêncio, sem trocar a aba.
+  const remoteVersion = `${demoOrder?.version ?? ""}:${demoOrder?.status ?? ""}:${demoOrder?.updatedAt ?? ""}`;
+  const seenVersion = useRef(remoteVersion);
+  useEffect(() => {
+    if (seenVersion.current === remoteVersion) return;
+    seenVersion.current = remoteVersion;
+    if (orderId && !working) void load(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remoteVersion]);
 
   useEffect(() => {
     if (!orderId || isDemoMode()) { setEditLock(orderId ? { acquired: true, holderId: "demo", holderLabel: "Gestor Demo" } : null); return; }
@@ -264,7 +281,15 @@ function SummaryTab({ order, drivers, working, mutate, setOrder }: { order: Orde
     estimatedReadyAt: order.estimatedReadyAt ? new Date(order.estimatedReadyAt).toISOString().slice(0, 16) : "",
     discount: String(order.discount / 100).replace(".", ","),
     deliveryFee: String(order.deliveryFee / 100).replace(".", ","),
+    street: order.address?.street || "",
+    number: order.address?.number || "",
+    district: order.address?.district || "",
+    complement: order.address?.complement || "",
+    reference: order.address?.reference || "",
+    paymentMethod: order.paymentMethod as string,
+    changeFor: order.changeFor ? String(order.changeFor / 100).replace(".", ",") : "",
   });
+  const marketplace = order.channel === "ifood" || order.channel === "99food";
   const addressText = order.address ? `${order.address.street}, ${order.address.number} • ${order.address.district}${order.address.complement ? ` • ${order.address.complement}` : ""}` : "Sem endereço de entrega";
 
   useEffect(() => { setStatus(order.status); }, [order.status]);
@@ -325,7 +350,11 @@ function SummaryTab({ order, drivers, working, mutate, setOrder }: { order: Orde
       discount: Math.max(0, Math.round((Number(form.discount.replace(",", ".")) || 0) * 100)),
       deliveryFee: Math.max(0, Math.round((Number(form.deliveryFee.replace(",", ".")) || 0) * 100)),
       reason: "Dados da comanda atualizados pela operação",
+      ...(order.address && !marketplace ? { address: { ...order.address, street: form.street.trim(), number: form.number.trim(), district: form.district.trim(), complement: form.complement.trim() || undefined, reference: form.reference.trim() || undefined } } : {}),
+      ...(!marketplace && form.paymentMethod !== order.paymentMethod ? { paymentMethod: form.paymentMethod } : {}),
+      ...(!marketplace && form.paymentMethod === "cash" ? { changeFor: Math.max(0, Math.round((Number(form.changeFor.replace(",", ".")) || 0) * 100)) } : {}),
     };
+    if (marketplace) { delete (patch as Record<string, unknown>).customerName; delete (patch as Record<string, unknown>).customerPhone; }
     if (isDemoMode()) {
       const updated: Order = { ...order, customerName: form.customerName, customerPhone: form.customerPhone, notes: form.notes, internalSummary: form.internalSummary, priority: form.priority as Order["priority"], estimatedReadyAt: patch.estimatedReadyAt || undefined, discount: patch.discount, deliveryFee: patch.deliveryFee, total: Math.max(0, order.subtotal - patch.discount + patch.deliveryFee), updatedAt: new Date().toISOString() };
       demoActions.patchOrder(order.id, updated, "Gestor");
@@ -375,6 +404,17 @@ function SummaryTab({ order, drivers, working, mutate, setOrder }: { order: Orde
           <label><span className="label">Previsão</span><input type="datetime-local" className="input" value={form.estimatedReadyAt} onChange={(event) => setForm({ ...form, estimatedReadyAt: event.target.value })}/></label>
           <Field label="Desconto (R$)" value={form.discount} onChange={(value) => setForm({ ...form, discount: value })}/>
           <Field label="Taxa de entrega (R$)" value={form.deliveryFee} onChange={(value) => setForm({ ...form, deliveryFee: value })}/>
+          {order.address && !marketplace && <>
+            <Field label="Rua" value={form.street} onChange={(value) => setForm({ ...form, street: value })}/>
+            <Field label="Número" value={form.number} onChange={(value) => setForm({ ...form, number: value })}/>
+            <Field label="Bairro" value={form.district} onChange={(value) => setForm({ ...form, district: value })}/>
+            <Field label="Complemento" value={form.complement} onChange={(value) => setForm({ ...form, complement: value })}/>
+            <label className="sm:col-span-2"><span className="label">Referência</span><input className="input" value={form.reference} onChange={(event) => setForm({ ...form, reference: event.target.value })}/></label>
+          </>}
+          {!marketplace && <>
+            <label><span className="label">Forma de pagamento</span><select className="input" value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })}>{publicPaymentMethods.map((method) => <option key={method} value={method}>{paymentMethodLabels[method]}</option>)}{!(publicPaymentMethods as readonly string[]).includes(form.paymentMethod) && <option value={form.paymentMethod}>{paymentMethodLabels[form.paymentMethod] || form.paymentMethod}</option>}</select></label>
+            {form.paymentMethod === "cash" ? <Field label="Troco para (R$)" value={form.changeFor} onChange={(value) => setForm({ ...form, changeFor: value })}/> : <span/>}
+          </>}
           <button className="btn-primary sm:col-span-2" disabled={working === "save"} onClick={() => mutate("save", saveOrder, "Comanda atualizada e registrada na auditoria.")}>{working === "save" ? <Loader2 className="animate-spin" size={17}/> : <Save size={17}/>}Salvar alterações</button>
         </div> : <div className="mt-5 space-y-4 text-sm">
           <div className="flex items-center gap-3"><UserRound size={18} className="text-basso-wine"/><div><p className="font-bold">{order.customerName}</p><a href={`tel:${order.customerPhone}`} className="text-black/50 hover:text-basso-wine">{order.customerPhone || "Telefone não informado"}</a></div></div>

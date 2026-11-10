@@ -51,7 +51,7 @@ describe('controles operacionais com dados simulados, sem login', () => {
   fetchMock.mockImplementation(async(url:string)=>Response.json(url==='/api/print/profiles'?{profiles:[profile]}:url==='/api/print/jobs'?{jobs:[],bridgeConfigured:true,bridgeOnline:false}:{ok:true}));
   await act(async()=>{render(React.createElement(PrintPage));});
   await act(async()=>{fireEvent.click(screen.getByRole('button',{name:'Testar'}));});
-  expect(screen.getByText(/Teste entrou na fila, mas o Print Bridge está offline/)).toBeTruthy();
+  expect(screen.getByText(/Teste enviado/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button',{name:'Editar'}));
   const preview=screen.getByLabelText('Prévia do comprovante');
   const blocks=()=>Array.from(preview.querySelectorAll('[data-receipt-block]')).map(el=>el.getAttribute('data-receipt-block'));

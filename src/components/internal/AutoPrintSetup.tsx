@@ -17,7 +17,7 @@ export function shortcutScript(stationUrl: string) {
     'if not exist "%B%" set "B=%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe"',
     'if not exist "%B%" set "B=%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe"',
     'if not exist "%B%" (echo Chrome ou Edge nao encontrado. Instale o Google Chrome. & pause & exit /b 1)',
-    `start "" "%B%" --user-data-dir="%LOCALAPPDATA%\\BassoImpressao" --kiosk-printing --no-first-run --no-default-browser-check --app="${stationUrl}"`,
+    `start "" "%B%" --user-data-dir="%LOCALAPPDATA%\\BassoImpressao" --kiosk-printing --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows --no-first-run --no-default-browser-check --app="${stationUrl}"`,
     "",
   ].join("\r\n");
 }

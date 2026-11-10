@@ -21,7 +21,7 @@ const addressSchema = z.object({
 });
 
 const patchSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("update_order"), customerName: z.string().trim().min(2).max(120).optional(), customerPhone: z.string().max(20).optional(), address: addressSchema.nullable().optional(), notes: z.string().max(500).nullable().optional(), internalSummary: z.string().max(1000).nullable().optional(), priority: z.enum(["normal", "high", "urgent"]).optional(), estimatedReadyAt: z.string().datetime().nullable().optional(), discount: z.number().int().nonnegative().optional(), deliveryFee: z.number().int().nonnegative().optional(), reason: z.string().trim().min(2).max(500) }),
+  z.object({ action: z.literal("update_order"), customerName: z.string().trim().min(2).max(120).optional(), customerPhone: z.string().max(20).optional(), address: addressSchema.nullable().optional(), notes: z.string().max(500).nullable().optional(), internalSummary: z.string().max(1000).nullable().optional(), priority: z.enum(["normal", "high", "urgent"]).optional(), estimatedReadyAt: z.string().datetime().nullable().optional(), discount: z.number().int().nonnegative().optional(), deliveryFee: z.number().int().nonnegative().optional(), paymentMethod: z.enum(["pix", "cash", "debit", "credit", "meal_voucher", "food_voucher", "vr_refeicao", "vr_alimentacao", "sodexo", "pluxe", "alelo_refeicao", "ticket_restaurante", "voucher"]).optional(), changeFor: z.number().int().nonnegative().nullable().optional(), reason: z.string().trim().min(2).max(500) }),
   z.object({ action: z.literal("mark_viewed") }),
   z.object({ action: z.literal("add_note"), body: z.string().trim().min(1).max(1000), pinned: z.boolean().default(false) }),
   z.object({ action: z.literal("add_incident"), category: z.enum(["customer", "address", "payment", "production", "delivery", "quality", "other"]), severity: z.enum(["low", "medium", "high", "critical"]), title: z.string().trim().min(2).max(160), description: z.string().max(2000).default("") }),
@@ -99,6 +99,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (body.estimatedReadyAt !== undefined) patch.estimated_ready_at = body.estimatedReadyAt;
       if (body.discount !== undefined) patch.discount_cents = Math.min(Number(before.subtotal_cents), body.discount);
       if (body.deliveryFee !== undefined) patch.delivery_fee_cents = body.deliveryFee;
+      if ((body.paymentMethod !== undefined || body.changeFor !== undefined) && ["ifood", "99food"].includes(before.channel)) throw new Error("A forma de pagamento de pedidos de marketplace é definida pela plataforma.");
+      if (body.paymentMethod !== undefined) patch.payment_method = body.paymentMethod;
+      if (body.changeFor !== undefined) patch.change_for_cents = body.changeFor || null;
+      if ((patch.payment_method ?? before.payment_method) !== "cash" && (body.paymentMethod !== undefined)) patch.change_for_cents = null;
       if (body.discount !== undefined || body.deliveryFee !== undefined) {
         const discount = Number(patch.discount_cents ?? before.discount_cents);
         const fee = Number(patch.delivery_fee_cents ?? before.delivery_fee_cents);

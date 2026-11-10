@@ -79,7 +79,6 @@ export default function PrintPage() {
   const [bridgeOnline, setBridgeOnline] = useState(false);
   const [lastHealthAt, setLastHealthAt] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-  const [bridgeModal, setBridgeModal] = useState(false);
   const [editing, setEditing] = useState<PrintProfile | null>(null);
   const [preview, setPreview] = useState<PrintProfile | null>(null);
   const [working, setWorking] = useState<string | null>(null);
@@ -127,7 +126,7 @@ export default function PrintPage() {
         if (!response.ok) throw new Error(body.error || "Falha ao reprocessar.");
       }
       setJobs((current) => current.map((job) => job.id === jobId ? { ...job, status: "queued", last_error: undefined } : job));
-      setMessage("Trabalho devolvido à fila. O agente local precisa estar conectado para confirmar a impressão física.");
+      setMessage("Trabalho devolvido à fila. A janela de impressão automática imprime em alguns segundos.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Falha ao reprocessar.");
     } finally {
@@ -153,7 +152,7 @@ export default function PrintPage() {
       const response = await fetch("/api/print/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ printerKey, sector: profile.sector }) });
       const body = await response.json() as { error?: string };
       if (!response.ok) throw new Error(body.error || "Falha ao criar impressão de teste.");
-      setMessage(bridgeOnline ? `Teste enviado para ${profile.name}. Aguarde a saída física.` : "Teste entrou na fila, mas o Print Bridge está offline. Use a impressão pelo navegador ou ligue o agente local.");
+      setMessage("Teste enviado. A janela de impressão automática (atalho) imprime em alguns segundos.");
       await load(true);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao testar impressão."); }
     finally { setWorking(null); }
@@ -183,16 +182,15 @@ export default function PrintPage() {
 
   return (
     <>
-      <PageHeader title="Impressão" icon={Printer} description="Configure a impressão automática deste computador em 3 passos." actions={<><button className="btn-secondary" onClick={() => void load()}><RefreshCw size={17} />Atualizar</button><button className="btn-primary" onClick={() => setBridgeModal(true)}><Settings2 size={17} />Configurar Print Bridge</button></>} />
+      <PageHeader title="Impressão" icon={Printer} description="Configure a impressão automática deste computador em 3 passos." actions={<><button className="btn-secondary" onClick={() => void load()}><RefreshCw size={17} />Atualizar</button></>} />
       {message && <p className={`mb-4 rounded-xl p-3 text-sm font-semibold ${/falha|erro|bloqueou/i.test(message) ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-800"}`}>{message}</p>}
       <AutoPrintSetup />
 
       <details className="mt-8 rounded-2xl border bg-white/60 p-4">
-        <summary className="cursor-pointer select-none font-bold">Configurações avançadas (perfis, fila, Print Bridge)</summary>
+        <summary className="cursor-pointer select-none font-bold">Configurações avançadas (perfis e fila)</summary>
         <div className="mt-4">
       <div className="mb-6 grid gap-4 md:grid-cols-4"><Summary label="Perfis ativos" value={profiles.filter((profile) => profile.active).length} tone="green" /><Summary label="Aguardando impressão" value={queued} tone="amber" /><Summary label="Falhas na fila" value={failed} tone="red" /><Summary label="Print Bridge" value={bridgeOnline ? "Online" : bridge ? "Offline" : "Pendente"} tone={bridgeOnline ? "green" : "amber"} /></div>
 
-      <div className={`mb-6 rounded-2xl border p-4 text-sm ${bridgeOnline ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}><strong>{bridgeOnline ? "Print Bridge conectado" : "Print Bridge sem conexão ativa"}</strong><p className="mt-1 text-xs opacity-75">{bridgeOnline ? `Último heartbeat: ${lastHealthAt ? shortDateTime(lastHealthAt) : "agora"}. Você já pode executar impressão de teste.` : "A fila recebe os pedidos, mas a USB só é acionada quando o agente local está rodando. Enquanto estiver offline, use “Navegador” na fila para imprimir manualmente pelo computador."}</p></div>
 
       <section className="surface overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5"><div><h2 className="font-display text-2xl font-bold">Perfis das impressoras</h2><p className="text-sm text-black/45">A operação usa uma Epson e uma impressora térmica chinesa; o modelo exato é configurado no computador da pizzaria.</p></div><span className="rounded-full bg-basso-paper px-3 py-1 text-xs font-bold text-black/45">58 mm ou 80 mm</span></div>
@@ -206,7 +204,6 @@ export default function PrintPage() {
 
       <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title="Editar perfil de impressão" className="sm:max-w-4xl">{editing && <ProfileEditor profile={editing} onChange={setEditing} onSave={() => saveProfile(editing)} working={working === editing.key} />}</Modal>
       <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title="Prévia da comanda">{preview && <ReceiptPreview profile={preview} />}</Modal>
-      <Modal open={bridgeModal} onClose={() => setBridgeModal(false)} title="Configuração do Print Bridge"><div className="p-5"><p className="text-sm text-black/55">Execute no computador que permanece ligado junto às impressoras. A mesma chave deve existir na Vercel e no arquivo local.</p><ol className="mt-5 space-y-3 text-sm"><li className="rounded-xl bg-basso-paper p-3"><strong>1.</strong> Configure <code>PRINT_BRIDGE_KEY</code> na Vercel.</li><li className="rounded-xl bg-basso-paper p-3"><strong>2.</strong> Copie <code>bridge/config.example.json</code> para <code>bridge/config.json</code>.</li><li className="rounded-xl bg-basso-paper p-3"><strong>3.</strong> Use a mesma chave, a URL <code>https://basso-pedido-pro.vercel.app</code> e os nomes exatos das impressoras do Windows.</li><li className="rounded-xl bg-basso-paper p-3"><strong>4.</strong> Execute <code>bridge\start-bridge.cmd</code> no computador da pizzaria. O bridge v1.2 envia ESC/POS em modo RAW.</li></ol><button className="btn-secondary mt-5 w-full" onClick={() => navigator.clipboard.writeText("bridge\\start-bridge.cmd")}><Copy size={16} />Copiar comando</button></div></Modal>
     </>
   );
 }

@@ -120,7 +120,7 @@ export function OperationalHydrator() {
     const realtime = client?.channel("operational-ui-v9");
     const tables = [
       "orders", "order_items", "payments", "restaurant_tables", "tabs", "drivers", "inventory_items",
-      "coupons", "cash_sessions", "cash_movements", "financial_entries", "integration_events", "audit_logs",
+      "coupons", "cash_sessions", "cash_movements", "financial_entries",
       "store_runtime_status", "operation_tasks", "approval_requests", "internal_notifications", "print_jobs",
       "campaigns", "campaign_recipients", "customers", "business_settings", "products", "pizza_flavors", "addons", "categories", "delivery_zones", "promotions", "promotion_targets"
     ];

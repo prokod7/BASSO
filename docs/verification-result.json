@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-11-10T20:27:23.718Z",
+  "generatedAt": "2026-11-10T21:11:56.946Z",
   "passed": 92,
   "failed": 0,
-  "sha256": "db9c071c072784887179bcb3a3dbfac06219123df3e634542f6c758557a3234a",
+  "sha256": "15fd29f2dbdc5450aa4594c8b083878f34b67e930bc719ecb32aabc90fb0af93",
   "results": [
     {
       "name": "42 pizzas tradicionais",
@@ -102,7 +102,7 @@
     {
       "name": "Migrações SQL 001–032 presentes",
       "ok": true,
-      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql, 016_integration_ready_99food_tracking_smartpos.sql, 017_production_final_hardening.sql, 018_final_operation_patch.sql, 019_final_homologation.sql, 020_production_security_and_performance_hardening.sql, 021_sweet_pizza_options_and_official_promo.sql, 022_print_delivery_location_fixes.sql, 023_operational_consistency_and_security.sql, 024_catalog_admin_and_product_media.sql, 025_delivery_handoff_tracking_and_print.sql, 026_customer_tracking_link.sql, 027_delivery_verification_fk_indexes.sql, 028_delivery_city_district_selection.sql, 029_final_waiter_payments_promotions.sql, 030_promotion_actor_fk_indexes.sql, 031_realtime_go_live_audit.sql, 032_audit_operation_integrity.sql, 033_menu_autonomy_and_offers.sql, 034_saipos_prices_and_beverages.sql, 035_fix_delivery_random_bytes_schema.sql, 036_fix_private_tracking_crypto_schema.sql, 037_complete_order_without_auto_payment.sql, 038_salon_receipts_daily_numbers.sql, 039_direct_order_completion.sql, 040_salon_drinks_catalog.sql, 041_configurable_restaurant_tables.sql, 042_restaurant_table_available_privileges.sql, 043_whatsapp_bot.sql, 044_whatsapp_auto_reply_echo.sql"
+      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql, 016_integration_ready_99food_tracking_smartpos.sql, 017_production_final_hardening.sql, 018_final_operation_patch.sql, 019_final_homologation.sql, 020_production_security_and_performance_hardening.sql, 021_sweet_pizza_options_and_official_promo.sql, 022_print_delivery_location_fixes.sql, 023_operational_consistency_and_security.sql, 024_catalog_admin_and_product_media.sql, 025_delivery_handoff_tracking_and_print.sql, 026_customer_tracking_link.sql, 027_delivery_verification_fk_indexes.sql, 028_delivery_city_district_selection.sql, 029_final_waiter_payments_promotions.sql, 030_promotion_actor_fk_indexes.sql, 031_realtime_go_live_audit.sql, 032_audit_operation_integrity.sql, 033_menu_autonomy_and_offers.sql, 034_saipos_prices_and_beverages.sql, 035_fix_delivery_random_bytes_schema.sql, 036_fix_private_tracking_crypto_schema.sql, 037_complete_order_without_auto_payment.sql, 038_salon_receipts_daily_numbers.sql, 039_direct_order_completion.sql, 040_salon_drinks_catalog.sql, 041_configurable_restaurant_tables.sql, 042_restaurant_table_available_privileges.sql, 043_whatsapp_bot.sql, 044_whatsapp_auto_reply_echo.sql, 045_order_payment_edit.sql"
     },
     {
       "name": "RLS habilitado",
@@ -315,7 +315,7 @@
       "detail": ""
     },
     {
-      "name": "Impressão manual usa diálogo padrão do navegador",
+      "name": "Impressão manual vai para a fila da estação automática",
       "ok": true,
       "detail": ""
     },

@@ -38,7 +38,8 @@ export default function AutoPrintStation() {
   const [error, setError] = useState("");
   const [lastCheck, setLastCheck] = useState<string>("");
   const [log, setLog] = useState<Printed[]>([]);
-  const since = useRef(new Date().toISOString());
+  // Ao abrir, pega também o que entrou nos últimos 15 min (ex.: pedido feito antes de abrir a janela).
+  const since = useRef(new Date(Date.now() - 15 * 60_000).toISOString());
   const busy = useRef(false);
 
   useEffect(() => { setConfig(readConfig()); }, []);
@@ -53,7 +54,7 @@ export default function AutoPrintStation() {
         const response = await fetch("/api/print/browser-claim", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sectors: config.sectors, since: since.current }),
+          body: JSON.stringify({ sectors: config.sectors.includes("kitchen") ? [...config.sectors, "bar"] : config.sectors, since: since.current }),
           cache: "no-store",
         });
         const body = (await response.json()) as { jobs?: Claimed[]; error?: string };

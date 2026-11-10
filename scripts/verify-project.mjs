@@ -127,9 +127,9 @@ check("Cidades e bairros podem ser editados", /Editar cidade\/bairro/.test(setti
 check("Bairros podem ser pausados e reativados", /Pausar/.test(settingsPage) && /Reativar/.test(settingsPage));
 check("Bairros podem ser arquivados", /DELIVERY_ZONE_ARCHIVED/.test(zonesApi) && /deleted_at/.test(zonesApi));
 
-const browserPrintMode = read("src/components/internal/BrowserPrintMode.tsx");
+const printRoute = read("src/app/api/orders/[id]/print/route.ts");
 const browserPrintPage = read("src/app/imprimir/[id]/page.tsx");
-check("Impressão manual usa diálogo padrão do navegador", /window\.open\(printUrl/.test(browserPrintMode) && /window\.print\(\)/.test(browserPrintPage));
+check("Impressão manual vai para a fila da estação automática", /from\("print_jobs"\)\.insert/.test(printRoute) && /window\.print\(\)/.test(browserPrintPage));
 check("Comprovante térmico possui layout de 80 mm", /80mm/.test(browserPrintPage) && /@page/.test(browserPrintPage));
 check("Comanda de entrega replica estrutura operacional", /CNPJ: (62\.332\.415\/0001-10|\{store\.cnpj)/.test(browserPrintPage) && /Qt\. Descrição/.test(browserPrintPage) && /Forma de pagamento/.test(browserPrintPage) && /RETIRADA DO MOTOBOY/.test(browserPrintPage));
 check("Comanda da cozinha é separada e sem financeiro", /printType === "cozinha"/.test(browserPrintPage) && /CÓDIGO DE RETIRADA/.test(browserPrintPage) && /safeNote/.test(browserPrintPage));
