@@ -8,11 +8,10 @@ describe("checkout do cliente", () => {
   it("aceita entrega sem CEP", () => {
     expect(checkoutSchema.safeParse({ ...base, address }).success).toBe(true);
   });
-  it("aceita CEP com 8 números e rejeita incompleto", () => {
-    expect(checkoutSchema.safeParse({ ...base, address: { ...address, cep: "09450000" } }).success).toBe(true);
-    const bad = checkoutSchema.safeParse({ ...base, address: { ...address, cep: "0945" } });
-    expect(bad.success).toBe(false);
-    expect(bad.error?.issues[0]?.message).toMatch(/CEP inválido/);
+  it("endereço não exige CEP (campo removido do sistema)", () => {
+    const { cep: _cep, ...withoutCep } = address as typeof address & { cep?: string };
+    expect(checkoutSchema.safeParse({ ...base, address: withoutCep }).success).toBe(true);
+    expect(checkoutSchema.safeParse({ ...base, address: { ...address, cep: "" } }).success).toBe(true);
   });
   it("mostra mensagens em português para rua e número ausentes", () => {
     const noStreet = checkoutSchema.safeParse({ ...base, address: { ...address, street: "" } });

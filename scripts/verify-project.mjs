@@ -80,7 +80,7 @@ const checkoutOrderLib = read("src/lib/checkout-order.ts");
 check("Pedido público valida agenda oficial", /storeAcceptance\(db\)/.test(publicOrderApi) && /manual_override/.test(checkoutOrderLib) && /storeStatus\(new Date\(\),\s*business.openingHours\)/.test(checkoutOrderLib) && /loadBusinessSettings\(db\)/.test(checkoutOrderLib));
 check("Delivery público bloqueia cobertura ausente", /bairros e taxas ainda não foram configurados/i.test(publicOrderApi));
 check("Recompensa pública bloqueada", /Recompensas são lançadas exclusivamente/.test(publicOrderApi));
-check("Checkout oferece cidade e bairro dependentes", /api\/delivery\/areas/.test(checkoutSource) && /Cidade atendida/.test(checkoutSource) && /Bairro atendido/.test(checkoutSource) && /Selecione a cidade primeiro/.test(checkoutSource));
+check("Checkout busca bairro atendido (cidade vem do bairro, sem CEP)", /api\/delivery\/areas/.test(checkoutSource) && /DistrictSearch/.test(checkoutSource) && !/CEP/.test(checkoutSource));
 check("GPS tenta casar localização com cobertura", /matchCoverage/.test(checkoutSource) && /normalizeCityName/.test(checkoutSource) && /normalizeDistrictName/.test(checkoutSource));
 check("Frete autoritativo usa cidade + bairro", /city: supplied\.address\?\.city/.test(publicOrderApi) && /findDeliveryZone\(zones, district, city\)/.test(serverQuote));
 check("Endpoint público expõe somente cobertura ativa", /\.eq\("active", true\)/.test(publicAreas) && /\.is\("deleted_at", null\)/.test(publicAreas));
@@ -116,7 +116,7 @@ const pdv = read("src/app/painel/pdv/page.tsx");
 check("PDV oferece Entrega explicitamente", /label="Entrega"/.test(pdv) && /own_delivery/.test(pdv));
 check("PDV usa cardápio runtime", /api\/menu\/availability/.test(pdv) && /runtimeProducts/.test(pdv));
 check("PDV calcula taxa de entrega antes de finalizar", /api\/quote/.test(pdv) && /deliveryQuote/.test(pdv) && /Taxa de entrega/.test(pdv));
-check("PDV exige cidade, bairro e endereço para entrega", /Preencha telefone, cidade, bairro e endereço completo para entrega/.test(pdv));
+check("PDV exige bairro pesquisável e endereço para entrega", /Preencha telefone, bairro e endereço completo para entrega/.test(pdv) && /DistrictSearch/.test(pdv));
 check("PDV usa cobertura cidade + bairro", /api\/delivery\/areas/.test(pdv) && /selectedCity/.test(pdv) && /selectedDistrict/.test(pdv));
 check("PDV finaliza pelo backend autoritativo", /api\/internal-orders/.test(pdv));
 

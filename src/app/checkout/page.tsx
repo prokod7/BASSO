@@ -11,6 +11,7 @@ import { useDemoState, demoActions } from "@/lib/demo-store";
 import { checkoutSchema } from "@/lib/order-validation";
 import { currency, isDemoMode, normalizePhone, uid } from "@/lib/utils";
 import { normalizeCityName, normalizeDistrictName } from "@/lib/delivery-zones";
+import { DistrictSearch } from "@/components/internal/DistrictSearch";
 import { paymentMethodLabels, publicPaymentMethods, VOUCHER_RULE } from "@/lib/payment-methods";
 import type { Address, Order, OrderChannel, PaymentMethod } from "@/types";
 import { customerDeviceActions } from "@/lib/customer-device-store";
@@ -23,8 +24,6 @@ const tableTabKey = (table: number) => `lfb-table-tab-v31-${table}`;
 const tableNameKey = (table: number) => `lfb-table-name-v31-${table}`;
 const PROFILE_KEY = "lfb-checkout-profile-v1";
 type SavedProfile = { name?: string; phone?: string; address?: Partial<Address> };
-const formatCep = (value: string) => { const digits = value.replace(/\D/g, "").slice(0, 8); return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits; };
-type ViaCepResponse = { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
 
 type CheckoutQuote = {
   subtotal: number;
@@ -68,9 +67,7 @@ export default function CheckoutPage() {
   const [areasLoading, setAreasLoading] = useState(true);
   const [areasError, setAreasError] = useState("");
   const checkoutKeyRef = useRef(uid("checkout"));
-  const [cepStatus, setCepStatus] = useState("");
   const store = useStoreAvailability();
-  const lastCepRef = useRef("");
 
   // Recupera nome, telefone e endereço do último pedido feito neste aparelho.
   useEffect(() => {
@@ -80,7 +77,7 @@ export default function CheckoutPage() {
       if (!saved) return;
       if (saved.name) setName(saved.name);
       if (saved.phone) setPhone(saved.phone);
-      if (saved.address) { setAddress(current => ({ ...current, ...saved.address, latitude: undefined, longitude: undefined })); lastCepRef.current = (saved.address.cep || "").replace(/\D/g, ""); }
+      if (saved.address) { setAddress(current => ({ ...current, ...saved.address, latitude: undefined, longitude: undefined })); }
     } catch { /* armazenamento indisponível */ }
   }, []);
 
@@ -183,9 +180,9 @@ export default function CheckoutPage() {
     const body = await response.json().catch(() => null) as ReverseAddressResponse | null;
     if (!response.ok || !body) throw new Error(body?.error || "Não foi possível identificar o endereço desta localização.");
     const coverage = matchCoverage(cities, body.city, body.district);
-    setAddress(current => ({ ...current, cep: body.cep || current.cep, street: body.street || current.street, number: body.number || current.number, city: coverage.city?.name || "", district: coverage.district?.name || "", state: body.state || current.state || "SP", latitude, longitude }));
+    setAddress(current => ({ ...current, street: body.street || current.street, number: body.number || current.number, city: coverage.city?.name || "", district: coverage.district?.name || "", state: body.state || current.state || "SP", latitude, longitude }));
     if (!coverage.city) setLocationMessage(`Localização encontrada${body.city ? ` em ${body.city}` : ""}, mas a cidade não foi reconhecida na área atendida. Selecione a cidade manualmente.`);
-    else if (!coverage.district) setLocationMessage(`Cidade identificada: ${coverage.city.name}. A rua e o CEP foram preenchidos; escolha o bairro atendido.`);
+    else if (!coverage.district) setLocationMessage(`Cidade identificada: ${coverage.city.name}. A rua foi preenchida; escolha o bairro atendido.`);
     else setLocationMessage(`Localização identificada em ${coverage.district.name}, ${coverage.city.name}. Confira o número e o complemento.`);
   }
 
@@ -205,46 +202,14 @@ export default function CheckoutPage() {
     catch (failure) { setAddress(current => ({ ...current, latitude, longitude })); setLocationMessage(""); setError(failure instanceof Error ? failure.message : "Não foi possível atualizar o endereço pelo mapa."); }
   };
 
-  const lookupCep = async (digits: string) => {
-    setCepStatus("Buscando endereço pelo CEP...");
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-      const body = await response.json() as ViaCepResponse;
-      if (!response.ok || body.erro) throw new Error("not-found");
-      const cities = await fetchDeliveryCities().catch(() => deliveryCities);
-      const coverage = matchCoverage(cities, body.localidade, body.bairro);
-      setAddress(current => ({ ...current, street: body.logradouro || current.street, city: coverage.city?.name || "", district: coverage.district?.name || "", state: body.uf || current.state }));
-      if (!coverage.city) setCepStatus(`Este CEP é de ${body.localidade || "outra cidade"}, fora da área de entrega cadastrada.`);
-      else if (!coverage.district) setCepStatus(`Rua encontrada em ${coverage.city.name}. Selecione o bairro atendido.`);
-      else setCepStatus(`Endereço encontrado em ${coverage.district.name}. Agora informe o número.`);
-    } catch {
-      setCepStatus("Não encontramos este CEP. Preencha o endereço manualmente.");
-    }
-  };
-  const changeCep = (value: string) => {
-    const formatted = formatCep(value);
-    setAddress(current => ({ ...current, cep: formatted }));
-    const digits = formatted.replace(/\D/g, "");
-    if (digits.length === 8 && digits !== lastCepRef.current) { lastCepRef.current = digits; void lookupCep(digits); }
-    if (digits.length < 8) setCepStatus("");
-  };
 
-  const chooseCity = (cityName: string) => {
-    const city = deliveryCities.find(candidate => candidate.name === cityName);
-    setAddress(current => {
-      const districtStillValid = city?.districts.some(district => district.aliases.some(alias => normalizeDistrictName(alias) === normalizeDistrictName(current.district || "")));
-      return { ...current, city: cityName, district: districtStillValid ? current.district : "" };
-    });
-    setLocationMessage(""); setQuoteError("");
-  };
-  const chooseDistrict = (districtName: string) => { setAddress(current => ({ ...current, district: districtName })); setLocationMessage(""); setQuoteError(""); };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError("");
     if (!cart.items.length) { setError("Seu carrinho está vazio."); return; }
     if (channel === "own_delivery" && (!selectedCity || !selectedDistrict)) { setError("Selecione uma cidade e um bairro atendidos para calcular a entrega."); return; }
     const customerName = isTableOrder ? (tabName.trim() || name.trim()) : name.trim();
-    const parsed = checkoutSchema.safeParse({ customerName, customerPhone: normalizePhone(phone), channel, paymentMethod: isTableOrder ? "pix" : payment, couponCode: couponCode || undefined, notes: notes || undefined, tableNumber: tableNumber || undefined, tabId: tableTabId, tabName: tabName || undefined, address: channel === "own_delivery" ? { ...address, cep: address.cep.replace(/\D/g, "") } : undefined });
+    const parsed = checkoutSchema.safeParse({ customerName, customerPhone: normalizePhone(phone), channel, paymentMethod: isTableOrder ? "pix" : payment, couponCode: couponCode || undefined, notes: notes || undefined, tableNumber: tableNumber || undefined, tabId: tableTabId, tabName: tabName || undefined, address: channel === "own_delivery" ? { ...address, cep: "" } : undefined });
     if (!parsed.success) { setError(parsed.error.issues[0]?.message || "Revise os dados do checkout."); return; }
     if (isDemoMode() && couponCode && !coupon) { setError("Cupom inválido, pausado, esgotado ou indisponível para este canal."); return; }
     if (isDemoMode() && coupon?.minimum && cart.subtotal < coupon.minimum) { setError(`Este cupom exige pedido mínimo de ${currency(coupon.minimum)}.`); return; }
@@ -307,7 +272,7 @@ export default function CheckoutPage() {
       <div className="space-y-5">
         {isTableOrder ? <Section title={`Pedido na Mesa ${tableNumber || ""}`}><div className="rounded-2xl border border-basso-gold/30 bg-basso-gold/10 p-4"><p className="text-sm font-bold text-basso-wine">O pedido será enviado para a produção e vinculado à sua comanda.</p><p className="mt-1 text-xs text-black/55">O pagamento é realizado no fechamento da comanda com a equipe.</p></div><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Nome da comanda ou participante"><input className="input" value={tabName} onChange={e => { setTabName(e.target.value); setName(e.target.value); }} autoComplete="name"/></Field><Field label="Telefone (opcional)"><input className="input" value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel"/></Field></div></Section> : <><Section title="Como você quer receber?"><div className="grid grid-cols-2 gap-2"><Choice active={channel === "own_delivery"} onClick={() => setChannel("own_delivery")} label="Entrega" disabled={deliveryUnavailable}/><Choice active={channel === "pickup"} onClick={() => setChannel("pickup")} label="Retirada"/></div>{deliveryUnavailable && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">Entrega temporariamente indisponível. Você pode retirar o pedido em {store.addressLabel || "Rua do Progresso, 407"}.</p>}{channel === "pickup" && !deliveryUnavailable && <p className="mt-3 text-xs text-black/50">Retirada em {store.addressLabel || "Rua do Progresso, 407 — Centro — Rio Grande da Serra/SP"}.</p>}</Section><Section title="Dados do cliente"><div className="grid gap-4 sm:grid-cols-2"><Field label="Nome completo"><input className="input" value={name} onChange={e => setName(e.target.value)} autoComplete="name"/></Field><Field label="Telefone / WhatsApp"><input className="input" value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" autoComplete="tel"/></Field></div></Section></>}
 
-        {channel === "own_delivery" && <Section title="Endereço de entrega"><button type="button" className="btn-secondary mb-4" onClick={useLocation} disabled={locating || areasLoading}>{locating ? <Loader2 className="animate-spin" size={17}/> : <Crosshair size={17}/>} {locating ? "Localizando e preenchendo..." : "Usar minha localização"}</button>{areasError && <p className="mb-3 rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-700">{areasError}</p>}{locationMessage && <p className="mb-3 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">{locationMessage}</p>}<div className="grid gap-4 sm:grid-cols-6"><div className="sm:col-span-2"><Field label="CEP (opcional)"><input className="input" value={address.cep} onChange={e => changeCep(e.target.value)} inputMode="numeric" autoComplete="postal-code" placeholder="00000-000"/></Field>{cepStatus && <p aria-live="polite" className="mt-1 text-xs font-semibold text-black/55">{cepStatus}</p>}</div><Field label="Rua" className="sm:col-span-4"><input className="input" autoComplete="address-line1" value={address.street} onChange={e => setAddress(a => ({ ...a, street: e.target.value }))}/></Field><Field label="Número" className="sm:col-span-2"><input className="input" inputMode="numeric" autoComplete="address-line2" value={address.number} onChange={e => setAddress(a => ({ ...a, number: e.target.value }))}/></Field><Field label="Cidade atendida" className="sm:col-span-4"><select className="input" value={address.city} onChange={e => chooseCity(e.target.value)} disabled={areasLoading}><option value="">Selecione a cidade</option>{deliveryCities.map(city => <option key={city.name} value={city.name}>{city.name}</option>)}</select></Field><Field label="Bairro atendido" className="sm:col-span-4"><select className="input" value={selectedDistrict?.name || ""} onChange={e => chooseDistrict(e.target.value)} disabled={!selectedCity || areasLoading}><option value="">{selectedCity ? "Selecione o bairro" : "Selecione a cidade primeiro"}</option>{selectedCity?.districts.map(district => <option key={district.name} value={district.name}>{district.name} — {currency(district.fee)}</option>)}</select></Field><Field label="UF" className="sm:col-span-2"><input className="input" value={address.state} maxLength={2} onChange={e => setAddress(a => ({ ...a, state: e.target.value.toUpperCase() }))}/></Field><Field label="Complemento" className="sm:col-span-3"><input className="input" value={address.complement} onChange={e => setAddress(a => ({ ...a, complement: e.target.value }))}/></Field><Field label="Referência" className="sm:col-span-3"><input className="input" value={address.reference} onChange={e => setAddress(a => ({ ...a, reference: e.target.value }))}/></Field></div>{typeof address.latitude === "number" && typeof address.longitude === "number" && <LocationPicker latitude={address.latitude} longitude={address.longitude} onChange={(latitude, longitude) => void adjustLocation(latitude, longitude)}/>}<p className="mt-3 text-xs text-black/45">A localização tenta preencher rua, CEP, cidade e bairro. Confira sempre o número e o complemento.</p>{quoteError && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">{quoteError}</p>}</Section>}
+        {channel === "own_delivery" && <Section title="Endereço de entrega"><button type="button" className="btn-secondary mb-4" onClick={useLocation} disabled={locating || areasLoading}>{locating ? <Loader2 className="animate-spin" size={17}/> : <Crosshair size={17}/>} {locating ? "Localizando e preenchendo..." : "Usar minha localização"}</button>{areasError && <p className="mb-3 rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-700">{areasError}</p>}{locationMessage && <p className="mb-3 rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">{locationMessage}</p>}<div className="grid gap-4 sm:grid-cols-6"><Field label="Rua" className="sm:col-span-4"><input className="input" autoComplete="address-line1" value={address.street} onChange={e => setAddress(a => ({ ...a, street: e.target.value }))}/></Field><Field label="Número" className="sm:col-span-2"><input className="input" inputMode="numeric" autoComplete="address-line2" value={address.number} onChange={e => setAddress(a => ({ ...a, number: e.target.value }))}/></Field><Field label="Bairro" className="sm:col-span-4"><DistrictSearch cities={deliveryCities} city={selectedCity?.name || address.city} district={selectedDistrict?.name || ""} disabled={areasLoading} onPick={(city, district) => { setAddress(a => ({ ...a, city, district })); setLocationMessage(""); setQuoteError(""); }}/></Field><Field label="UF" className="sm:col-span-2"><input className="input" value={address.state} maxLength={2} onChange={e => setAddress(a => ({ ...a, state: e.target.value.toUpperCase() }))}/></Field><Field label="Complemento" className="sm:col-span-3"><input className="input" value={address.complement} onChange={e => setAddress(a => ({ ...a, complement: e.target.value }))}/></Field><Field label="Referência" className="sm:col-span-3"><input className="input" value={address.reference} onChange={e => setAddress(a => ({ ...a, reference: e.target.value }))}/></Field></div>{typeof address.latitude === "number" && typeof address.longitude === "number" && <LocationPicker latitude={address.latitude} longitude={address.longitude} onChange={(latitude, longitude) => void adjustLocation(latitude, longitude)}/>}<p className="mt-3 text-xs text-black/45">A localização tenta preencher rua e bairro. Confira sempre o número e o complemento.</p>{quoteError && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">{quoteError}</p>}</Section>}
 
         {!isTableOrder && <Section title="Pagamento"><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{publicPaymentMethods.map(id => <Choice key={id} active={payment === id} onClick={() => setPayment(id)} label={paymentMethodLabels[id]}/>)}</div>{payment === "cash" && <div className="mt-4 rounded-2xl border bg-basso-paper p-4"><p className="label">Precisa de troco?</p><div className="mt-2 grid grid-cols-2 gap-2"><Choice active={!needsChange} onClick={() => { setNeedsChange(false); setChangeFor(""); }} label="Não"/><Choice active={needsChange} onClick={() => setNeedsChange(true)} label="Sim"/></div>{needsChange && <Field label="Troco para quanto?" className="mt-4"><input className="input text-lg font-black" value={changeFor} onChange={e => setChangeFor(e.target.value)} inputMode="decimal" placeholder="Ex.: 100,00"/>{changeForCents > 0 && changeForCents < total && <span className="mt-1 block text-xs font-semibold text-red-700">O valor deve ser igual ou maior que o total.</span>}{changeDue != null && <span className="mt-2 block rounded-xl bg-emerald-50 p-3 text-sm font-black text-emerald-800">Troco a levar: {currency(changeDue)}</span>}</Field>}</div>}{payment === "food_voucher" && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">Vale-alimentação: aceitamos todas as bandeiras, exceto Alelo.</p>}<p className="mt-3 text-xs text-black/45">Cartões e vales são passados na maquininha, na entrega ou na retirada. {VOUCHER_RULE}</p></Section>}
         {isTableOrder && <Section title="Pagamento"><p className="rounded-2xl bg-basso-black p-4 text-sm font-semibold text-white">O pagamento será realizado no fechamento da comanda com a equipe.</p></Section>}
