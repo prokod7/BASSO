@@ -12,7 +12,7 @@ import type { Basket, Pending, Quote } from "./domain";
 import { menuUrl } from "./menuMedia";
 import type { PixAccount } from "./pix";
 
-export type StoreInfo = { name: string; address: string; city: string; state: string; menuUrl: string; open: boolean; closedMessage: string; hours: string; openingHours?: OpeningHours | null };
+export type StoreInfo = { name: string; address: string; city: string; state: string; menuUrl: string; open: boolean; closedMessage: string; hours: string; openingHours?: OpeningHours | null; pickupTime?: string; deliveryTime?: string };
 export type BotContext = { menu: RuntimeMenu; zones: Zone[]; store: StoreInfo; pix: PixAccount; promotions?: PromotionRecord[] };
 
 /** Cardápio vivo, bairros e dados da loja: o mesmo que o site usa. */
@@ -21,7 +21,7 @@ export async function loadBotContext(db: any): Promise<BotContext> {
     loadRuntimeMenu(db),
     db.from("delivery_zones").select("name,city,districts,fee_cents,minimum_order_cents").eq("active", true).is("deleted_at", null),
     loadBusinessSettings(db),
-    db.from("wa_settings").select("pix_name").eq("id", true).maybeSingle(),
+    db.from("wa_settings").select("pix_name,pickup_time,delivery_time").eq("id", true).maybeSingle(),
     storeAcceptance(db),
     loadPromotions(db).catch(() => [] as PromotionRecord[]),
   ]);
@@ -41,6 +41,8 @@ export async function loadBotContext(db: any): Promise<BotContext> {
       closedMessage: acceptance.message,
       hours: business.hoursLabel || "",
       openingHours: business.openingHours || null,
+      pickupTime: settings?.data?.pickup_time || "",
+      deliveryTime: settings?.data?.delivery_time || "",
     },
     promotions,
     pix: { pix_key: business.pixKey, pix_name: settings?.data?.pix_name || business.name || null },

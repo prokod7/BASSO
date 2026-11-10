@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ session: session.data, messages: (messages.data ?? []).reverse() }, { headers: noStore });
   }
   const [settings, inbox, stats, failures] = await Promise.all([
-    db.from("wa_settings").select("enabled,quiet_seconds,max_wait_seconds,follow_up_seconds,pix_name").eq("id", true).maybeSingle(),
+    db.from("wa_settings").select("enabled,quiet_seconds,max_wait_seconds,follow_up_seconds,pix_name,pickup_time,delivery_time,wait_times_updated_at").eq("id", true).maybeSingle(),
     db.rpc("wa_inbox"),
     db.from("wa_jobs").select("id", { count: "exact", head: true }).gte("delivered_at", monthStart()),
     db.from("wa_jobs").select("id,state,error,created_at").in("state", ["failed", "uncertain"]).order("created_at", { ascending: false }).limit(30),
@@ -46,6 +46,9 @@ export async function GET(request: NextRequest) {
     max_wait_seconds: settings.data?.max_wait_seconds ?? 90,
     follow_up_seconds: settings.data?.follow_up_seconds ?? 300,
     pix_name: settings.data?.pix_name ?? "",
+    pickup_time: settings.data?.pickup_time ?? "",
+    delivery_time: settings.data?.delivery_time ?? "",
+    wait_times_updated_at: settings.data?.wait_times_updated_at ?? null,
     conversations: inbox.data ?? [],
     usage: usage(stats.count ?? 0),
     failures: failures.data ?? [],
@@ -60,6 +63,8 @@ const schema = z.discriminatedUnion("action", [
     max_wait_seconds: z.number().int().min(0).max(120),
     follow_up_seconds: z.number().int().min(0).max(86400),
     pix_name: z.string().trim().max(120),
+    pickup_time: z.string().trim().max(60).optional(),
+    delivery_time: z.string().trim().max(60).optional(),
   }),
   z.object({ action: z.literal("session"), id: z.string().uuid(), paused: z.boolean() }),
   z.object({ action: z.literal("read"), id: z.string().uuid() }),
@@ -92,7 +97,7 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
     } else if (body.action === "settings") {
       if (body.max_wait_seconds < body.quiet_seconds) return NextResponse.json({ error: "A espera máxima precisa ser maior ou igual ao silêncio." }, { status: 400 });
-      const { error } = await db.from("wa_settings").upsert({ id: true, quiet_seconds: body.quiet_seconds, max_wait_seconds: body.max_wait_seconds, follow_up_seconds: body.follow_up_seconds, pix_name: body.pix_name || null, updated_at: new Date().toISOString() });
+      const { error } = await db.from("wa_settings").upsert({ id: true, quiet_seconds: body.quiet_seconds, max_wait_seconds: body.max_wait_seconds, follow_up_seconds: body.follow_up_seconds, pix_name: body.pix_name || null, updated_at: new Date().toISOString() , ...(body.pickup_time !== undefined || body.delivery_time !== undefined ? { pickup_time: body.pickup_time || null, delivery_time: body.delivery_time || null, wait_times_updated_at: new Date().toISOString() } : {}) });
       if (error) throw error;
     } else if (body.action === "session") {
       const { error } = body.paused ? await db.rpc("wa_agent_takeover", { sid: body.id }) : await db.rpc("wa_control_session", { sid: body.id, p: false });

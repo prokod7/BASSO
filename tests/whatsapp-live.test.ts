@@ -7,7 +7,7 @@ const hours = { sunday: ["18:00", "23:00"], monday: null, tuesday: ["18:00", "23
 const context = {
   menu: { flavors: [{ id: "f1", name: "Mozzarella" }, { id: "f2", name: "Bauru" }] },
   zones: [],
-  store: { name: "La Forneria Basso", open: true, hours: "", openingHours: hours, menuUrl: "x", closedMessage: "", address: "", city: "", state: "SP" },
+  store: { name: "La Forneria Basso", open: true, hours: "", openingHours: hours, pickupTime: "20 a 30 minutos", deliveryTime: "40 a 60 minutos", menuUrl: "x", closedMessage: "", address: "", city: "", state: "SP" },
   pix: { pix_key: null, pix_name: null },
   promotions: [{ id: "p1", name: "Terça Maluca", description: "", badgeText: "", image: "https://x/terca.png", promoPrice: 3999, active: true, paused: false, channels: ["own_delivery", "pickup"], daysOfWeek: [2], pizzaSize: "grande", allowCouponStack: false, sortOrder: 0, targets: [{ id: "t", flavorId: "f1" }, { id: "t2", flavorId: "f2" }] }],
 } as unknown as BotContext;
@@ -17,6 +17,7 @@ describe("robô: dados vivos", () => {
     const tuesday = new Date("2026-11-10T22:00:00Z"); // terça 19:00 em São Paulo
     const text = liveStoreInfo(context, tuesday);
     expect(text).toContain("AGORA: terça, 19:00");
+    expect(text).toContain("TEMPO DE HOJE: retirada 20 a 30 minutos; entrega 40 a 60 minutos");
     expect(text).toContain("segunda-feira: fechado");
     expect(text).toContain("sexta-feira: 18:00 às 23:50");
     expect(text).toMatch(/PROMOÇÕES DE HOJE: \*Terça Maluca\*.*R\$\s?39,99.*Mozzarella, Bauru/);

@@ -55,6 +55,14 @@ export async function processFollowUps() {
   return { sent };
 }
 
+/** Tempo de hoje (Configurar robô) para a mensagem de pedido confirmado. */
+async function waitTime(channel?: string) {
+  try {
+    const { data } = await db().from("wa_settings").select("pickup_time,delivery_time").eq("id", true).maybeSingle();
+    return (channel === "pickup" ? data?.pickup_time : data?.delivery_time) || undefined;
+  } catch { return undefined; }
+}
+
 export async function processQueue({ limit = 5, budgetMs = 150000 }: { limit?: number; budgetMs?: number } = {}) {
   if (!enabled()) return { processed: 0, disabled: true };
   let processed = 0;
@@ -100,7 +108,7 @@ export async function processQueue({ limit = 5, budgetMs = 150000 }: { limit?: n
           continue;
         }
         if (job.order_result) {
-          response = registeredReply(job.order_result.number, session.pending?.basket.paymentMethod ?? "");
+          response = registeredReply(job.order_result.number, session.pending?.basket.paymentMethod ?? "", await waitTime(session.pending?.basket.channel));
           pending = null;
         } else if (confirm && pending!.basket.paymentMethod === "pix") {
           stage = "chave-pix";
@@ -121,7 +129,7 @@ export async function processQueue({ limit = 5, budgetMs = 150000 }: { limit?: n
           try {
             const order = await commit(pending!);
             if (!order) { processed++; continue; }
-            response = registeredReply(order.number, pending!.basket.paymentMethod);
+            response = registeredReply(order.number, pending!.basket.paymentMethod, await waitTime(pending!.basket.channel));
             pending = null;
           } catch (error) {
             if (String(error).includes("LEASE_LOST")) throw error;
@@ -148,7 +156,7 @@ export async function processQueue({ limit = 5, budgetMs = 150000 }: { limit?: n
             try {
               const order = await commit(pending, checked.summary);
               if (!order) { processed++; continue; }
-              response = registeredReply(order.number, "pix");
+              response = registeredReply(order.number, "pix", await waitTime(pending.basket.channel));
               pending = null;
             } catch (error) {
               if (String(error).includes("LEASE_LOST")) throw error;

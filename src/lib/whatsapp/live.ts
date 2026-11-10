@@ -37,6 +37,7 @@ export function liveStoreInfo(context: BotContext, now = new Date()) {
   const others = (context.promotions || []).filter((p) => p.active && !p.paused && !today.some((t) => t.id === p.id));
   return [
     `AGORA: ${DAY_NAMES[clock.weekday]}, ${clock.time} (horário de Brasília). Loja ${context.store.open ? "ABERTA" : "FECHADA"} para pedidos agora.`,
+    `TEMPO DE HOJE: retirada ${context.store.pickupTime || "não informado"}; entrega ${context.store.deliveryTime || "não informado"}.`,
     `HORÁRIO DE FUNCIONAMENTO: ${hoursText(context.store.openingHours, context.store.hours) || "não informado"}.`,
     `PROMOÇÕES DE HOJE: ${today.length ? today.map((p) => promoLine(p, flavorName)).join(" | ") : "nenhuma hoje"}.`,
     others.length ? `PROMOÇÕES DE OUTROS DIAS (só valem no dia): ${others.map((p) => promoLine(p, flavorName)).join(" | ")}.` : "",
