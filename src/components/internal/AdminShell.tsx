@@ -26,15 +26,20 @@ import type { ExtendedStoreRuntimeStatus } from "@/types";
 const APP_VERSION = "9.0.0";
 type RoleKey = "manager" | "counter" | "waiter" | "kitchen" | "bar" | "driver" | "finance" | "viewer";
 type NavItem = { href: string; label: string; icon: LucideIcon; roles?: RoleKey[]; badge?: "orders" };
-type NavSection = { label: string; items: NavItem[] };
+type NavSection = { label: string; items: NavItem[]; highlight?: boolean };
 
 const operationRoles: RoleKey[] = ["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance", "viewer"];
 const sections: NavSection[] = [
+  { label: "Principal", highlight: true, items: [
+    { href: "/painel/pdv", label: "PDV / Balcão", icon: ShoppingCart, roles: ["manager", "counter", "waiter"] },
+    { href: "/painel/pedidos", label: "Pedidos", icon: ClipboardList, roles: operationRoles, badge: "orders" },
+    { href: "/painel/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["manager", "counter", "viewer"] },
+    { href: "/painel/cardapio", label: "Cardápio", icon: BookOpen, roles: ["manager", "counter", "viewer"] },
+    { href: "/painel/configuracoes", label: "Configurações", icon: Settings, roles: ["manager", "viewer"] },
+  ]},
   { label: "Operação", items: [
     { href: "/painel", label: "Centro de comando", icon: LayoutDashboard, roles: operationRoles },
     { href: "/painel/atencao", label: "Precisa de atenção", icon: BellRing, roles: operationRoles },
-    { href: "/painel/pedidos", label: "Pedidos", icon: ClipboardList, roles: operationRoles, badge: "orders" },
-    { href: "/painel/pdv", label: "PDV / Balcão", icon: ShoppingCart, roles: ["manager", "counter", "waiter"] },
     { href: "/painel/salao", label: "Salão e mesas", icon: Table2, roles: ["manager", "counter", "waiter", "viewer"] },
     { href: "/painel/garcom", label: "Aplicativo garçom", icon: Users, roles: ["manager", "counter", "waiter"] },
     { href: "/painel/kds", label: "Cozinha / KDS", icon: ChefHat, roles: ["manager", "counter", "kitchen", "bar", "waiter"] },
@@ -50,7 +55,6 @@ const sections: NavSection[] = [
     { href: "/painel/notificacoes", label: "Notificações", icon: Bell, roles: operationRoles },
   ]},
   { label: "Relacionamento", items: [
-    { href: "/painel/whatsapp", label: "WhatsApp", icon: MessageCircle, roles: ["manager", "counter", "viewer"] },
     { href: "/painel/clientes", label: "Clientes e CRM", icon: Contact, roles: ["manager", "counter", "finance", "viewer"] },
     { href: "/painel/fidelidade", label: "Fidelidade interna", icon: Gift, roles: ["manager", "counter", "finance"] },
     { href: "/painel/cupons", label: "Cupons", icon: TicketPercent, roles: ["manager", "counter", "finance"] },
@@ -58,7 +62,6 @@ const sections: NavSection[] = [
     { href: "/painel/comunicacao", label: "Modelos de mensagens", icon: MessageCircleMore, roles: ["manager", "counter", "viewer"] },
   ]},
   { label: "Gestão", items: [
-    { href: "/painel/cardapio", label: "Cardápio", icon: BookOpen, roles: ["manager", "counter", "viewer"] },
     { href: "/painel/promocoes", label: "Promoções do dia", icon: TicketPercent, roles: ["manager"] },
     { href: "/painel/estoque", label: "Estoque restrito", icon: Boxes, roles: ["manager", "counter", "finance", "viewer"] },
     { href: "/painel/inventario", label: "Inventário rápido", icon: ClipboardCheck, roles: ["manager", "counter", "finance", "viewer"] },
@@ -71,7 +74,6 @@ const sections: NavSection[] = [
     { href: "/painel/usuarios", label: "Usuários e acessos", icon: UserCog, roles: ["manager"] },
     { href: "/painel/integracoes", label: "Integrações", icon: CloudCog, roles: ["manager", "viewer"] },
     { href: "/painel/impressao", label: "Impressão", icon: Printer, roles: ["manager", "counter", "kitchen", "bar", "viewer"] },
-    { href: "/painel/configuracoes", label: "Configurações", icon: Settings, roles: ["manager", "viewer"] },
     { href: "/painel/auditoria", label: "Auditoria", icon: ShieldCheck, roles: ["manager", "viewer"] },
     { href: "/painel/diagnostico", label: "Sistema e diagnóstico", icon: HeartPulse, roles: ["manager", "viewer"] },
     { href: "/painel/sistema", label: "Sobre esta instalação", icon: ServerCog, roles: ["manager", "viewer"] },
@@ -205,12 +207,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="scrollbar-none flex-1 overflow-y-auto p-3">
-        {visibleSections.map((section) => <div key={section.label} className="mb-5">
-          {!collapsed && <p className="mb-2 px-3 text-[10px] font-black uppercase tracking-[.18em] text-white/35">{section.label}</p>}
+        {visibleSections.map((section) => <div key={section.label} className={cn("mb-5", section.highlight && "rounded-2xl border border-basso-gold/40 bg-basso-gold/10 p-1.5")}>
+          {!collapsed && <p className={cn("mb-2 px-3 text-[10px] font-black uppercase tracking-[.18em]", section.highlight ? "pt-1 text-basso-goldLight" : "text-white/35")}>{section.label}</p>}
           <div className="space-y-1">{section.items.map((item) => {
             const active = item.href === "/painel" ? path === item.href : path.startsWith(item.href);
             const Icon = item.icon;
-            return <Link key={item.href} href={item.href} onClick={() => setMobile(false)} title={item.label} className={cn("flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition", active ? "bg-basso-wine text-white shadow-lg" : "text-white/60 hover:bg-white/5 hover:text-white", collapsed && "justify-center px-0")}><Icon size={19} />{!collapsed && <><span className="min-w-0 flex-1 truncate">{item.label}</span>{item.badge === "orders" && activeOrders > 0 && <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-black">{activeOrders}</span>}</>}</Link>;
+            return <Link key={item.href} href={item.href} onClick={() => setMobile(false)} title={item.label} className={cn("flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition", section.highlight && "min-h-12 text-[15px] font-bold", active ? "bg-basso-wine text-white shadow-lg" : section.highlight ? "text-white hover:bg-white/10" : "text-white/60 hover:bg-white/5 hover:text-white", collapsed && "justify-center px-0")}><Icon size={19} />{!collapsed && <><span className="min-w-0 flex-1 truncate">{item.label}</span>{item.badge === "orders" && activeOrders > 0 && <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-black">{activeOrders}</span>}</>}</Link>;
           })}</div>
         </div>)}
       </nav>
