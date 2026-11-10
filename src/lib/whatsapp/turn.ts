@@ -47,6 +47,15 @@ export async function checkReceipt(pending: Pending, account: PixAccount, read: 
   return { ok: false, response: attempts >= 3 ? `${verdict.reply}\n\n${RECEIPT_FAILED_HANDOFF}` : verdict.reply, pending: { ...pending, receipt_attempts: attempts }, pause: attempts >= 3 };
 }
 
+/** Assuntos que justificam chamar a equipe já na primeira mensagem. */
+const SPECIFIC_HANDOFF = /atendente|humano|pessoa|gerente|dono|reclama|problema|errad|frio|atras|cancel|estorno|reembolso|alergi|encomenda|evento|festa|curr[ií]culo|vaga|fornecedor|parceria/i;
+
+/** A primeira mensagem nunca vai para a equipe, salvo assunto muito específico. */
+export function firstContactGuard(history: Turn[], texts: string[], action: AiResult["action"]) {
+  const first = !history.slice(0, -1).some((t) => t.role === "assistant");
+  return first && action === "human" && !texts.some((t) => SPECIFIC_HANDOFF.test(t));
+}
+
 export type TurnResult = {
   response: string;
   pause: boolean;
@@ -86,6 +95,9 @@ export async function assistantTurn(opts: {
   const live = [waiting, ordersContext(orders), store.open ? "" : `LOJA FECHADA para novos pedidos agora. ${store.closedMessage}`].filter(Boolean).join("\n");
   const ai = opts.ai ?? answer;
   const result: AiResult = await ai({ store: { name: store.name, menuUrl: store.menuUrl }, catalog: catalog.text, history, context: live });
+  if (firstContactGuard(history, texts, result.action)) {
+    return { ...base, response: `Olá! Seja bem-vindo(a) à ${store.name} 😊 Como posso te ajudar? Se quiser, nosso cardápio está aqui: ${store.menuUrl}`, pause: false, pending: null, usage: result.usage, action: "reply" };
+  }
   let response = result.sendMenu ? withMenuLink(result.reply, store.menuUrl) : result.reply;
   let pending: Pending | null = null;
   if (result.action === "prepare") {

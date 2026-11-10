@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-17T02:37:23.732Z",
-  "passed": 96,
+  "generatedAt": "2026-11-10T19:59:19.208Z",
+  "passed": 92,
   "failed": 0,
-  "sha256": "f5dddcfb62aea31c56bc91bd32ea1583977f19ef3cbd92492985852495ce8aa9",
+  "sha256": "db9c071c072784887179bcb3a3dbfac06219123df3e634542f6c758557a3234a",
   "results": [
     {
       "name": "42 pizzas tradicionais",
@@ -20,7 +20,7 @@
       "detail": ""
     },
     {
-      "name": "29 bebidas",
+      "name": "32 bebidas base (catálogo atualizado pela migration 034)",
       "ok": true,
       "detail": ""
     },
@@ -30,12 +30,7 @@
       "detail": ""
     },
     {
-      "name": "1 combo oficial",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Sobremesa com 2 variações",
+      "name": "Combo oficial R$ 79,99",
       "ok": true,
       "detail": ""
     },
@@ -45,32 +40,22 @@
       "detail": ""
     },
     {
-      "name": "Broto meio a meio desativado",
+      "name": "Broto sem meio a meio",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Adicionais: máximo 5 unidades",
+      "name": "Máximo de 5 adicionais",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Adicionais: máximo 2 do mesmo",
+      "name": "Máximo de 2 unidades do mesmo adicional",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Observações: máximo 500 caracteres",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Fidelidade: 10 pontos / saldo 15",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Recompensa apenas Mozzarella/Calabresa Tradicional",
+      "name": "Fidelidade 10 pedidos / saldo 15",
       "ok": true,
       "detail": ""
     },
@@ -80,17 +65,7 @@
       "detail": ""
     },
     {
-      "name": "10 mesas de 5 lugares",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "5 mesas de 2 lugares",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "IDs únicos em cada cadastro",
+      "name": "IDs únicos nos cadastros estáticos",
       "ok": true,
       "detail": ""
     },
@@ -100,22 +75,22 @@
       "detail": ""
     },
     {
-      "name": "Ingredientes cadastrados em todos os sabores",
+      "name": "Ingredientes cadastrados",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Todos os assets referenciados existem",
+      "name": "Assets estáticos referenciados existem",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Telas públicas e operacionais presentes",
+      "name": "Telas públicas e operacionais críticas presentes",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Nenhum componente de seleção de borda",
+      "name": "Nenhum seletor de borda reintroduzido",
       "ok": true,
       "detail": ""
     },
@@ -125,9 +100,9 @@
       "detail": ""
     },
     {
-      "name": "Migrações SQL 001–017 presentes",
+      "name": "Migrações SQL 001–032 presentes",
       "ok": true,
-      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql, 016_integration_ready_99food_tracking_smartpos.sql, 017_production_final_hardening.sql"
+      "detail": "001_core_schema.sql, 002_official_catalog_seed.sql, 003_operational_functions.sql, 004_integrations_and_public_access.sql, 005_workers_and_queue_claims.sql, 006_reviews_and_customer_experience.sql, 007_management_finance_crm_and_settings.sql, 008_loyalty_reward_authorizations.sql, 009_internal_orders_and_tabs.sql, 010_salon_groups_and_cash_payments.sql, 011_public_table_qr_and_order_hardening.sql, 012_runtime_menu_management.sql, 013_admin_control_center.sql, 014_autonomy_operations_and_control.sql, 015_operational_maturity_and_reliability.sql, 016_integration_ready_99food_tracking_smartpos.sql, 017_production_final_hardening.sql, 018_final_operation_patch.sql, 019_final_homologation.sql, 020_production_security_and_performance_hardening.sql, 021_sweet_pizza_options_and_official_promo.sql, 022_print_delivery_location_fixes.sql, 023_operational_consistency_and_security.sql, 024_catalog_admin_and_product_media.sql, 025_delivery_handoff_tracking_and_print.sql, 026_customer_tracking_link.sql, 027_delivery_verification_fk_indexes.sql, 028_delivery_city_district_selection.sql, 029_final_waiter_payments_promotions.sql, 030_promotion_actor_fk_indexes.sql, 031_realtime_go_live_audit.sql, 032_audit_operation_integrity.sql, 033_menu_autonomy_and_offers.sql, 034_saipos_prices_and_beverages.sql, 035_fix_delivery_random_bytes_schema.sql, 036_fix_private_tracking_crypto_schema.sql, 037_complete_order_without_auto_payment.sql, 038_salon_receipts_daily_numbers.sql, 039_direct_order_completion.sql, 040_salon_drinks_catalog.sql, 041_configurable_restaurant_tables.sql, 042_restaurant_table_available_privileges.sql, 043_whatsapp_bot.sql, 044_whatsapp_auto_reply_echo.sql"
     },
     {
       "name": "RLS habilitado",
@@ -140,12 +115,12 @@
       "detail": ""
     },
     {
-      "name": "Chaves de idempotência",
+      "name": "Idempotência persistente",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Webhook e filas com deduplicação",
+      "name": "Filas com SKIP LOCKED",
       "ok": true,
       "detail": ""
     },
@@ -160,177 +135,282 @@
       "detail": ""
     },
     {
-      "name": "Estoque somente em produtos rastreados",
+      "name": "Recompensa transacional",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Fidelidade limitada a 15",
+      "name": "RPC de impressão fechado a browser roles",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Marketplace sem perfil no CRM",
+      "name": "MU14 cria arquivamento sem destruir histórico",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "QR de mesa abre/reutiliza comanda de forma atômica",
+      "name": "MU14 cria bucket de imagens",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "QR não cria perfil no CRM",
+      "name": "Produto vinculado à categoria",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Pagamentos parciais fecham comanda e liberam mesa",
+      "name": "MU16 torna cidade explícita na cobertura",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Junção e separação de mesas",
+      "name": "Checkout mantém idempotência",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Recompensa exige autorização transacional",
+      "name": "API pública limita canais",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Checkout preserva mesa e comanda do QR",
+      "name": "Pedido público valida agenda oficial",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "QR não cobra nem fecha automaticamente",
+      "name": "Delivery público bloqueia cobertura ausente",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "API pública aceita somente delivery, retirada e QR",
+      "name": "Recompensa pública bloqueada",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Recompensa bloqueada no checkout público",
+      "name": "Checkout oferece cidade e bairro dependentes",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "APIs de gestão financeira e CRM presentes",
+      "name": "GPS tenta casar localização com cobertura",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Saúde e retentativa de integrações presentes",
+      "name": "Frete autoritativo usa cidade + bairro",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Fluxos transacionais de salão presentes",
+      "name": "Endpoint público expõe somente cobertura ativa",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Mega Update administrativo presente",
+      "name": "APIs do MU14 presentes",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Central da comanda com seis áreas",
+      "name": "Admin cria produtos",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Pedido administrável com notas e ocorrências",
+      "name": "Admin cria categorias",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Comunicação manual auditável",
+      "name": "Admin pausa e remove sem apagar histórico",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Pagamento manual transacional",
+      "name": "Upload por arquivo substitui URL manual",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Status controlado exige pagamento e motivo",
+      "name": "Upload limitado e server-side",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Estado operacional da loja administrável",
+      "name": "Upload aceita formatos seguros",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Permissões específicas no backend",
+      "name": "Runtime carrega categorias e ignora arquivados",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Cardápio editável sem acessar banco",
+      "name": "Categoria pausada bloqueia venda",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Delivery operável sem mapa",
+      "name": "Cardápio público recebe categorias runtime",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Mega Update 04 de autonomia presente",
+      "name": "Categorias criadas aparecem na home",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Rotinas guiadas de abertura e fechamento",
+      "name": "PDV oferece Entrega explicitamente",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Tarefas e aprovações persistentes",
+      "name": "PDV usa cardápio runtime",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Expedição auditável",
+      "name": "PDV calcula taxa de entrega antes de finalizar",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Perfis de impressão administráveis",
+      "name": "PDV exige cidade, bairro e endereço para entrega",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Compras atualizam estoque transacionalmente",
+      "name": "PDV usa cobertura cidade + bairro",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Exportação operacional protegida",
+      "name": "PDV finaliza pelo backend autoritativo",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Gate de qualidade no GitHub",
+      "name": "Cidades e bairros podem ser adicionados",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Modelos de comunicação administráveis",
+      "name": "Cidades e bairros podem ser editados",
       "ok": true,
       "detail": ""
     },
     {
-      "name": "Mega Update 05 de maturidade presente",
+      "name": "Bairros podem ser pausados e reativados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Bairros podem ser arquivados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Impressão manual usa diálogo padrão do navegador",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Comprovante térmico possui layout de 80 mm",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Comanda de entrega replica estrutura operacional",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Comanda da cozinha é separada e sem financeiro",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Comanda imprime QR de retirada",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Print Bridge permanece opcional",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "MU15 de rastreio e validação presente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Retirada exige QR ou código e motoboy atribuído",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Entrega exige código privado do cliente",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Retirada validada e conclusão operacional disponível a todos os perfis",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Tentativas inválidas possuem bloqueio",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Token de rastreio é preservado fora do navegador",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Tracking token não tem SELECT direto para browser",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Pagamento na entrega passa pela transação oficial",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "PWA mantém GPS durante entrega",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Diagnóstico alinhado ao MU18 / migration 32",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Diagnóstico consulta publicação Realtime real",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Realtime: publica tabelas operacionais",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Realtime: RPC restrita ao backend",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Diagnóstico valida Print Bridge real",
       "ok": true,
       "detail": ""
     },
@@ -340,17 +420,7 @@
       "detail": ""
     },
     {
-      "name": "Central de atenção operacional",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Feature flags persistentes",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Inventário assistido e auditado",
+      "name": "Inventário assistido",
       "ok": true,
       "detail": ""
     },
@@ -360,12 +430,7 @@
       "detail": ""
     },
     {
-      "name": "Snapshots de configuração",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Mega Update 06 Integration Ready presente",
+      "name": "Feature flags persistentes",
       "ok": true,
       "detail": ""
     },
@@ -375,87 +440,7 @@
       "detail": ""
     },
     {
-      "name": "99Food bloqueia chamadas sem contrato oficial",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Webhook 99Food exato e público",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "99Food usa fila idempotente existente",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Worker 99Food preparado para buscar pedido completo",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Rastreamento interno separado do cliente",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Cliente perde rastreio ao concluir e turno interno permanece independente",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "SmartPOS preparado sem API Rede inventada",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Garçom preparado para terminal SmartPOS",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Mega Update 07 Production Final presente",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Produção não restaura localStorage operacional",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Numeração de pedido é atômica no PostgreSQL",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Checkout usa cotação autoritativa e chave idempotente persistente",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Delivery público bloqueia cobertura não configurada",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Caixa, financeiro e estoque usam APIs em produção",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "KDS, salão e motoboy usam mutações server-first",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Checklist da expedição persiste e é validado no banco",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "App e diagnóstico alinhados na versão 7 / migration 17",
+      "name": "Gate de qualidade executa typecheck e build",
       "ok": true,
       "detail": ""
     },
@@ -466,11 +451,6 @@
     },
     {
       "name": "Service worker presente",
-      "ok": true,
-      "detail": ""
-    },
-    {
-      "name": "Bridge de impressão presente",
       "ok": true,
       "detail": ""
     },

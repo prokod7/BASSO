@@ -83,7 +83,7 @@ describe("migration 043 — robô do WhatsApp", () => {
 
   it("eco do celular pausa o robô; retomar limpa contexto e fila", async () => {
     const session = await one<{ id: string }>("select id from wa_sessions");
-    await db.query("select public.wa_receive('5511999998888','echo1',$1::jsonb,true)", [JSON.stringify({ id: "echo1", to: "5511999998888", timestamp: ts() })]);
+    await db.query("select public.wa_receive('5511999998888','echo1',$1::jsonb,true)", [JSON.stringify({ id: "echo1", to: "5511999998888", timestamp: String(Number(ts()) + 60) })]);
     expect(await one("select paused,pending from wa_sessions")).toEqual({ paused: true, pending: null });
     await db.query("select public.wa_control_session($1,false)", [session.id]);
     expect(await one("select paused,history from wa_sessions")).toEqual({ paused: false, history: [] });
@@ -100,5 +100,27 @@ describe("migration 043 — robô do WhatsApp", () => {
     await db.exec("update wa_sessions set follow_up_at=now()-interval '1 second',followed_up_at=null,menu_sent_at=now()");
     expect(((await one<{ d: any[] }>("select public.wa_due_follow_ups() d")).d)).toHaveLength(0);
     expect(await one("select follow_up_at from wa_sessions")).toEqual({ follow_up_at: null });
+  });
+});
+
+describe("migration 044 — saudação automática do WhatsApp Business", () => {
+  it("eco no mesmo segundo da mensagem do cliente não pausa; eco depois pausa", async () => {
+    const p = "5511977776666";
+    const now = Math.floor(Date.now() / 1000);
+    const at = (s: number) => new Date(s * 1000).toISOString();
+    await db.query("select public.wa_log_message($1,'c1','boa tarde','text','in','customer',null,$2)", [p, at(now)]);
+    await db.query("select public.wa_receive($1,'auto1',$2::jsonb,true)", [p, JSON.stringify({ id: "auto1", to: p, timestamp: String(now) })]);
+    expect(await one("select paused from wa_sessions where phone=$1", [p])).toEqual({ paused: false });
+    await db.query("select public.wa_receive($1,'human1',$2::jsonb,true)", [p, JSON.stringify({ id: "human1", to: p, timestamp: String(now + 120) })]);
+    expect(await one("select paused from wa_sessions where phone=$1", [p])).toEqual({ paused: true });
+  });
+
+  it("eco automático que chega antes da mensagem do cliente é desfeito", async () => {
+    const p = "5511955554444";
+    const now = Math.floor(Date.now() / 1000);
+    await db.query("select public.wa_receive($1,'auto2',$2::jsonb,true)", [p, JSON.stringify({ id: "auto2", to: p, timestamp: String(now) })]);
+    expect(await one("select paused from wa_sessions where phone=$1", [p])).toEqual({ paused: true });
+    await db.query("select public.wa_receive($1,'c2',$2::jsonb,false)", [p, JSON.stringify({ id: "c2", from: p, timestamp: String(now), type: "text", text: { body: "oi" } })]);
+    expect(await one("select paused from wa_sessions where phone=$1", [p])).toEqual({ paused: false });
   });
 });
