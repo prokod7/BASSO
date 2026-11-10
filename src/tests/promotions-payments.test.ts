@@ -29,6 +29,13 @@ describe("promoções do dia", () => {
     expect(promotionRuntimeStatus(promo(), wednesdayAt19)).toBe("scheduled");
   });
 
+  it("balcão do PDV recebe a promoção de retirada; salão não", () => {
+    const date = new Date("2026-09-15T22:00:00.000Z");
+    const pickupOnly = promo({ channels: ["own_delivery", "pickup"] });
+    expect(promotionIsActive(pickupOnly, "counter", date)).toBe(true);
+    expect(promotionIsActive(pickupOnly, "dine_in", date)).toBe(false);
+  });
+
   it("pausa imediatamente sem apagar a agenda", () => {
     const date = new Date("2026-09-15T22:00:00.000Z");
     const paused = promo({ paused: true });

@@ -63,7 +63,9 @@ export function promotionRuntimeStatus(promotion: PromotionRecord, date = new Da
 }
 
 export function promotionIsActive(promotion: PromotionRecord, channel: OrderChannel, date = new Date()) {
-  return promotion.channels.includes(channel) && promotionRuntimeStatus(promotion, date) === "active";
+  // Balcão do PDV é retirada na loja: vale a promoção de retirada.
+  const allowed = promotion.channels.includes(channel) || (channel === "counter" && promotion.channels.includes("pickup"));
+  return allowed && promotionRuntimeStatus(promotion, date) === "active";
 }
 
 function mapPromotionRow(row: any, targets: any[]): PromotionRecord {
