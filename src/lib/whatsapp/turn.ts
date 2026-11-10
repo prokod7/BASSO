@@ -109,7 +109,7 @@ export async function assistantTurn(opts: {
     try {
       if (!result.order) throw new Error("Faltam dados do pedido");
       if (!store.open) throw new Error("A loja está fechada para novos pedidos agora");
-      const draftBasket = resolveDraft(result.order, context.menu, catalog, phone, context.zones, store);
+      const draftBasket = resolveDraft(result.order, context.menu, catalog, phone, context.zones, store, context.streets ?? []);
       const { quote, basket } = await opts.quote(draftBasket);
       if (basket.paymentMethod === "cash" && basket.changeFor && basket.changeFor < quote.total) throw new Error(`O troco precisa ser para um valor maior que o total de ${money(quote.total)}. Troco para quanto?`);
       if (basket.paymentMethod === "pix" && !context.pix.pix_key) throw new Error("O Pix está indisponível agora. Pode ser dinheiro ou cartão na entrega/retirada?");

@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { districtForStreet, expandDistrict, type KnownStreet } from "./streets";
 import { comboConfig } from "@/lib/combos";
 import { catalog as staticCatalog } from "@/lib/catalog";
 import { activeMasses, defaultMass, pizzaOptions } from "@/lib/pizza-options";
@@ -158,8 +159,9 @@ export type Draft = {
 };
 
 const norm = (value: string) => normalizeSearchText(value).replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
-const PREFIX = /^(jardim|jd|vila|vl|parque|pq|conjunto|conj|residencial|res|bairro|chacara|recanto|jardins)\s+/;
-const loose = (value: string) => norm(value).replace(PREFIX, "").replace(/z/g, "s");
+const PREFIX = /^(jardim|jd|vila|vl|parque|pq|conjunto|conj|residencial|res|bairro|chacara|recanto|jardins|estancia|nucleo|sitio|loteamento)\s+/;
+// Abreviações ("Jd.", "Vl.", "Pq.", "Sta.") e nomes curtos ("Vila Conde") viram o nome por extenso.
+const loose = (value: string) => norm(expandDistrict(value)).replace(PREFIX, "").replace(/z/g, "s");
 
 function distance(a: string, b: string) {
   const row = Array.from({ length: b.length + 1 }, (_, i) => i);
@@ -280,7 +282,7 @@ function resolveCombo(item: DraftItem, catalog: CompactCatalog, menu: RuntimeMen
 }
 
 /** Traduz os códigos da IA para itens do checkout. Preços são calculados depois, no servidor. */
-export function resolveDraft(draft: Draft, menu: RuntimeMenu, catalog: CompactCatalog, waPhone: string, zones: Zone[], store: { city: string; state: string }): Basket {
+export function resolveDraft(draft: Draft, menu: RuntimeMenu, catalog: CompactCatalog, waPhone: string, zones: Zone[], store: { city: string; state: string }, learnedStreets: KnownStreet[] = []): Basket {
   const name = draft.name.trim();
   if (name.length < 2) throw new Error("Qual o seu nome?");
   const items = draft.items.map((item): CartItem => {
@@ -306,7 +308,21 @@ export function resolveDraft(draft: Draft, menu: RuntimeMenu, catalog: CompactCa
     const a = draft.address;
     if (!a?.street.trim() || !a.number.trim()) throw new Error("Me manda o endereço completo: rua, número e bairro");
     if (!zones.length) throw new Error("A entrega está indisponível no momento. Quer retirar na loja?");
-    const place = matchDistrict(a.neighborhood, a.city, zones);
+    // Bairro pela rua: o cliente que só manda "Rua X, 123" não precisa dizer o bairro.
+    const byStreet = () => {
+      const known = districtForStreet(a.street, a.city, learnedStreets);
+      if (!known) return null;
+      try { return matchDistrict(known.district, known.city, zones); } catch { return null; }
+    };
+    let place: { district: string; city: string };
+    if (!a.neighborhood.trim()) {
+      const found = byStreet();
+      if (!found) throw new Error("Qual é o bairro da entrega?");
+      place = found;
+    } else {
+      try { place = matchDistrict(a.neighborhood, a.city, zones); }
+      catch (error) { const found = byStreet(); if (!found) throw error; place = found; }
+    }
     basket.address = {
       cep: "", street: a.street.trim().slice(0, 150), number: a.number.trim().slice(0, 15), district: place.district,
       complement: a.complement.trim().slice(0, 150) || undefined, reference: a.reference.trim().slice(0, 200) || undefined,
