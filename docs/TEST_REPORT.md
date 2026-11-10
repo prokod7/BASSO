@@ -1,6 +1,6 @@
 # Relatório de verificação estática
 
-Gerado em: 2026-11-10T22:49:15.243Z
+Gerado em: 2026-11-10T22:54:14.187Z
 
 Resultado: **92/92 verificações aprovadas**.
 
@@ -68,7 +68,7 @@ Resultado: **92/92 verificações aprovadas**.
 | Cidades e bairros podem ser editados | APROVADO | — |
 | Bairros podem ser pausados e reativados | APROVADO | — |
 | Bairros podem ser arquivados | APROVADO | — |
-| Impressão manual vai para a fila da estação automática | APROVADO | — |
+| Impressão manual imprime direto no aparelho | APROVADO | — |
 | Comprovante térmico possui layout de 80 mm | APROVADO | — |
 | Comanda de entrega replica estrutura operacional | APROVADO | — |
 | Comanda da cozinha é separada e sem financeiro | APROVADO | — |

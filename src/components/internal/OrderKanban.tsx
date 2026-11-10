@@ -8,6 +8,7 @@ import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client
 import { orderTransitionMatrix, requiresTransitionReason } from "@/lib/operational-state";
 import { allowedStatuses, statusLabel } from "@/lib/order-validation";
 import { isDemoMode } from "@/lib/utils";
+import { printHere } from "@/lib/client/print-here";
 import type { Order, OrderStatus } from "@/types";
 
 const columns: Array<{ status: OrderStatus; label: string }> = [
@@ -71,7 +72,8 @@ export function OrderKanban({ orders, onOpen, onEdit }: { orders: Order[]; onOpe
     if (saving.current) return;
     setWorking(order.id); setFeedback(null);
     try {
-      if (!isDemoMode()) await apiJson(`/api/orders/${order.id}/print`, { method: "POST", body: JSON.stringify({ sector: "all", reason: "Impressão pelo card do pedido" }) });
+      setFeedback({error: false, message: `Imprimindo pedido #${order.number}…`});
+      await printHere(order.id, ["entrega", "cozinha"]);
       setFeedback({error: false, message: `Pedido #${order.number} enviado para a impressora.`});
     } catch (error) {
       setFeedback({error: true, message: formatApiError(error, "Não foi possível imprimir.")});

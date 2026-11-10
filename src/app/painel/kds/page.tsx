@@ -8,6 +8,7 @@ import { useStableDemoState } from "@/lib/stable-store";
 import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client/api";
 import { statusLabel } from "@/lib/order-validation";
 import { formatElapsedMinutes, isDemoMode } from "@/lib/utils";
+import { printHere } from "@/lib/client/print-here";
 import { playNewOrderSound } from "@/lib/order-notification-sound";
 import { compactItemName, itemDetails } from "@/lib/item-presentation";
 import type { CartItem, Order, OrderStatus } from "@/types";
@@ -106,12 +107,9 @@ export default function KdsPage() {
     setMessage("");
     try {
       if (!isDemoMode()) {
-        await apiJson(`/api/orders/${order.id}/print`, {
-          method: "POST",
-          body: JSON.stringify({ sector, reason: `Impressão manual solicitada no KDS ${sector}` }),
-        });
+        await printHere(order.id, ["cozinha"], "kds");
       }
-      setMessage(`Comanda ${sector === "bar" ? "do bar" : "da cozinha"} do pedido #${order.number} aberta na impressão padrão do navegador.`);
+      setMessage(`Comanda ${sector === "bar" ? "do bar" : "da cozinha"} do pedido #${order.number} enviada para a impressora.`);
     } catch (error) {
       setMessage(formatApiError(error, "Falha ao abrir a impressão."));
     } finally {

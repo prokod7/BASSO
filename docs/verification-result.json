@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-11-10T22:49:15.243Z",
+  "generatedAt": "2026-11-10T22:54:14.187Z",
   "passed": 92,
   "failed": 0,
-  "sha256": "a5d77060813024fc1792231af514f9c777796b557b1e989d623fc2f387837a37",
+  "sha256": "8d4395260a70f87cf1eba00ca439ba7377c08c758642277da34de5894b05152b",
   "results": [
     {
       "name": "42 pizzas tradicionais",
@@ -315,7 +315,7 @@
       "detail": ""
     },
     {
-      "name": "Impressão manual vai para a fila da estação automática",
+      "name": "Impressão manual imprime direto no aparelho",
       "ok": true,
       "detail": ""
     },
