@@ -72,11 +72,11 @@ export default function BrowserPrintPage({ params }: { params: Promise<{ id: str
   return (
     <main className="print-shell mx-auto min-h-screen w-full max-w-[80mm] bg-white px-[3mm] py-[3mm]">
       <style jsx global>{`
-        @page { size: 80mm auto; margin: 2.5mm; }
+        @page { margin: 0; }
         @media print {
-          html, body { width: 80mm !important; background: white !important; margin: 0 !important; padding: 0 !important; }
+          html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
           .no-print { display: none !important; }
-          .print-shell { width: 75mm !important; max-width: 75mm !important; padding: 0 !important; margin: 0 auto !important; }
+          .print-shell { width: 80mm !important; max-width: none !important; padding: 0 !important; margin: 0 !important; }
         }
       `}</style>
       <div className="no-print mb-4 grid grid-cols-2 gap-2 font-sans">

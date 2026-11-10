@@ -57,7 +57,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
   const itemCount = activeItems.reduce((sum, item) => sum + item.quantity, 0);
   const stamp = dateAndTime(order.createdAt);
   const title = printType === "cozinha" ? "COZINHA" : (channelLabels[order.channel] || "PEDIDO");
-  return <div className="ticket-80 w-full bg-white font-mono text-[11.5px] leading-[1.24] text-black">
+  return <div className="ticket-80">
     {printType === "entrega" ? (
         <>
           <header>
@@ -105,7 +105,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           {order.paymentMethod === "cash" && order.changeFor ? <><div className="flex justify-between"><span>- Receber:</span><span>{currency(order.changeFor)}</span></div><div className="flex justify-between"><span>- Troco:</span><span>{currency(Math.max(0, order.changeFor - order.total))}</span></div></> : null}
           {orderNote ? <><Divider /><p className="font-black">OBSERVAÇÕES</p><p className="font-bold">{orderNote}</p></> : null}
 
-          {order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">RETIRADA DO MOTOBOY</p><p className="mt-1 text-[20px] font-black tracking-[.18em]">{verification.pickupCode}</p><p className="mt-1 text-[9px]">Escaneie o QR ou digite o código no PWA do motoboy.</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={118} level="M" marginSize={1} /></div> : null}<p className="mt-1 text-[9px]">ID: {order.id}</p></div></> : null}
+          {order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">RETIRADA DO MOTOBOY</p><p className="mt-1 text-[20px] font-black tracking-[.18em]">{verification.pickupCode}</p><p className="mt-1 text-[10.5px]">Escaneie o QR ou digite o código no PWA do motoboy.</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={118} level="M" marginSize={1} /></div> : null}<p className="mt-1 text-[10.5px]">ID: {order.id}</p></div></> : null}
         </>
       ) : (
         <>
@@ -126,14 +126,14 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           <div className="flex justify-between"><span>Quantidade de itens:</span><strong>{itemCount}</strong></div>
           {order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">CÓDIGO DE RETIRADA</p><p className="text-[20px] font-black tracking-[.18em]">{verification.pickupCode}</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={112} level="M" marginSize={1} /></div> : null}</div></> : null}
           <Divider />
-          <p className="text-center text-[9px]">ID: {order.id}</p>
+          <p className="text-center text-[10.5px]">ID: {order.id}</p>
         </>
       )}
   </div>;
 }
 
 export function TestTicket({ store }: { store: TicketStore }) {
-  return <div className="ticket-80 w-full bg-white text-center font-mono text-[12px] text-black">
+  return <div className="ticket-80 text-center">
     <p className="font-black">{store.businessName || "La Forneria Basso"}</p>
     <Divider />
     <p className="text-[18px] font-black">TESTE DE IMPRESSÃO</p>
