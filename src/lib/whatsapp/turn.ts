@@ -5,6 +5,7 @@ import { compactCatalog, resolveDraft } from "./catalog";
 import { ACTIVE_STATUSES, friendlyError, money, ordersContext, summarize, type Basket, type Pending, type Quote, type RecentOrder } from "./domain";
 import { menuFiles, withMenuLink } from "./menuMedia";
 import { namesFor, type BotContext } from "./order";
+import { liveStoreInfo, todayPromotions } from "./live";
 import { judgeReceipt, pixInstructions, RECEIPT_FAILED_HANDOFF, type PixAccount, type ReceiptReading } from "./pix";
 export { pendingAfter } from "./turnRules";
 
@@ -92,13 +93,16 @@ export async function assistantTurn(opts: {
   const waiting = opts.pending?.awaiting_receipt
     ? `AGUARDANDO COMPROVANTE PIX: o cliente já confirmou o pedido; falta mandar o comprovante (imagem ou PDF) do Pix de ${money(opts.pending.quote.total)} para a chave ${context.pix.pix_key}. O pedido só vai para a cozinha depois do comprovante. Se ele pedir a chave de novo, mande. Se quiser mudar o pedido, use prepare com o pedido completo.`
     : "";
-  const live = [waiting, ordersContext(orders), store.open ? "" : `LOJA FECHADA para novos pedidos agora. ${store.closedMessage}`].filter(Boolean).join("\n");
+  const live = [liveStoreInfo(context), waiting, ordersContext(orders), store.open ? "" : `LOJA FECHADA para novos pedidos agora. ${store.closedMessage}`].filter(Boolean).join("\n");
   const ai = opts.ai ?? answer;
   const result: AiResult = await ai({ store: { name: store.name, menuUrl: store.menuUrl }, catalog: catalog.text, history, context: live });
   if (firstContactGuard(history, texts, result.action)) {
     return { ...base, response: `Olá! Seja bem-vindo(a) à ${store.name} 😊 Como posso te ajudar? Se quiser, nosso cardápio está aqui: ${store.menuUrl}`, pause: false, pending: null, usage: result.usage, action: "reply" };
   }
-  let response = result.sendMenu ? withMenuLink(result.reply, store.menuUrl) : result.reply;
+  const firstReply = !history.slice(0, -1).some((t) => t.role === "assistant");
+  const reply = firstReply ? result.reply : withoutGreeting(result.reply);
+  let response = result.sendMenu ? withMenuLink(reply, store.menuUrl) : reply;
+  const promoImages = result.sendPromo ? todayPromotions(context).map((p) => p.image).filter((url): url is string => Boolean(url)) : [];
   let pending: Pending | null = null;
   if (result.action === "prepare") {
     try {
@@ -123,9 +127,16 @@ export async function assistantTurn(opts: {
     pending,
     usage: result.usage,
     action: result.action,
-    media: result.sendMenu && !pending ? menuFiles() : [],
+    media: pending ? [] : [...promoImages, ...(result.sendMenu ? menuFiles() : [])],
     menuSent: result.sendMenu,
   };
+}
+
+/** Saudação só na primeira resposta: tira "Olá!", "Boa noite!" etc. do começo das seguintes. */
+export function withoutGreeting(text: string) {
+  const stripped = text.replace(/^\s*(?:(?:ol[áa]|oi+|opa|boa (?:noite|tarde)|bom dia|seja bem[- ]vind[oa](?:\(a\))?(?: [àa] [^!.?]+)?)[\s,!.]*(?:[\u{1F300}-\u{1FAFF}\u2600-\u27BF]\s*)?)+/iu, "").trim();
+  if (!stripped) return text;
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
 }
 
 /** Qualquer alteração invalida o resumo anterior, inclusive durante a espera de confirmação. */

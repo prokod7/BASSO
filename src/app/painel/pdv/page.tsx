@@ -67,6 +67,40 @@ function PdvContent() {
   const [quoting, setQuoting] = useState(false);
   const [deliveryCities, setDeliveryCities] = useState<DeliveryCity[]>([]);
   const [areasLoading, setAreasLoading] = useState(true);
+  // Pedido em andamento fica salvo neste aparelho: trocar de aba ou de tela não perde o que foi lançado.
+  const draftKey = appendTo ? `lfb-pdv-draft:${appendTo}` : "lfb-pdv-draft";
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (Array.isArray(d.items)) setItems(d.items);
+        if (typeof d.customer === "string") setCustomer(d.customer);
+        if (typeof d.phone === "string") setPhone(d.phone);
+        if (d.channel) setChannel(d.channel);
+        if (d.payment) setPayment(d.payment);
+        if (typeof d.paid === "boolean") setPaid(d.paid);
+        if (typeof d.needsChange === "boolean") setNeedsChange(d.needsChange);
+        if (typeof d.changeFor === "string") setChangeFor(d.changeFor);
+        if (d.address) setAddress({ ...blankAddress, ...d.address });
+        if (typeof d.tableNumber === "number") setTableNumber(d.tableNumber);
+        if (typeof d.discount === "string") setDiscount(d.discount);
+        if (typeof d.discountReason === "string") setDiscountReason(d.discountReason);
+        if (d.customerId) setCustomerId(d.customerId);
+        if (d.origin) setOrigin(d.origin);
+      }
+    } catch { /* rascunho inválido: ignora */ }
+    setDraftLoaded(true);
+  }, [draftKey]);
+  useEffect(() => {
+    if (!draftLoaded) return;
+    try {
+      const empty = !items.length;
+      if (empty) localStorage.removeItem(draftKey);
+      else localStorage.setItem(draftKey, JSON.stringify({ items, customer, phone, channel, payment, paid, needsChange, changeFor, address, tableNumber, discount, discountReason, customerId, origin }));
+    } catch { /* armazenamento cheio/bloqueado */ }
+  }, [draftLoaded, draftKey, items, customer, phone, channel, payment, paid, needsChange, changeFor, address, tableNumber, discount, discountReason, customerId, origin]);
 
   useEffect(() => {
     try {

@@ -169,7 +169,7 @@ export async function processQueue({ limit = 5, budgetMs = 150000 }: { limit?: n
           await Promise.all(jobs.map(async (j, i) => {
             const label = { audio: "🎤 Áudio", image: "📷 Imagem", document: "📄 Documento" }[j.payload.type as "audio"] ?? "";
             const said = (texts[i] ?? "").replace(/^\[[^\]]*\]:\s*/, "").trim();
-            if (!label || !said || !j.payload.id) return;
+            if (!label || !said || said.startsWith("[") || !j.payload.id) return;
             await rpc("wa_set_transcription", { m: j.payload.id, txt: `${label}: ${said}`.slice(0, 16000) }).catch(() => undefined);
           }));
           const text = texts.filter(Boolean).join("\n").slice(0, 16000);
