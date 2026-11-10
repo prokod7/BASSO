@@ -128,7 +128,7 @@ check("Bairros podem ser pausados e reativados", /Pausar/.test(settingsPage) && 
 check("Bairros podem ser arquivados", /DELIVERY_ZONE_ARCHIVED/.test(zonesApi) && /deleted_at/.test(zonesApi));
 
 const printRoute = read("src/app/api/orders/[id]/print/route.ts");
-const browserPrintPage = read("src/app/imprimir/[id]/page.tsx");
+const browserPrintPage = read("src/app/imprimir/[id]/page.tsx") + read("src/components/print/OrderTicket.tsx") + read("src/components/print/PrintHost.tsx");
 check("Impressão manual imprime direto no aparelho", /printHere/.test(read("src/components/internal/OrderKanban.tsx")) && /window\.print\(\)/.test(browserPrintPage));
 check("Comprovante térmico possui layout de 80 mm", /80mm/.test(browserPrintPage) && /@page/.test(browserPrintPage));
 check("Comanda de entrega replica estrutura operacional", /CNPJ: (62\.332\.415\/0001-10|\{store\.cnpj)/.test(browserPrintPage) && /Qt\. Descrição/.test(browserPrintPage) && /Forma de pagamento/.test(browserPrintPage) && /RETIRADA DO MOTOBOY/.test(browserPrintPage));

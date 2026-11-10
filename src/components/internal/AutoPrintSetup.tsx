@@ -23,7 +23,7 @@ export function shortcutScript(stationUrl: string) {
 }
 
 export function stationPath(sectors: Sector[], copies: number) {
-  return `/painel/impressao/automatica?setores=${sectors.join(",")}&vias=${copies}`;
+  return `/painel/impressao/automatica?setores=${sectors.join(",")}&vias=${copies}&ligar=1`;
 }
 
 export function AutoPrintSetup() {
