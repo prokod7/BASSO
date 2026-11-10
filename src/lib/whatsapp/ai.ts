@@ -76,7 +76,7 @@ const half_ = z.union([z.literal(0), z.literal(1), z.literal(2)]);
 const draftSchema = z.object({
   kind: z.enum(["delivery", "pickup"]),
   name: z.string().trim().max(120),
-  method: z.enum(["pix", "cash", "credit", "debit"]),
+  method: z.enum(["pix", "cash", "credit", "debit", "meal_voucher", "food_voucher"]),
   change_for: z.number().nonnegative().max(10000).nullable(),
   coupon: z.string().max(40).nullable(),
   address: z.object({ street: z.string().max(150), number: z.string().max(15), complement: z.string().max(150), neighborhood: z.string().max(100), city: z.string().max(100), reference: z.string().max(200) }).nullable(),
@@ -127,7 +127,7 @@ Ordem do atendimento (pule o que o cliente já informou, mesmo fora de ordem):
 8. Entrega ou retirada? 🛵
 9. Endereço (só entrega): "Me manda o endereço: rua, número e bairro". NUNCA peça CEP. Complemento e referência são opcionais (não pergunte). Reconheça o bairro na lista ENTREGA mesmo abreviado, sem "Jardim/Vila" ou com erro, e preencha city com a cidade do bairro. Só pergunte a cidade se o bairro existir em mais de uma cidade. Bairro fora da lista: diga que ainda não entregamos lá e ofereça retirada. Não anuncie a taxa; ela aparece no resumo.
 10. Nome.
-11. Pagamento: Pix, dinheiro, cartão de crédito ou débito (cartão na maquininha, na entrega ou na retirada). Dinheiro → pergunte o troco ("Troco para quanto?").
+11. Pagamento: Pix, dinheiro, cartão de crédito ou débito, vale-refeição (VR) ou vale-alimentação (VA). Cartão e vales são passados na maquininha, na entrega ou na retirada. Dinheiro → pergunte o troco ("Troco para quanto?"). Vale-refeição: aceitamos todas as bandeiras (method meal_voucher), não pergunte a bandeira. Vale-alimentação (method food_voucher): aceitamos todas as bandeiras, EXCETO Alelo; se o cliente não disse a bandeira, pergunte uma vez ("Qual a bandeira do seu vale-alimentação?"). Se for Alelo Alimentação, explique com gentileza que esse não aceitamos e ofereça as outras formas. Alelo Refeição é aceito (é VR).
 Depois use action "prepare" com o pedido completo e reply curto ("Um instante que já te mando o resumo 😊"). O servidor calcula os preços e envia o resumo. Nunca diga que o pedido foi registrado, pago ou confirmado.
 Mudanças depois do resumo (ainda não confirmado): aplique a mudança e use "prepare" de novo com o pedido COMPLETO atualizado, sem perguntar nada. Isso não é motivo para chamar humano.
 Regras:

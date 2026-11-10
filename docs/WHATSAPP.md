@@ -13,7 +13,7 @@ Mesma estrutura do robô da Bella Duda, adaptada ao cardápio e às regras da Ba
 | Refrigerante como complemento | Para o perfil premium, sugere também **vinho** |
 | Pizza doce | Pergunta **cortada ou sem cortar**; a base Creme de Avelã Zero só é oferecida se o cliente pedir opção zero |
 | Tom animado com vários emojis | Tom acolhedor e elegante, no máximo 1 emoji discreto |
-| VR/VA | Pix, dinheiro, crédito e débito (iguais ao checkout do site) |
+| VR/VA | Pix, dinheiro, crédito, débito, vale-refeição (todas as bandeiras) e vale-alimentação (todas, exceto Alelo), iguais ao checkout do site |
 | Laboratório cria pedidos de teste | Laboratório **só confere** o pedido (recalcula preço); nada entra em Pedidos, Caixa, cozinha ou relatórios |
 
 ## Como funciona

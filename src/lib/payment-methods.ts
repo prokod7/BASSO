@@ -1,6 +1,6 @@
 import type { PaymentMethod, PaymentMethodLiteral } from "@/types";
 
-export const publicPaymentMethods = ["pix", "cash", "debit", "credit"] as const satisfies readonly PaymentMethodLiteral[];
+export const publicPaymentMethods = ["pix", "cash", "debit", "credit", "meal_voucher", "food_voucher"] as const satisfies readonly PaymentMethodLiteral[];
 
 export const pdvPaymentMethods = [
   "cash",
@@ -16,6 +16,9 @@ export const pdvPaymentMethods = [
   "voucher",
 ] as const satisfies readonly PaymentMethodLiteral[];
 
+/** Site e WhatsApp: VR de todas as bandeiras; VA de todas, exceto Alelo. */
+export const VOUCHER_RULE = "VR: todas as bandeiras. VA: todas, exceto Alelo.";
+
 export const legacyPaymentMethods = ["meal_voucher", "food_voucher"] as const satisfies readonly PaymentMethodLiteral[];
 
 const canonicalPaymentMethodLabels = {
@@ -23,8 +26,8 @@ const canonicalPaymentMethodLabels = {
   cash: "Dinheiro",
   debit: "Débito",
   credit: "Crédito",
-  meal_voucher: "Vale-refeição (legado)",
-  food_voucher: "Vale-alimentação (legado)",
+  meal_voucher: "Vale-refeição (VR)",
+  food_voucher: "Vale-alimentação (VA)",
   vr_refeicao: "VR Refeição",
   vr_alimentacao: "VR Alimentação",
   sodexo: "Sodexo",

@@ -2,8 +2,8 @@ import { timingSafeEqual } from "node:crypto";
 import { ZodError } from "zod";
 import type { Address, CartItem, ComboSelection, PizzaSelection } from "@/types";
 
-export type WaPaymentMethod = "pix" | "cash" | "credit" | "debit";
-export const WA_PAYMENT_METHODS: WaPaymentMethod[] = ["pix", "cash", "credit", "debit"];
+export type WaPaymentMethod = "pix" | "cash" | "credit" | "debit" | "meal_voucher" | "food_voucher";
+export const WA_PAYMENT_METHODS: WaPaymentMethod[] = ["pix", "cash", "credit", "debit", "meal_voucher", "food_voucher"];
 
 /** Pedido montado pelo robô, no formato do checkout público. Preços sempre do servidor. */
 export type Basket = {
@@ -152,6 +152,8 @@ const PAYMENT_TEXT: Record<WaPaymentMethod, string> = {
   cash: "Dinheiro",
   credit: "Cartão de crédito (na entrega/retirada)",
   debit: "Cartão de débito (na entrega/retirada)",
+  meal_voucher: "Vale-refeição (na maquininha, na entrega/retirada)",
+  food_voucher: "Vale-alimentação (na maquininha, na entrega/retirada)",
 };
 
 function pizzaLines(selection: PizzaSelection, names: Names, showMass: boolean) {

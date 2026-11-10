@@ -5,7 +5,7 @@ import { quoteCommercialTerms } from "@/lib/server-quote";
 import { requireOperationalRole } from "@/lib/authz";
 import { createQuotedOrder, storeAcceptance } from "@/lib/checkout-order";
 
-const PUBLIC_PAYMENT_METHODS = ["pix", "cash", "debit", "credit"] as const;
+const PUBLIC_PAYMENT_METHODS = ["pix", "cash", "debit", "credit", "meal_voucher", "food_voucher"] as const;
 
 export async function POST(request: NextRequest) {
   try {

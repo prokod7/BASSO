@@ -63,7 +63,7 @@ describe("promoções do dia", () => {
 
 describe("meios de pagamento", () => {
   it("não expõe vouchers e benefícios no checkout público", () => {
-    expect(publicPaymentMethods).toEqual(["pix", "cash", "debit", "credit"]);
+    expect(publicPaymentMethods).toEqual(["pix", "cash", "debit", "credit", "meal_voucher", "food_voucher"]);
     expect(publicPaymentMethods).not.toContain("vr_refeicao");
     expect(publicPaymentMethods).not.toContain("voucher");
   });
