@@ -100,8 +100,8 @@ input[type="checkbox"], input[type="radio"] { width: 1.15rem; height: 1.15rem; f
 }
 
 /* ===== Comanda térmica 80 mm (mesmo padrão do Restaurante do Adão / Elgin i8) ===== */
-/* Preto puro, Courier, 72 mm de área útil e página sem margem: o Chrome não reduz nem corta. */
-.ticket-80 { width: 72mm; max-width: 100%; margin: 0 auto; background: #fff; color: #000; font: 12.5px/1.35 "Courier New", Consolas, "Liberation Mono", monospace; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+/* Preto puro, Courier, 64 mm de área útil (a térmica imprime ~64-68 mm do papel de 80 mm) e página sem margem. */
+.ticket-80 { width: 64mm; max-width: 100%; margin: 0; padding-right: 1.5mm; box-sizing: border-box; background: #fff; color: #000; font: 12.5px/1.35 "Courier New", Consolas, "Liberation Mono", monospace; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .ticket-80 * { color: #000 !important; font-family: inherit !important; letter-spacing: 0 !important; border-color: #000 !important; }
 .ticket-80 p { margin: 2px 0; overflow-wrap: anywhere; }
 .ticket-80 .font-black, .ticket-80 strong { font-weight: 700 !important; }
@@ -113,5 +113,5 @@ input[type="checkbox"], input[type="radio"] { width: 1.15rem; height: 1.15rem; f
   html:has(body > .print-receipt), body:has(> .print-receipt) { background: #fff !important; margin: 0 !important; padding: 0 !important; min-height: 0 !important; height: auto !important; width: auto !important; }
   body > .print-receipt { display: block !important; page: ticket; width: 80mm !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
   body > .print-receipt .print-via + .print-via { break-before: page; page-break-before: always; }
-  .ticket-80 { width: 72mm !important; }
+  .ticket-80 { width: 64mm !important; }
 }
