@@ -15,6 +15,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { PageHeader } from "@/components/internal/PageHeader";
+import { AutoPrintSetup } from "@/components/internal/AutoPrintSetup";
 import { Modal } from "@/components/ui/Modal";
 import { isDemoMode, shortDateTime } from "@/lib/utils";
 import type { PrintProfile } from "@/types";
@@ -182,8 +183,13 @@ export default function PrintPage() {
 
   return (
     <>
-      <PageHeader title="Impressão e layout das comandas" icon={Printer} description="Administre equipamentos, largura, conexão, setor, vias, impressão automática, ordem dos blocos, destaques e fila real de reprocessamento." actions={<><button className="btn-secondary" onClick={() => void load()}><RefreshCw size={17} />Atualizar</button><button className="btn-primary" onClick={() => setBridgeModal(true)}><Settings2 size={17} />Configurar Print Bridge</button></>} />
+      <PageHeader title="Impressão" icon={Printer} description="Configure a impressão automática deste computador em 3 passos." actions={<><button className="btn-secondary" onClick={() => void load()}><RefreshCw size={17} />Atualizar</button><button className="btn-primary" onClick={() => setBridgeModal(true)}><Settings2 size={17} />Configurar Print Bridge</button></>} />
       {message && <p className={`mb-4 rounded-xl p-3 text-sm font-semibold ${/falha|erro|bloqueou/i.test(message) ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-800"}`}>{message}</p>}
+      <AutoPrintSetup />
+
+      <details className="mt-8 rounded-2xl border bg-white/60 p-4">
+        <summary className="cursor-pointer select-none font-bold">Configurações avançadas (perfis, fila, Print Bridge)</summary>
+        <div className="mt-4">
       <div className="mb-6 grid gap-4 md:grid-cols-4"><Summary label="Perfis ativos" value={profiles.filter((profile) => profile.active).length} tone="green" /><Summary label="Aguardando impressão" value={queued} tone="amber" /><Summary label="Falhas na fila" value={failed} tone="red" /><Summary label="Print Bridge" value={bridgeOnline ? "Online" : bridge ? "Offline" : "Pendente"} tone={bridgeOnline ? "green" : "amber"} /></div>
 
       <div className={`mb-6 rounded-2xl border p-4 text-sm ${bridgeOnline ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}><strong>{bridgeOnline ? "Print Bridge conectado" : "Print Bridge sem conexão ativa"}</strong><p className="mt-1 text-xs opacity-75">{bridgeOnline ? `Último heartbeat: ${lastHealthAt ? shortDateTime(lastHealthAt) : "agora"}. Você já pode executar impressão de teste.` : "A fila recebe os pedidos, mas a USB só é acionada quando o agente local está rodando. Enquanto estiver offline, use “Navegador” na fila para imprimir manualmente pelo computador."}</p></div>
@@ -194,6 +200,9 @@ export default function PrintPage() {
       </section>
 
       <section className="surface mt-6 overflow-hidden"><div className="flex items-center justify-between border-b p-5"><div><h2 className="font-display text-2xl font-bold">Fila de impressão</h2><p className="text-sm text-black/45">A impressão automática exige o agente local. A opção Navegador funciona como contingência imediata.</p></div><span className="text-xs font-bold text-black/40">{jobs.length} registro(s)</span></div>{loading ? <div className="grid h-48 place-items-center"><Loader2 className="animate-spin" /></div> : <div className="divide-y divide-black/5">{jobs.map((job) => <div key={job.id} className="grid gap-3 p-4 lg:grid-cols-[1fr_.7fr_1fr_1fr_1.4fr_auto] lg:items-center"><strong>{job.order_id ? `Pedido ${job.order_id}` : `Comanda ${job.tab_id || "-"}`}</strong><span className="text-sm capitalize">{job.sector}</span><span className="text-sm text-black/50">{job.printer_key}</span><span className={`flex items-center gap-1 text-xs font-bold ${job.status === "done" ? "text-emerald-700" : job.status === "failed" ? "text-red-700" : job.status === "cancelled" ? "text-stone-500" : "text-amber-700"}`}>{job.status === "done" ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />} {job.status} • {job.attempts}{job.is_reprint ? " • reimpressão" : ""}</span><div><p className="text-xs text-black/40">{shortDateTime(job.created_at)}</p>{job.last_error && <p className="mt-1 text-xs font-semibold text-red-700">{job.last_error}</p>}</div><div className="flex flex-wrap gap-1"><button className="btn-ghost" disabled={!job.payload} onClick={() => browserPrint(job)}><Printer size={16}/>Navegador</button><button className="btn-ghost" disabled={!!working || job.status === "processing" || job.status === "queued"} onClick={() => retry(job.id)}>{working === job.id ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}Reprocessar</button></div></div>)}{!jobs.length && <p className="p-10 text-center text-sm text-black/45">Nenhum trabalho de impressão registrado.</p>}</div>}</section>
+
+        </div>
+      </details>
 
       <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title="Editar perfil de impressão" className="sm:max-w-4xl">{editing && <ProfileEditor profile={editing} onChange={setEditing} onSave={() => saveProfile(editing)} working={working === editing.key} />}</Modal>
       <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title="Prévia da comanda">{preview && <ReceiptPreview profile={preview} />}</Modal>
