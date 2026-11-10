@@ -15,7 +15,7 @@ import {
 } from "@/lib/order-detail";
 
 const addressSchema = z.object({
-  cep: z.string().max(12), street: z.string().min(2).max(180), number: z.string().min(1).max(30), district: z.string().min(2).max(120),
+  cep: z.string().max(12).optional().default(""), street: z.string().min(2).max(180), number: z.string().min(1).max(30), district: z.string().min(2).max(120),
   complement: z.string().max(160).optional(), reference: z.string().max(200).optional(), city: z.string().min(2).max(120), state: z.string().length(2),
   latitude: z.number().optional(), longitude: z.number().optional(),
 });

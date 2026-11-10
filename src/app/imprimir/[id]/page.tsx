@@ -165,7 +165,7 @@ export default function BrowserPrintPage({ params }: { params: Promise<{ id: str
             <p>ID do pedido: {order.id}</p>
           </div>
 
-          {address ? <><Divider /><p>{address.street}, {address.number}</p><p>{address.district}</p><p>{address.city} - {address.state}</p>{address.cep ? <p>CEP: {address.cep}</p> : null}{address.complement ? <p>Comp.: {address.complement}</p> : null}{address.reference ? <p>Ref.: {address.reference}</p> : null}</> : null}
+          {address ? <><Divider /><p>{address.street}, {address.number}</p><p>{address.district}</p><p>{address.city} - {address.state}</p>{address.complement ? <p>Comp.: {address.complement}</p> : null}{address.reference ? <p>Ref.: {address.reference}</p> : null}</> : null}
 
           <Divider />
           <div className="grid grid-cols-[1fr_auto] gap-2 font-bold"><span>Qt. Descrição</span><span>Valor</span></div>

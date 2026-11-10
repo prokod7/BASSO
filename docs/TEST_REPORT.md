@@ -1,6 +1,6 @@
 # Relatório de verificação estática
 
-Gerado em: 2026-11-10T21:11:56.946Z
+Gerado em: 2026-11-10T22:34:52.250Z
 
 Resultado: **92/92 verificações aprovadas**.
 
@@ -43,7 +43,7 @@ Resultado: **92/92 verificações aprovadas**.
 | Pedido público valida agenda oficial | APROVADO | — |
 | Delivery público bloqueia cobertura ausente | APROVADO | — |
 | Recompensa pública bloqueada | APROVADO | — |
-| Checkout oferece cidade e bairro dependentes | APROVADO | — |
+| Checkout busca bairro atendido (cidade vem do bairro, sem CEP) | APROVADO | — |
 | GPS tenta casar localização com cobertura | APROVADO | — |
 | Frete autoritativo usa cidade + bairro | APROVADO | — |
 | Endpoint público expõe somente cobertura ativa | APROVADO | — |
@@ -61,7 +61,7 @@ Resultado: **92/92 verificações aprovadas**.
 | PDV oferece Entrega explicitamente | APROVADO | — |
 | PDV usa cardápio runtime | APROVADO | — |
 | PDV calcula taxa de entrega antes de finalizar | APROVADO | — |
-| PDV exige cidade, bairro e endereço para entrega | APROVADO | — |
+| PDV exige bairro pesquisável e endereço para entrega | APROVADO | — |
 | PDV usa cobertura cidade + bairro | APROVADO | — |
 | PDV finaliza pelo backend autoritativo | APROVADO | — |
 | Cidades e bairros podem ser adicionados | APROVADO | — |

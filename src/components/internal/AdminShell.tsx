@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertCircle, BarChart3, Bell, BellRing, Bike, BookOpen, Boxes, ChefHat, ChevronLeft, ChevronRight,
+  AlertCircle, BarChart3, Bell, BellRing, Bike, MapPin, BookOpen, Boxes, ChefHat, ChevronLeft, ChevronRight,
   CircleDollarSign, CirclePause, CirclePlay, ClipboardCheck, ClipboardList, CloudCog, Contact, Gift,
   HeartPulse, HelpCircle, LayoutDashboard, ListChecks, Loader2, LockKeyhole, LogOut, Menu, Megaphone,
   MessageCircle, MessageCircleMore, PackageCheck, Printer, Receipt, Search, ServerCog, Settings, ShieldCheck,
@@ -40,6 +40,7 @@ const sections: NavSection[] = [
     { href: "/painel/kds", label: "Cozinha / KDS", icon: ChefHat, roles: ["manager", "counter", "kitchen", "bar", "waiter"] },
     { href: "/painel/expedicao", label: "Expedição", icon: PackageCheck, roles: ["manager", "counter", "kitchen", "bar"] },
     { href: "/painel/delivery", label: "Delivery", icon: Bike, roles: ["manager", "counter", "driver", "viewer"] },
+    { href: "/painel/bairros", label: "Bairros de entrega", icon: MapPin, roles: ["manager"] },
     { href: "/painel/motoboy", label: "PWA motoboy", icon: Bike, roles: ["manager", "counter", "driver"] },
     { href: "/painel/rotinas", label: "Abertura e fechamento", icon: ListChecks, roles: ["manager", "counter", "finance"] },
   ]},

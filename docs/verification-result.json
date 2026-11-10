@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-11-10T21:11:56.946Z",
+  "generatedAt": "2026-11-10T22:34:52.250Z",
   "passed": 92,
   "failed": 0,
-  "sha256": "15fd29f2dbdc5450aa4594c8b083878f34b67e930bc719ecb32aabc90fb0af93",
+  "sha256": "e1143183642f292cd615c12839d7570afe7e8f5b187fadd088e93982f3175527",
   "results": [
     {
       "name": "42 pizzas tradicionais",
@@ -190,7 +190,7 @@
       "detail": ""
     },
     {
-      "name": "Checkout oferece cidade e bairro dependentes",
+      "name": "Checkout busca bairro atendido (cidade vem do bairro, sem CEP)",
       "ok": true,
       "detail": ""
     },
@@ -280,7 +280,7 @@
       "detail": ""
     },
     {
-      "name": "PDV exige cidade, bairro e endereço para entrega",
+      "name": "PDV exige bairro pesquisável e endereço para entrega",
       "ok": true,
       "detail": ""
     },
