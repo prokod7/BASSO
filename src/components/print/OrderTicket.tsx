@@ -57,7 +57,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
   const itemCount = activeItems.reduce((sum, item) => sum + item.quantity, 0);
   const stamp = dateAndTime(order.createdAt);
   const title = printType === "cozinha" ? "COZINHA" : (channelLabels[order.channel] || "PEDIDO");
-  return <div className="ticket-80">
+  return <div className={`ticket-80 ${printType === "cozinha" ? "ticket-kitchen" : ""}`}>
     {printType === "entrega" ? (
         <>
           <header>
@@ -67,11 +67,11 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           </header>
           <Divider />
           <div className="flex items-end justify-between gap-2">
-            <strong className="text-[18px] tracking-[.12em]">{title}</strong>
+            <strong className="text-[18px] tracking-normal">{title}</strong>
             <span>{stamp.date} - {stamp.time}</span>
           </div>
           <div className="mt-2">
-            <p>Pedido: <strong className="text-[16px]">#{order.number}</strong></p>
+            <p>Pedido: <strong className="text-[18px]">#{order.number}</strong></p>
             <p>Cliente: {order.customerName || "Consumidor"}</p>
             {order.customerPhone ? <p>Telefone: {order.customerPhone}</p> : null}
             {order.tableNumber ? <p>Mesa: {order.tableNumber}</p> : null}
@@ -85,7 +85,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           <Divider compact />
           <div className="space-y-3">
             {activeItems.map(item => <div key={item.id}>
-              <div className="grid grid-cols-[1fr_auto] gap-2 text-[15px]"><strong>{item.quantity} {compactItemName(item)}</strong><span>{currency(item.unitPrice * item.quantity).replace("R$ ", "")}</span></div>
+              <div className="grid grid-cols-[1fr_auto] gap-2 text-[16px]"><strong>{item.quantity} {compactItemName(item)}</strong><span>{currency(item.unitPrice * item.quantity).replace("R$ ", "")}</span></div>
               {itemDetails(item).map((line, index) => <p key={`${item.id}-${index}`} className={`pl-3 ${line.emphasis ? "font-bold" : ""}`}>{line.text}</p>)}
             </div>)}
           </div>
@@ -97,7 +97,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
             <div className="flex justify-between"><span>Total itens(+)</span><span>{currency(order.subtotal)}</span></div>
             <div className="flex justify-between"><span>Taxa de entrega(+)</span><span>{currency(order.deliveryFee)}</span></div>
             <div className="flex justify-between"><span>Desconto(-)</span><span>{currency(order.discount)}</span></div>
-            <div className="flex justify-between text-[15px] font-black"><span>TOTAL(=)</span><span>{currency(order.total)}</span></div>
+            <div className="flex justify-between text-[16px] font-black"><span>TOTAL(=)</span><span>{currency(order.total)}</span></div>
           </div>
           <Divider />
           <p>Forma de pagamento</p>
@@ -105,26 +105,26 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           {order.paymentMethod === "cash" && order.changeFor ? <><div className="flex justify-between"><span>- Receber:</span><span>{currency(order.changeFor)}</span></div><div className="flex justify-between"><span>- Troco:</span><span>{currency(Math.max(0, order.changeFor - order.total))}</span></div></> : null}
           {orderNote ? <><Divider /><p className="font-black">OBSERVAÇÕES</p><p className="font-bold">{orderNote}</p></> : null}
 
-          {order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">RETIRADA DO MOTOBOY</p><p className="mt-1 text-[20px] font-black tracking-[.18em]">{verification.pickupCode}</p><p className="mt-1 text-[10.5px]">Escaneie o QR ou digite o código no PWA do motoboy.</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={118} level="M" marginSize={1} /></div> : null}<p className="mt-1 text-[10.5px]">ID: {order.id}</p></div></> : null}
+          {order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">RETIRADA DO MOTOBOY</p><p className="mt-1 text-[20px] font-black tracking-[.08em]">{verification.pickupCode}</p><p className="mt-1 text-[10.5px]">Escaneie o QR ou digite o código no PWA do motoboy.</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={118} level="M" marginSize={1} /></div> : null}<p className="mt-1 text-[10.5px]">ID: {order.id}</p></div></> : null}
         </>
       ) : (
         <>
-          <div className="flex items-center justify-between gap-2"><strong className="text-[18px] tracking-[.12em]">COZINHA</strong><span>{stamp.date} - {stamp.time}</span></div>
+          <div className="flex items-center justify-between gap-2"><strong className="text-[22px] tracking-normal">COZINHA</strong><span>{stamp.date} - {stamp.time}</span></div>
           <Divider />
-          <p className="text-[16px] font-black">Pedido: #{order.number}</p>
+          <p className="text-[21px] font-black">Pedido: #{order.number}</p>
           <p>{channelLabels[order.channel] || order.channel}{order.tableNumber ? ` • Mesa ${order.tableNumber}` : ""}</p>
           <p>{order.customerName || "Cliente"}{address?.district ? ` • ${address.district}` : ""}</p>
           <Divider />
           <div className="space-y-4">
             {activeItems.map(item => <div key={item.id}>
-              <p className="text-[18px] font-black">{item.quantity} {compactItemName(item)}</p>
-              {itemDetails(item).map((line, index) => <p key={`${item.id}-k-${index}`} className={`pl-3 text-[13px] ${line.emphasis ? "font-black" : "font-bold"}`}>{line.text}</p>)}
+              <p className="text-[22px] font-black">{item.quantity} {compactItemName(item)}</p>
+              {itemDetails(item).map((line, index) => <p key={`${item.id}-k-${index}`} className={`pl-3 text-[16px] ${line.emphasis ? "font-black" : "font-bold"}`}>{line.text}</p>)}
             </div>)}
           </div>
-          {orderNote ? <><Divider /><p className="text-[13px] font-black">OBS PEDIDO:</p><p className="text-[14px] font-black">{orderNote}</p></> : null}
+          {orderNote ? <><Divider /><p className="text-[16px] font-black">OBS PEDIDO:</p><p className="text-[17px] font-black">{orderNote}</p></> : null}
           <Divider />
           <div className="flex justify-between"><span>Quantidade de itens:</span><strong>{itemCount}</strong></div>
-          {order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">CÓDIGO DE RETIRADA</p><p className="text-[20px] font-black tracking-[.18em]">{verification.pickupCode}</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={112} level="M" marginSize={1} /></div> : null}</div></> : null}
+          {order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">CÓDIGO DE RETIRADA</p><p className="text-[22px] font-black tracking-[.08em]">{verification.pickupCode}</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={112} level="M" marginSize={1} /></div> : null}</div></> : null}
           <Divider />
           <p className="text-center text-[10.5px]">ID: {order.id}</p>
         </>
@@ -136,7 +136,7 @@ export function TestTicket({ store }: { store: TicketStore }) {
   return <div className="ticket-80 text-center">
     <p className="font-black">{store.businessName || "La Forneria Basso"}</p>
     <Divider />
-    <p className="text-[18px] font-black">TESTE DE IMPRESSÃO</p>
+    <p className="text-[22px] font-black">TESTE DE IMPRESSÃO</p>
     <p>{new Date().toLocaleString("pt-BR")}</p>
     <Divider />
     <p>Se você está lendo isto, a impressora está configurada.</p>
