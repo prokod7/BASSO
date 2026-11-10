@@ -1,2 +1,4 @@
-import { Loader2 } from "lucide-react";
-export default function PanelLoading(){return <div className="grid min-h-[55vh] place-items-center"><div className="text-center"><Loader2 className="mx-auto animate-spin text-basso-wine" size={30}/><p className="mt-3 text-sm font-semibold text-black/45">Sincronizando dados operacionais…</p></div></div>}
+// Troca de tela sem tela de carregamento cheia: uma barra fina no topo enquanto a página monta.
+export default function PanelLoading() {
+  return <div aria-hidden className="fixed inset-x-0 top-0 z-[200] h-0.5 animate-pulse bg-basso-wine/70" />;
+}

@@ -15,31 +15,32 @@ beforeEach(()=>{
 });
 afterEach(()=>{cleanup();window.removeEventListener('lfb:refresh-operation',refresh);vi.restoreAllMocks();vi.unstubAllGlobals();vi.unstubAllEnvs();});
 describe('Kanban operacional',()=>{
- it('conclui com um toque, mostra salvando, mantém pagamento e move após confirmação',async()=>{
+ it('avança com um toque, mostra salvando, mantém pagamento e move após confirmação',async()=>{
   let finish!:(response:Response)=>void;fetchMock.mockImplementation(()=>new Promise<Response>(resolve=>{finish=resolve;}));render(React.createElement(Harness));
-  fireEvent.click(screen.getByRole('button',{name:'Concluir pedido 77'}));
-  expect(screen.getByText('Salvando...')).toBeTruthy();expect((screen.getByRole('button',{name:'Concluir pedido 77'}) as HTMLButtonElement).disabled).toBe(true);expect(window.prompt).not.toHaveBeenCalled();
-  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({status:'completed',expectedVersion:1});
-  await act(async()=>finish(Response.json({status:'completed',version:2})));
-  expect(within(screen.getByRole('region',{name:'Concluídos'})).getByText('Cliente teste')).toBeTruthy();
-  expect(screen.getByRole('status').textContent).toContain('O pagamento não foi alterado');expect(refresh).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole('button',{name:/Avançar pedido 77/}));
+  expect(screen.getByText('Salvando...')).toBeTruthy();expect((screen.getByRole('button',{name:/Avançar pedido 77/}) as HTMLButtonElement).disabled).toBe(true);expect(window.prompt).not.toHaveBeenCalled();
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({status:'confirmed',expectedVersion:1});
+  await act(async()=>finish(Response.json({status:'confirmed',version:2})));
+  expect(within(screen.getByRole('region',{name:'Confirmados'})).getByText('Cliente teste')).toBeTruthy();
+  expect(refresh).toHaveBeenCalledOnce();
   let current:Order|undefined;function Inspect(){current=useDemoState(s=>s.orders[0]);return null;}render(React.createElement(Inspect));expect(current?.paymentStatus).toBe('pending');
  });
  it('mostra conflito e solicita os dados atuais sem aplicar a alteração rejeitada',async()=>{
   fetchMock.mockResolvedValue(Response.json({error:'Pedido alterado em outro dispositivo'},{status:409}));render(React.createElement(Harness));
-  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Concluir pedido 77'})));
+  await act(async()=>fireEvent.click(screen.getByRole('button',{name:/Avançar pedido 77/})));
   expect(screen.getByRole('alert').textContent).toContain('outro dispositivo');expect(refresh).toHaveBeenCalledOnce();
   expect(within(screen.getByRole('region',{name:'Recebidos'})).getByText('Cliente teste')).toBeTruthy();
   act(()=>demoActions.replaceSnapshot({orders:[{...initial,status:'confirmed',version:2}]}));
   expect(within(screen.getByRole('region',{name:'Confirmados'})).getByText('Cliente teste')).toBeTruthy();
  });
- it('oferece seletor acessível sem depender de arrastar e preserva cancelamento motivado',async()=>{
-  fetchMock.mockResolvedValue(Response.json({status:'confirmed',version:2}));render(React.createElement(Harness));
-  await act(async()=>fireEvent.change(screen.getByRole('combobox',{name:'Mover pedido 77 para'}),{target:{value:'confirmed'}}));
-  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({status:'confirmed',expectedVersion:1});
-  expect(within(screen.getByRole('region',{name:'Confirmados'})).getByText('Cliente teste')).toBeTruthy();
-  fireEvent.change(screen.getByRole('combobox',{name:'Mover pedido 77 para'}),{target:{value:'cancelled'}});
-  expect(window.prompt).toHaveBeenCalledOnce();expect(fetchMock).toHaveBeenCalledOnce();
+ it('card tem imprimir, editar e WhatsApp sem caixa de "mover para"',async()=>{
+  act(()=>demoActions.replaceSnapshot({orders:[{...initial,customerPhone:'11999998888'}]}));
+  fetchMock.mockResolvedValue(Response.json({queued:2}));render(React.createElement(Harness));
+  expect(screen.queryByRole('combobox')).toBeNull();
+  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Imprimir pedido 77'})));
+  expect(fetchMock.mock.calls[0][0]).toBe('/api/orders/kanban-test/print');expect(screen.getByRole('status').textContent).toContain('enviado para a impressora');
+  fireEvent.click(screen.getByRole('button',{name:'Editar pedido 77'}));expect(open).toHaveBeenCalledOnce();
+  expect(screen.getByRole('link',{name:/WhatsApp do cliente do pedido 77/}).getAttribute('href')).toBe('https://wa.me/5511999998888');
  });
  it('arrasta somente pela alça e destaca a coluna de destino',async()=>{
   fetchMock.mockResolvedValue(Response.json({status:'confirmed',version:2}));render(React.createElement(Harness));
@@ -56,7 +57,7 @@ describe('Kanban operacional',()=>{
   expect(within(screen.getByRole('region',{name:'Concluídos'})).getByText('Cliente teste')).toBeTruthy();
  });
  it('modo demonstração também não dá baixa automática no pagamento',()=>{
-  vi.stubEnv('NEXT_PUBLIC_DEMO_MODE','true');render(React.createElement(Harness));fireEvent.click(screen.getByRole('button',{name:'Concluir pedido 77'}));
+  vi.stubEnv('NEXT_PUBLIC_DEMO_MODE','true');render(React.createElement(Harness));fireEvent.click(screen.getByRole('button',{name:/Avançar pedido 77/}));
   let current:Order|undefined;function Inspect(){current=useDemoState(s=>s.orders[0]);return null;}render(React.createElement(Inspect));expect(current?.paymentStatus).toBe('pending');expect(fetchMock).not.toHaveBeenCalled();
  });
 });
