@@ -86,9 +86,12 @@ export function OperationalHydrator() {
       }
     };
 
+    // Várias alterações seguidas viram uma só atualização; com a aba escondida, espera voltar.
+    let pendingHidden = false;
     const debounceRefresh = () => {
+      if (document.visibilityState !== "visible") { pendingHidden = true; return; }
       clearTimeout(timer);
-      timer = setTimeout(() => void refresh(true), 450);
+      timer = setTimeout(() => void refresh(true), 1200);
     };
 
     void refresh();
@@ -107,8 +110,11 @@ export function OperationalHydrator() {
     };
     const onOffline = () => publishStatus({ status: "offline", message: "Sem internet. Alterações financeiras e destrutivas não serão confirmadas offline." });
     const onExplicitRefresh = () => void refresh(true);
+    let lastVisibleRefresh = 0;
     const onVisibility = () => {
-      if (document.visibilityState === "visible" && navigator.onLine) void refresh(true);
+      if (document.visibilityState !== "visible" || !navigator.onLine) return;
+      // Voltar para a aba só atualiza se algo mudou ou se faz mais de 20 s.
+      if (pendingHidden || Date.now() - lastVisibleRefresh > 20_000) { pendingHidden = false; lastVisibleRefresh = Date.now(); void refresh(true); }
     };
 
     window.addEventListener("online", onOnline);
@@ -121,7 +127,7 @@ export function OperationalHydrator() {
     const tables = [
       "orders", "order_items", "payments", "restaurant_tables", "tabs", "drivers", "inventory_items",
       "coupons", "cash_sessions", "cash_movements", "financial_entries",
-      "store_runtime_status", "operation_tasks", "approval_requests", "internal_notifications", "print_jobs",
+      "store_runtime_status", "operation_tasks", "approval_requests", "internal_notifications",
       "campaigns", "campaign_recipients", "customers", "business_settings", "products", "pizza_flavors", "addons", "categories", "delivery_zones", "promotions", "promotion_targets"
     ];
     for (const table of tables) realtime?.on("postgres_changes", { event: "*", schema: "public", table }, debounceRefresh);

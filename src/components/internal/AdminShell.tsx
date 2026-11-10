@@ -16,7 +16,7 @@ import { cn, isDemoMode } from "@/lib/utils";
 import { OperationalHydrator, type OperationalStatusDetail } from "@/components/internal/OperationalHydrator";
 import { GlobalSearchDialog } from "@/components/internal/GlobalSearchDialog";
 import { NotificationCenter } from "@/components/internal/NotificationCenter";
-import { playNewOrderSound } from "@/lib/order-notification-sound";
+import { playNewOrderSound, ringForNewOrders } from "@/lib/order-notification-sound";
 import { StoreControlPanel } from "@/components/internal/StoreControlPanel";
 import { createClient } from "@/lib/supabase/client";
 import { useStableDemoState } from "@/lib/stable-store";
@@ -113,18 +113,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("pointerdown", unlock); window.addEventListener("keydown", unlock);
     return () => { window.removeEventListener("pointerdown", unlock); window.removeEventListener("keydown", unlock); };
   }, []);
-  const seenOrderIdsRef = useRef<Set<string> | null>(null);
 
-  // A primeira sincronização apenas registra os pedidos existentes. Depois,
-  // a campainha dispara somente quando aparece um pedido novo em "Recebido".
+  // Campainha uma única vez por pedido novo em "Recebido" (registro por aparelho, todas as abas).
   useEffect(() => {
     if (status.status !== "online") return;
-    const ids = new Set(store.orders.map(order => order.id));
-    const seen = seenOrderIdsRef.current;
-    if (seen === null) { seenOrderIdsRef.current = ids; return; }
-    const hasNewOrder = store.orders.some(order => order.status === "received" && !seen.has(order.id));
-    seenOrderIdsRef.current = ids;
-    if (hasNewOrder && soundEnabled) void playNewOrderSound();
+    if (ringForNewOrders(store.orders.filter(order => order.status === "received").map(order => order.id)) && soundEnabled) void playNewOrderSound();
   }, [store.orders, status.status, soundEnabled]);
 
   // Robô do WhatsApp: o painel aberto na loja retoma mensagens paradas (sem agendador externo).
