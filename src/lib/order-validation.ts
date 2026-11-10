@@ -24,7 +24,7 @@ export const checkoutSchema = z.object({
   customerPhone: z.string().refine(value => value === "" || /^\d{10,13}$/.test(value), "Informe um telefone válido."),
   channel: z.enum(["own_delivery", "pickup", "table_qr"]),
   // Checkout público aceita somente métodos comuns. Vouchers/benefícios são exclusivos do PDV interno.
-  paymentMethod: z.enum(["pix", "cash", "debit", "credit"]),
+  paymentMethod: z.enum(["pix", "cash", "debit", "credit", "meal_voucher", "food_voucher"]),
   couponCode: z.string().max(30).optional(),
   notes: z.string().max(500).optional(),
   tableNumber: z.number().int().min(1).max(999).optional(),
