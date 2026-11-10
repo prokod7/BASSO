@@ -132,10 +132,10 @@ export async function readReceipt(
 export async function incomingText(m: Incoming): Promise<string> {
   if (m.type === "text") return m.text?.body ?? "";
   if (m.type === "interactive")
-    return m.interactive?.button_reply?.id ?? "Solicito atendimento humano";
+    return m.interactive?.button_reply?.id ?? "";
   const media = m.audio ?? m.image ?? m.document;
   if (!media)
-    return "O cliente enviou um formato não suportado. Encaminhe ao atendente.";
+    return "[O cliente enviou um tipo de mensagem que não dá para ler aqui (figurinha, enquete, mensagem temporária etc.). Não chame atendente por isso: cumprimente se for o início da conversa e peça gentilmente para escrever em texto.]";
   const { bytes, mime } = await downloadMedia(m);
   if (m.type === "audio") {
     if (
@@ -147,7 +147,7 @@ export async function incomingText(m: Incoming): Promise<string> {
         "audio/webm",
       ].includes(mime)
     )
-      return "Áudio não suportado. Solicite que o cliente escreva ou peça um atendente.";
+      return "[Áudio em formato não suportado. Peça gentilmente para o cliente escrever em texto.]";
     const form = new FormData();
     const ext: Record<string, string> = {
       "audio/ogg": "ogg",

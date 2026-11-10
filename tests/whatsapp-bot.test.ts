@@ -7,7 +7,7 @@ import type { PizzaSelection } from "@/types";
 import { compactCatalog, matchDistrict, resolveDraft, type Draft, type DraftItem, type Zone } from "@/lib/whatsapp/catalog";
 import { affirmative, confirmation, ordersContext, pickLead, phoneVariants, summarize, type Pending } from "@/lib/whatsapp/domain";
 import { judgeReceipt } from "@/lib/whatsapp/pix";
-import { assistantTurn, CONFIRM_LINE, HUMAN_REPLY } from "@/lib/whatsapp/turn";
+import { assistantTurn, CONFIRM_LINE, firstContactGuard, HUMAN_REPLY } from "@/lib/whatsapp/turn";
 import { pendingAfter } from "@/lib/whatsapp/turnRules";
 import { toolSchema, instructions } from "@/lib/whatsapp/ai";
 import { namesFor, type BotContext } from "@/lib/whatsapp/order";
@@ -203,5 +203,16 @@ describe("turno da atendente", () => {
     expect(text).toContain("🛵 Entrega: Rua A, 10 (casa 2) — Vila Lopes, Rio Grande da Serra");
     expect(text).toContain("troco para R$ 100,00");
     expect(text).toContain("*Total: R$ 55,00*");
+  });
+});
+
+describe("primeira mensagem não vai para a equipe", () => {
+  const first = [{ role: "user" as const, content: "Mensagem" }];
+  it("segura o encaminhamento no primeiro contato, salvo assunto específico", () => {
+    expect(firstContactGuard(first, ["Mensagem"], "human")).toBe(true);
+    expect(firstContactGuard(first, ["quero falar com atendente"], "human")).toBe(false);
+    expect(firstContactGuard(first, ["minha pizza veio errada"], "human")).toBe(false);
+    expect(firstContactGuard([{ role: "assistant", content: "Olá" }, ...first], ["Mensagem"], "human")).toBe(false);
+    expect(firstContactGuard(first, ["oi"], "reply")).toBe(false);
   });
 });
