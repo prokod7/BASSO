@@ -3,6 +3,8 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OrderKanban } from '@/components/internal/OrderKanban';
+vi.mock('@/lib/client/print-here',()=>({printHere:vi.fn(async()=>undefined)}));
+import { printHere } from '@/lib/client/print-here';
 import { demoActions, useDemoState } from '@/lib/demo-store';
 import type { Order } from '@/types';
 const initial:Order={id:'kanban-test',number:77,channel:'counter',status:'received',paymentStatus:'pending',customerName:'Cliente teste',customerPhone:'',items:[],total:1000,subtotal:1000,discount:0,deliveryFee:0,paymentMethod:'pix',createdAt:'2026-10-17T10:00:00Z',updatedAt:'2026-10-17T10:00:00Z',version:1,sourceIdempotencyKey:'test'};
@@ -38,7 +40,7 @@ describe('Kanban operacional',()=>{
   fetchMock.mockResolvedValue(Response.json({queued:2}));render(React.createElement(Harness));
   expect(screen.queryByRole('combobox')).toBeNull();
   await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Imprimir pedido 77'})));
-  expect(fetchMock.mock.calls[0][0]).toBe('/api/orders/kanban-test/print');expect(screen.getByRole('status').textContent).toContain('enviado para a impressora');
+  expect(printHere).toHaveBeenCalledWith('kanban-test',['entrega','cozinha']);expect(screen.getByRole('status').textContent).toContain('enviado para a impressora');
   fireEvent.click(screen.getByRole('button',{name:'Editar pedido 77'}));expect(open).toHaveBeenCalledOnce();
   expect(screen.getByRole('link',{name:/WhatsApp do cliente do pedido 77/}).getAttribute('href')).toBe('https://wa.me/5511999998888');
  });
