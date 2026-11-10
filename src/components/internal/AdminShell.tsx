@@ -100,7 +100,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [storeStatus, setStoreStatus] = useState<ExtendedStoreRuntimeStatus>(isDemoMode() ? { ...initialStoreStatus, operationalStatus: "open", acceptingOrders: true } : initialStoreStatus);
   const [status, setStatus] = useState<OperationalStatusDetail>({ status: "loading", message: "Carregando operação" });
   const [leaving, setLeaving] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  // Som de novo pedido ligado por padrão; só desliga se a pessoa desligar neste aparelho.
+  const [soundEnabled, setSoundEnabledState] = useState(true);
+  const setSoundEnabled = (value: boolean) => { setSoundEnabledState(value); try { localStorage.setItem("lfb-sound", value ? "on" : "off"); } catch { /* sem armazenamento */ } };
+  useEffect(() => {
+    try { if (localStorage.getItem("lfb-sound") === "off") setSoundEnabledState(false); } catch { /* sem armazenamento */ }
+    // O navegador só libera áudio depois do primeiro toque/clique na página: destrava em silêncio.
+    const unlock = () => {
+      try { const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext; const ctx = new AudioCtx(); void ctx.resume().then(() => ctx.close()); } catch { /* ignore */ }
+      window.removeEventListener("pointerdown", unlock); window.removeEventListener("keydown", unlock);
+    };
+    window.addEventListener("pointerdown", unlock); window.addEventListener("keydown", unlock);
+    return () => { window.removeEventListener("pointerdown", unlock); window.removeEventListener("keydown", unlock); };
+  }, []);
   const seenOrderIdsRef = useRef<Set<string> | null>(null);
 
   // A primeira sincronização apenas registra os pedidos existentes. Depois,

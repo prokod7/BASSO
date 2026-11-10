@@ -129,57 +129,49 @@ export async function readReceipt(
     .join("");
   return JSON.parse(text) as ReceiptReading;
 }
+const AUDIO_EXT: Record<string, string> = { "audio/ogg": "ogg", "audio/opus": "ogg", "audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/mp4": "m4a", "audio/m4a": "m4a", "audio/x-m4a": "m4a", "audio/aac": "m4a", "audio/wav": "wav", "audio/x-wav": "wav", "audio/webm": "webm", "audio/flac": "flac" };
+const AUDIO_NOT_HEARD = "[O cliente mandou um áudio que não deu para ouvir direito. Peça com gentileza para ele repetir o áudio. NUNCA peça para escrever em texto.]";
+
+/** Áudio sempre é transcrito (nota de voz do WhatsApp é OGG/Opus); se falhar, tenta outro modelo. */
+async function transcribeAudio(m: Incoming): Promise<string> {
+  let file: { bytes: Buffer; mime: string };
+  try { file = await downloadMedia(m); } catch { return AUDIO_NOT_HEARD; }
+  const ext = AUDIO_EXT[file.mime] || "ogg";
+  const models = [...new Set([process.env.OPENAI_TRANSCRIPTION_MODEL || "gpt-4o-mini-transcribe", "whisper-1"])];
+  for (const model of models) {
+    try {
+      const form = new FormData();
+      form.append("file", new Blob([new Uint8Array(file.bytes)], { type: ext === "ogg" ? "audio/ogg" : file.mime || "audio/ogg" }), `audio.${ext}`);
+      form.append("model", model);
+      form.append("language", "pt");
+      const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+        body: form,
+        signal: AbortSignal.timeout(45000),
+      });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const text = String(d.text || "").trim();
+      if (text) return `[Áudio do cliente, transcrito]: ${text.slice(0, 16000)}`;
+    } catch { /* tenta o próximo modelo */ }
+  }
+  return AUDIO_NOT_HEARD;
+}
+
 export async function incomingText(m: Incoming): Promise<string> {
   if (m.type === "text") return m.text?.body ?? "";
   if (m.type === "interactive")
     return m.interactive?.button_reply?.id ?? "";
   const media = m.audio ?? m.image ?? m.document;
   if (!media)
-    return "[O cliente enviou um tipo de mensagem que não dá para ler aqui (figurinha, enquete, mensagem temporária etc.). Não chame atendente por isso: cumprimente se for o início da conversa e peça gentilmente para escrever em texto.]";
+    return "[O cliente enviou algo que não é texto, áudio nem imagem (figurinha, contato, item do catálogo, enquete etc.). Responda normalmente seguindo a conversa (cumprimente se for o início). NUNCA peça para escrever em texto e não chame atendente por isso.]";
+  if (m.type === "audio") return transcribeAudio(m);
   const { bytes, mime } = await downloadMedia(m);
-  if (m.type === "audio") {
-    if (
-      ![
-        "audio/ogg",
-        "audio/mpeg",
-        "audio/mp4",
-        "audio/wav",
-        "audio/webm",
-      ].includes(mime)
-    )
-      return "[Áudio em formato não suportado. Peça gentilmente para o cliente escrever em texto.]";
-    const form = new FormData();
-    const ext: Record<string, string> = {
-      "audio/ogg": "ogg",
-      "audio/mpeg": "mp3",
-      "audio/mp4": "m4a",
-      "audio/wav": "wav",
-      "audio/webm": "webm",
-    };
-    form.append(
-      "file",
-      new Blob([bytes], { type: mime }),
-      `audio.${ext[mime]}`,
-    );
-    form.append(
-      "model",
-      process.env.OPENAI_TRANSCRIPTION_MODEL || "gpt-4o-mini-transcribe",
-    );
-    form.append("language", "pt");
-    const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      body: form,
-      signal: AbortSignal.timeout(45000),
-    });
-    if (!r.ok) throw Error("Falha na transcrição");
-    const d = await r.json();
-    return `[Áudio transcrito; confirme ambiguidades]: ${String(d.text).slice(0, 16000)}`;
-  }
   if (
     !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(mime)
   )
-    return "Documento não suportado. Peça PDF, imagem ou atendimento humano.";
+    return "[O cliente mandou um arquivo que não dá para abrir aqui. Siga a conversa normalmente; se for comprovante, peça como imagem (print) ou PDF.]";
   const content = filePart(bytes, mime);
   const r = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",

@@ -4,23 +4,26 @@ import { createQuotedOrder, storeAcceptance } from "@/lib/checkout-order";
 import { massName, pizzaOptions } from "@/lib/pizza-options";
 import { loadRuntimeMenu, type RuntimeMenu } from "@/lib/server-menu-pricing";
 import { quoteCommercialTerms } from "@/lib/server-quote";
-import type { Order } from "@/types";
+import { loadPromotions } from "@/lib/promotions";
+import type { OpeningHours } from "@/lib/opening-hours";
+import type { Order, PromotionRecord } from "@/types";
 import type { Zone } from "./catalog";
 import type { Basket, Pending, Quote } from "./domain";
 import { menuUrl } from "./menuMedia";
 import type { PixAccount } from "./pix";
 
-export type StoreInfo = { name: string; address: string; city: string; state: string; menuUrl: string; open: boolean; closedMessage: string; hours: string };
-export type BotContext = { menu: RuntimeMenu; zones: Zone[]; store: StoreInfo; pix: PixAccount };
+export type StoreInfo = { name: string; address: string; city: string; state: string; menuUrl: string; open: boolean; closedMessage: string; hours: string; openingHours?: OpeningHours | null };
+export type BotContext = { menu: RuntimeMenu; zones: Zone[]; store: StoreInfo; pix: PixAccount; promotions?: PromotionRecord[] };
 
 /** Cardápio vivo, bairros e dados da loja: o mesmo que o site usa. */
 export async function loadBotContext(db: any): Promise<BotContext> {
-  const [menu, zonesResult, business, settings, acceptance] = await Promise.all([
+  const [menu, zonesResult, business, settings, acceptance, promotions] = await Promise.all([
     loadRuntimeMenu(db),
     db.from("delivery_zones").select("name,city,districts,fee_cents,minimum_order_cents").eq("active", true).is("deleted_at", null),
     loadBusinessSettings(db),
     db.from("wa_settings").select("pix_name").eq("id", true).maybeSingle(),
     storeAcceptance(db),
+    loadPromotions(db).catch(() => [] as PromotionRecord[]),
   ]);
   if (zonesResult.error) throw zonesResult.error;
   const address = business.address && typeof business.address === "object" ? business.address as Record<string, unknown> : {};
@@ -37,7 +40,9 @@ export async function loadBotContext(db: any): Promise<BotContext> {
       open: acceptance.accepting,
       closedMessage: acceptance.message,
       hours: business.hoursLabel || "",
+      openingHours: business.openingHours || null,
     },
+    promotions,
     pix: { pix_key: business.pixKey, pix_name: settings?.data?.pix_name || business.name || null },
   };
 }
