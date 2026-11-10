@@ -13,7 +13,7 @@ type Conversation = {
 };
 type Overview = {
   configuration: { enabled: boolean; ready: boolean; missing: string[] };
-  canSend: boolean; enabled: boolean; quiet_seconds: number; max_wait_seconds: number; follow_up_seconds: number; pix_name: string;
+  canSend: boolean; enabled: boolean; quiet_seconds: number; max_wait_seconds: number; follow_up_seconds: number; pix_name: string; pickup_time?: string; delivery_time?: string; wait_times_updated_at?: string | null;
   conversations: Conversation[]; usage: { delivered: number; remaining: number; excess: number };
   failures: { id: string; state: string; error: string | null; created_at: string }[];
 };
@@ -247,6 +247,8 @@ function SettingsPanel({ data, busy, onAct, onClose }: { data: Overview; busy: b
   const [maxWait, setMaxWait] = useState(String(data.max_wait_seconds));
   const [followUp, setFollowUp] = useState(String(Math.round(data.follow_up_seconds / 60)));
   const [pixName, setPixName] = useState(data.pix_name);
+  const [pickupTime, setPickupTime] = useState(data.pickup_time ?? "");
+  const [deliveryTime, setDeliveryTime] = useState(data.delivery_time ?? "");
   const { configuration } = data;
   return (
     <section className="surface mb-4 p-5" aria-label="Configurações do robô">
@@ -268,7 +270,13 @@ function SettingsPanel({ data, busy, onAct, onClose }: { data: Overview; busy: b
           </button>
           <p className="mt-3 text-xs text-black/45">Franquia: {data.usage.delivered} de 2.000 respostas no mês{data.usage.excess ? ` · ${data.usage.excess} excedentes` : ""}.</p>
         </div>
-        <form className="rounded-2xl bg-basso-paper p-4 lg:col-span-2" onSubmit={(e) => { e.preventDefault(); void onAct({ action: "settings", quiet_seconds: Number(quiet) || 0, max_wait_seconds: Number(maxWait) || 0, follow_up_seconds: Math.round((Number(followUp) || 0) * 60), pix_name: pixName }); }}>
+        <form className="rounded-2xl bg-basso-paper p-4 lg:col-span-2" onSubmit={(e) => { e.preventDefault(); void onAct({ action: "settings", quiet_seconds: Number(quiet) || 0, max_wait_seconds: Number(maxWait) || 0, follow_up_seconds: Math.round((Number(followUp) || 0) * 60), pix_name: pixName, pickup_time: pickupTime, delivery_time: deliveryTime }); }}>
+          <div className="mb-3 grid gap-3 rounded-xl border border-basso-gold/40 bg-white p-3 sm:grid-cols-2">
+            <p className="text-sm font-bold sm:col-span-2">Tempo de hoje (o robô informa ao cliente)</p>
+            <label><span className="label">Tempo de retirada</span><input className="input" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} placeholder="Ex.: 20 a 30 minutos" maxLength={60} /></label>
+            <label><span className="label">Tempo de entrega</span><input className="input" value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)} placeholder="Ex.: 40 a 60 minutos" maxLength={60} /></label>
+            <p className="text-xs text-black/45 sm:col-span-2">Vale na hora para as próximas mensagens.{data.wait_times_updated_at ? ` Última alteração: ${new Date(data.wait_times_updated_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}.` : ""}</p>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label><span className="label">Silêncio antes de responder (s)</span><input className="input" inputMode="numeric" value={quiet} onChange={(e) => setQuiet(e.target.value.replace(/\D/g, ""))} /></label>
             <label><span className="label">Espera máxima (s)</span><input className="input" inputMode="numeric" value={maxWait} onChange={(e) => setMaxWait(e.target.value.replace(/\D/g, ""))} /></label>

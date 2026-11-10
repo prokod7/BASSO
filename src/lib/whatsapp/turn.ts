@@ -19,10 +19,11 @@ export const PRICE_CHANGED_REPLY = "Os valores ou condições mudaram desde o re
 export const COMMIT_FAILED_REPLY = "Tive um probleminha para registrar seu pedido 😕 Já chamei alguém da equipe para te ajudar por aqui.";
 export const PIX_UNAVAILABLE_REPLY = "O Pix está indisponível agora 😕 Pode pagar em dinheiro ou cartão na entrega/retirada? Me diz qual que eu refaço o resumo.";
 
-export function registeredReply(number: number, method: string) {
+export function registeredReply(number: number, method: string, wait?: string) {
+  const time = wait ? ` Previsão: *${wait}*.` : "";
   return method === "pix"
-    ? `Comprovante conferido ✅ Seu pedido nº ${number} já foi para a cozinha! 🍕 Obrigado pela preferência.`
-    : `Pedido nº ${number} confirmado ✅ Já está com a nossa equipe 🍕 Obrigado pela preferência.`;
+    ? `Comprovante conferido ✅ Seu pedido nº ${number} já foi para a cozinha! 🍕${time} Obrigado pela preferência.`
+    : `Pedido nº ${number} confirmado ✅ Já está com a nossa equipe 🍕${time} Obrigado pela preferência.`;
 }
 
 /** Pix: depois do "sim", envia a chave e espera o comprovante (o pedido ainda não existe). */
