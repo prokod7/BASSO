@@ -7,6 +7,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isDemoMode } from "@/lib/utils";
+import { VendraAssinatura } from "@/components/shared/Vendra";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -52,6 +53,7 @@ export default function LoginPage() {
 
   return (
     <main className="grid min-h-screen place-items-center bg-basso-black p-4">
+      <div className="w-full max-w-md">
       <form
         onSubmit={submit}
         className="w-full max-w-md rounded-4xl border border-white/10 bg-white p-7 shadow-premium"
@@ -112,6 +114,8 @@ export default function LoginPage() {
           Voltar ao cardápio
         </Link>
       </form>
+      <div className="mt-6 flex justify-center"><VendraAssinatura variante="escuro" altura={16} /></div>
+      </div>
     </main>
   );
 }

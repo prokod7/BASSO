@@ -1,5 +1,6 @@
 "use client";
 
+import { VendraAssinatura } from "@/components/shared/Vendra";
 import { itemDetails } from "@/lib/item-presentation";
 import Image from "next/image";
 import Link from "next/link";
@@ -88,6 +89,7 @@ function OrderTrackingContent() {
       {order.paymentMethod === "pix" && order.paymentStatus !== "paid" && order.status !== "cancelled" && order.channel !== "table_qr" && <PixPaymentCard total={order.total}/>}
 
       <div className="grid gap-3 sm:grid-cols-2"><a className="btn-secondary" href={`https://wa.me/${store.whatsapp || "5511998805533"}?text=${encodeURIComponent(`Olá! Gostaria de falar sobre o pedido #${order.number}.`)}`} target="_blank"><MessageCircle size={18} />Falar manualmente no WhatsApp</a><button className="btn-secondary" onClick={() => location.reload()}><RefreshCw size={18} />Atualizar</button>{order.status === "completed" && <Link className="btn-primary sm:col-span-2" href={`/avaliar/${order.id}${token ? `?token=${encodeURIComponent(token)}` : ""}`}>Avaliar pedido</Link>}</div>
+      <div className="flex justify-center pt-4"><VendraAssinatura variante="claro" altura={15} /></div>
     </div>
   </main>;
 }
