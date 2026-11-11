@@ -7,6 +7,8 @@ import { compactItemName, itemDetails } from "@/lib/item-presentation";
 export type PrintType = "entrega" | "cozinha";
 /** Código/QR de retirada do motoboy: desligado por enquanto (pedido do responsável). */
 const SHOW_PICKUP_CODE = false;
+/** A térmica distorce "½" (e outras frações): na comanda sai "1/2". */
+const plain = (text: string) => text.replace(/½/g, "1/2").replace(/¼/g, "1/4").replace(/¾/g, "3/4").replace(/⅓/g, "1/3");
 export type Verification = { applicable: boolean; pickupCode?: string; pickupUrl?: string; pickupVerifiedAt?: string | null };
 export type TicketStore = { businessName?: string; cnpj?: string; addressLabel?: string };
 
@@ -87,8 +89,8 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           <Divider compact />
           <div className="space-y-3">
             {activeItems.map(item => <div key={item.id}>
-              <div className="grid grid-cols-[1fr_auto] gap-2 text-[16px]"><strong>{item.quantity} {compactItemName(item)}</strong><span>{currency(item.unitPrice * item.quantity).replace("R$ ", "")}</span></div>
-              {itemDetails(item).map((line, index) => <p key={`${item.id}-${index}`} className={`pl-3 ${line.emphasis ? "font-bold" : ""}`}>{line.text}</p>)}
+              <div className="grid grid-cols-[1fr_auto] gap-2 text-[16px]"><strong>{item.quantity} {plain(compactItemName(item))}</strong><span>{currency(item.unitPrice * item.quantity).replace("R$ ", "")}</span></div>
+              {itemDetails(item).map((line, index) => <p key={`${item.id}-${index}`} className={`pl-3 ${line.emphasis ? "font-bold" : ""}`}>{plain(line.text)}</p>)}
             </div>)}
           </div>
 
@@ -119,8 +121,8 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           <Divider />
           <div className="space-y-4">
             {activeItems.map(item => <div key={item.id}>
-              <p className="text-[22px] font-black">{item.quantity} {compactItemName(item)}</p>
-              {itemDetails(item).map((line, index) => <p key={`${item.id}-k-${index}`} className={`pl-3 text-[16px] ${line.emphasis ? "font-black" : "font-bold"}`}>{line.text}</p>)}
+              <p className="text-[22px] font-black">{item.quantity} {plain(compactItemName(item))}</p>
+              {itemDetails(item).map((line, index) => <p key={`${item.id}-k-${index}`} className={`pl-3 text-[16px] ${line.emphasis ? "font-black" : "font-bold"}`}>{plain(line.text)}</p>)}
             </div>)}
           </div>
           {orderNote ? <><Divider /><p className="text-[16px] font-black">OBS PEDIDO:</p><p className="text-[17px] font-black">{orderNote}</p></> : null}
