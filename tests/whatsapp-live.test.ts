@@ -58,3 +58,13 @@ describe("comprovante para a chave CNPJ", () => {
     expect(judgeReceipt({ ...base, recipient_name: "La Forneria Basso Comercio de Alimentos" }, 4499, account).ok).toBe(true);
   });
 });
+
+import { statusMessage } from "@/lib/whatsapp/notify";
+describe("avisos de status ao cliente", () => {
+  it("só avisa quando sai para entrega", () => {
+    expect(statusMessage("confirmed", "own_delivery", 8, "Pedro")).toBeNull();
+    expect(statusMessage("preparing", "own_delivery", 8, "Pedro")).toBeNull();
+    expect(statusMessage("ready", "pickup", 8, "Pedro")).toBeNull();
+    expect(statusMessage("out_for_delivery", "own_delivery", 8, "Pedro Henrique")).toContain("saiu para entrega, Pedro");
+  });
+});

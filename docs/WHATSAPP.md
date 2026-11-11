@@ -24,7 +24,7 @@ Mesma estrutura do robô da Bella Duda, adaptada ao cardápio e às regras da Ba
 - Bairros: reconhecidos do jeito que o cliente escreve (sem acento, sem "Jardim/Vila", s/z, pequenos erros) entre os bairros cadastrados em **Delivery**. A cidade vem do bairro; só é perguntada se o bairro existir em duas cidades. O robô não pede CEP.
 - Confirmação: o cliente responde "sim" (ou toca em *Confirmar pedido*). Qualquer alteração antes disso gera novo resumo.
 - **Pix**: depois do "sim", o robô manda a chave (de Configurações) e espera o comprovante. A IA só lê o comprovante; quem decide é o código (valor exato, chave ou nome do recebedor, data). O pedido entra com a observação "comprovante conferido pela IA" e **pagamento pendente** até a equipe confirmar no banco. Depois de 3 comprovantes inválidos, chama a equipe.
-- Avisos automáticos ao cliente quando o pedido é **confirmado**, **sai para entrega** ou fica **pronto para retirada** (só dentro da janela de 24 h do WhatsApp).
+- Aviso automático ao cliente só quando o pedido **sai para entrega** (só dentro da janela de 24 h do WhatsApp).
 - Mensagens seguidas: a primeira mensagem da conversa é respondida na hora; depois o robô espera o cliente parar de digitar (15 s, máximo 90 s) e responde tudo junto.
 - Atendente responde pelo celular ou pelo painel → o robô sai daquela conversa. "Devolver ao robô" faz o robô reler a conversa (24 h, inclusive o que o atendente escreveu) e responder o que o cliente mandou depois da última mensagem da loja.
 - Lembrete: quem some sem pedir recebe o link do cardápio uma vez (5 min, ajustável).
