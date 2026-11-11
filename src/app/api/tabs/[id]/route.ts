@@ -12,7 +12,8 @@ export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:str
   try {
     const auth=await requireOperationalRole(["manager","counter","waiter"],"tables.manage");
     const {id}=await params; const body=schema.parse(await request.json());
-    if(body.action==="cancel" && auth.role!=="manager" && auth.permissions["orders.cancel"]!==true) throw new Error("Sem autorização para cancelar comandas.");
+    // Garçom tem autonomia total sobre a comanda; só não cancela se o gestor tirar a permissão.
+    if(body.action==="cancel" && auth.role!=="manager" && auth.permissions["orders.cancel"]===false) throw new Error("Sem autorização para cancelar comandas.");
     const db=createAdminClient(); if(!db) return NextResponse.json({error:"Supabase não configurado."},{status:503});
     const actor=auth.userId==="demo"?null:auth.userId;
     const {error}=body.action==="transfer"

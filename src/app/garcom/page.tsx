@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Banknote, BellRing, Check, ChefHat, ChevronLeft, CircleDollarSign, ClipboardList, CreditCard,
-  Home, Loader2, Minus, Plus, RefreshCw, Search, Send, ShoppingBag, Table2, Trash2, UserRound, UtensilsCrossed,
+  ArrowRightLeft, Home, Loader2, Minus, Pencil, Plus, Printer, RefreshCw, Search, Send, ShoppingBag, Table2, Trash2, UserRound, UtensilsCrossed,
 } from "lucide-react";
 import { OperationalHydrator } from "@/components/internal/OperationalHydrator";
 import { applyRuntimeCatalog } from "@/lib/runtime-catalog";
@@ -14,6 +14,8 @@ import { demoActions } from "@/lib/demo-store";
 import { useStableDemoState } from "@/lib/stable-store";
 import { apiJson, formatApiError, requestOperationalRefresh } from "@/lib/client/api";
 import { currency, isDemoMode, normalizeSearchText, uid } from "@/lib/utils";
+import { printTabPrebill } from "@/lib/tab-prebill";
+import { compactItemName } from "@/lib/item-presentation";
 import type { CartItem, Flavor, MenuCategory, Order, PaymentMethod, Product } from "@/types";
 
 type Screen = "tables" | "order" | "account" | "ready";
@@ -26,6 +28,8 @@ const waiterPaymentMethods: Array<{ id: PaymentMethod; label: string; icon: Reac
   { id: "cash", label: "Dinheiro", icon: <Banknote size={17}/> },
   { id: "debit", label: "Débito", icon: <CreditCard size={17}/> },
   { id: "credit", label: "Crédito", icon: <CreditCard size={17}/> },
+  { id: "meal_voucher", label: "VR", icon: <CreditCard size={17}/> },
+  { id: "food_voucher", label: "VA", icon: <CreditCard size={17}/> },
 ];
 
 export default function WaiterMobilePage() {
@@ -272,7 +276,53 @@ export default function WaiterMobilePage() {
     finally { setWorking(""); }
   }
 
-  return <div className="min-h-dvh bg-[#f5f2eb] pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+  // ===== Autonomia do garçom sobre a comanda =====
+  const tabOrders = useMemo(() => selectedTab ? store.orders.filter((order) => order.tabId === selectedTab.id && order.status !== "cancelled") : [], [store.orders, selectedTab]);
+
+  async function changeItem(order: Order, item: CartItem, action: "quantity" | "cancel", quantity?: number) {
+    const key = `item-${item.id}`;
+    setWorking(key); setMessage("");
+    try {
+      if (isDemoMode()) { setMessage("Item alterado na demonstração."); return; }
+      await apiJson(`/api/orders/${order.id}/items?itemId=${encodeURIComponent(item.id)}`, { method: "PATCH", body: JSON.stringify(action === "quantity" ? { action, quantity, reason: "Ajuste do garçom na comanda" } : { action, reason: "Removido pelo garçom" }) });
+      requestOperationalRefresh();
+      setMessage(action === "cancel" ? `${item.name} removido da comanda.` : `${item.name}: quantidade ${quantity}.`);
+    } catch (error) { setMessage(formatApiError(error, "Falha ao alterar o item.")); }
+    finally { setWorking(""); }
+  }
+
+  async function tabAction(action: "rename" | "transfer" | "cancel") {
+    if (!selectedTab || !tableNumber) return;
+    let body: Record<string, unknown>;
+    if (action === "rename") {
+      const name = window.prompt("Novo nome da comanda:", selectedTab.name)?.trim();
+      if (!name) return; body = { action, name };
+    } else if (action === "transfer") {
+      const target = Number(window.prompt(`Transferir a comanda ${selectedTab.name} para qual mesa?`)?.trim());
+      if (!Number.isInteger(target) || target < 1) return; body = { action, targetTable: target };
+    } else {
+      if (!window.confirm(`Cancelar a comanda ${selectedTab.name}? Os pedidos dela serão cancelados.`)) return;
+      body = { action, reason: "Cancelada pelo garçom" };
+    }
+    setWorking(`tab-${action}`); setMessage("");
+    try {
+      if (isDemoMode()) { setMessage("Comanda alterada na demonstração."); return; }
+      await apiJson(`/api/tabs/${selectedTab.id}`, { method: "PATCH", body: JSON.stringify(body) });
+      requestOperationalRefresh();
+      if (action === "transfer") { setMessage(`Comanda transferida para a mesa ${body.targetTable}.`); setTableNumber(Number(body.targetTable)); }
+      else if (action === "cancel") { setMessage("Comanda cancelada."); setTabId(""); setScreen("tables"); }
+      else setMessage("Comanda renomeada.");
+    } catch (error) { setMessage(formatApiError(error, "Falha ao alterar a comanda.")); }
+    finally { setWorking(""); }
+  }
+
+  function printBill() {
+    if (!selectedTab || !tableNumber) return;
+    try { printTabPrebill(tableNumber, selectedTab); setMessage("Conta aberta para impressão."); }
+    catch (error) { setMessage(formatApiError(error, "Não foi possível abrir a conta para impressão.")); }
+  }
+
+  return <div className="min-h-dvh bg-[#f5f2eb] pb-[calc(9.5rem+env(safe-area-inset-bottom))]">
     <OperationalHydrator />
     <header className="sticky top-0 z-30 border-b border-black/5 bg-white/95 px-4 pb-3 pt-[calc(.75rem+env(safe-area-inset-top))] backdrop-blur-xl">
       <div className="mx-auto flex max-w-xl items-center gap-3">
@@ -315,9 +365,31 @@ export default function WaiterMobilePage() {
       </>}
 
       {screen === "account" && tableNumber && <>
-        <div className="mb-4"><p className="text-xs font-black uppercase tracking-[.16em] text-basso-wine">Mesa {tableNumber}</p><h1 className="font-display text-3xl font-black">Conta e pagamento</h1><p className="mt-1 text-sm text-black/45">Recebimento manual enquanto a integração da maquininha não estiver ativa.</p></div>
+        <div className="mb-4"><p className="text-xs font-black uppercase tracking-[.16em] text-basso-wine">Mesa {tableNumber}</p><h1 className="font-display text-3xl font-black">Comanda e pagamento</h1><p className="mt-1 text-sm text-black/45">Veja o que foi pedido, ajuste itens, imprima a conta e receba.</p></div>
         {!activeTabs.length ? <div className="surface p-8 text-center"><Check className="mx-auto text-emerald-600" size={34}/><p className="mt-3 font-bold">Nenhuma comanda aberta nesta mesa.</p></div> : <>
           <section className="surface mb-4 p-4"><span className="label">Comanda</span><select className="input mt-2" value={tabId} onChange={event => setTabId(event.target.value)}>{activeTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.name}</option>)}</select>{selectedTab && <div className="mt-4 grid grid-cols-3 gap-2"><Metric label="Consumo" value={currency(selectedTab.totalCents)}/><Metric label="Pago" value={currency(selectedTab.paidCents || 0)} success/><Metric label="Saldo" value={currency(tabBalance)} warning={tabBalance > 0}/></div>}</section>
+          {selectedTab && <section className="surface mb-4 p-4">
+            <div className="grid grid-cols-2 gap-2">
+              <button className="btn-primary min-h-12" onClick={printBill}><Printer size={16}/>Imprimir conta</button>
+              <button className="btn-secondary min-h-12" disabled={!!working} onClick={() => void tabAction("transfer")}><ArrowRightLeft size={16}/>Trocar de mesa</button>
+              <button className="btn-secondary min-h-12" disabled={!!working} onClick={() => void tabAction("rename")}><Pencil size={16}/>Renomear</button>
+              <button className="btn-secondary min-h-12 text-red-700" disabled={!!working || (selectedTab.paidCents || 0) > 0} onClick={() => void tabAction("cancel")}><Trash2 size={16}/>Cancelar comanda</button>
+            </div>
+          </section>}
+          {selectedTab && <section className="surface mb-4 overflow-hidden">
+            <div className="flex items-center justify-between border-b p-4"><h2 className="font-display text-xl font-black">Pedido da comanda</h2><button className="btn-ghost min-h-10 px-3 text-xs" onClick={() => setScreen("order")}><Plus size={15}/>Adicionar</button></div>
+            {!tabOrders.some(order => order.items.some(item => (item as { productionStatus?: string }).productionStatus !== "cancelled")) ? <p className="p-4 text-sm text-black/45">Nada lançado ainda.</p> :
+            <ul className="divide-y">{tabOrders.flatMap(order => order.items.filter(item => (item as { productionStatus?: string }).productionStatus !== "cancelled").map(item => {
+              const busy = working === `item-${item.id}`;
+              return <li key={item.id} className="flex items-center gap-2 p-3">
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{compactItemName(item)}</p><p className="text-xs text-black/45">#{order.number} • {currency(item.unitPrice)} cada</p></div>
+                <button aria-label={`Diminuir ${item.name}`} className="grid h-10 w-10 place-items-center rounded-xl border disabled:opacity-30" disabled={busy || item.quantity <= 1} onClick={() => void changeItem(order, item, "quantity", item.quantity - 1)}><Minus size={15}/></button>
+                <span className="w-6 text-center font-black">{busy ? <Loader2 size={14} className="mx-auto animate-spin"/> : item.quantity}</span>
+                <button aria-label={`Aumentar ${item.name}`} className="grid h-10 w-10 place-items-center rounded-xl border disabled:opacity-30" disabled={busy || item.quantity >= 99} onClick={() => void changeItem(order, item, "quantity", item.quantity + 1)}><Plus size={15}/></button>
+                <button aria-label={`Remover ${item.name}`} className="grid h-10 w-10 place-items-center rounded-xl border text-red-700 disabled:opacity-30" disabled={busy} onClick={() => { if (window.confirm(`Remover ${item.name} da comanda?`)) void changeItem(order, item, "cancel"); }}><Trash2 size={15}/></button>
+              </li>;
+            }))}</ul>}
+          </section>}
           {selectedTab && <section className="surface mb-4 p-4"><div className="flex items-center justify-between gap-3"><div><p className="font-bold">Taxa de serviço</p><p className="text-xs text-black/45">{selectedTab.serviceChargeApplied ? `${selectedTab.serviceChargeRate || 0}% aplicada • ${currency(tabService)}` : "Não aplicada"}</p></div><button className={selectedTab.serviceChargeApplied ? "btn-secondary" : "btn-primary"} disabled={working === "service" || (selectedTab.paidCents || 0) > 0} onClick={() => void toggleServiceCharge()}>{working === "service" ? <Loader2 className="animate-spin" size={15}/> : <UtensilsCrossed size={15}/>} {selectedTab.serviceChargeApplied ? "Remover" : "Adicionar"}</button></div>{(selectedTab.paidCents || 0) > 0 && <p className="mt-2 text-[11px] font-semibold text-amber-700">A taxa não pode ser alterada depois que um pagamento parcial começou.</p>}</section>}
           {selectedTab && tabBalance > 0 && <section className="surface p-4"><h2 className="font-display text-xl font-black">Registrar recebimento</h2><div className="mt-4 grid grid-cols-2 gap-2">{waiterPaymentMethods.map(method => <button key={method.id} className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border text-xs font-black ${paymentMethod === method.id ? "border-basso-wine bg-basso-wine text-white" : "bg-white"}`} onClick={() => setPaymentMethod(method.id)}>{method.icon}{method.label}</button>)}</div><label className="mt-4 block"><span className="label">Valor recebido</span><input className="input text-lg font-black" value={paymentAmount} inputMode="decimal" onChange={event => setPaymentAmount(event.target.value)} /></label><div className="mt-2 flex gap-2"><button className="rounded-full border bg-white px-3 py-2 text-xs font-bold" onClick={() => setPaymentAmount(String((tabBalance / 100).toFixed(2)).replace(".", ","))}>Saldo total</button>{tabBalance >= 5000 && <button className="rounded-full border bg-white px-3 py-2 text-xs font-bold" onClick={() => setPaymentAmount("50,00")}>R$ 50</button>}{tabBalance >= 10000 && <button className="rounded-full border bg-white px-3 py-2 text-xs font-bold" onClick={() => setPaymentAmount("100,00")}>R$ 100</button>}</div><button className="btn-primary mt-4 min-h-12 w-full" disabled={working === "payment"} onClick={() => void receivePayment()}>{working === "payment" ? <Loader2 className="animate-spin" size={17}/> : <CircleDollarSign size={17}/>}Confirmar recebimento</button>{paymentMethod === "cash" && <p className="mt-2 text-[11px] text-black/45">Para vendas de balcão/delivery com necessidade de troco use o PDV, onde o valor de troco fica registrado no pedido.</p>}{lastPayment && <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs font-bold text-emerald-800">Recebido {currency(lastPayment.paidCents)} de {currency(lastPayment.totalCents)}{lastPayment.closed ? " • comanda encerrada" : ""}.</p>}</section>}
         </>}
@@ -326,7 +398,13 @@ export default function WaiterMobilePage() {
       {screen === "ready" && <><div className="mb-4"><p className="text-xs font-black uppercase tracking-[.16em] text-basso-wine">Produção</p><h1 className="font-display text-3xl font-black">Pedidos prontos</h1></div><div className="space-y-3">{readyOrders.map((order) => { const servedAt = (order as OrderWithService).servedAt; return <article key={order.id} className="surface p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-basso-wine">Pedido #{order.number}</p><h2 className="mt-1 font-display text-2xl font-black">Mesa {order.tableNumber || "—"}</h2><p className="mt-1 text-sm text-black/45">{order.customerName}</p></div>{servedAt ? <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">Servido</span> : <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">Retirar</span>}</div><div className="mt-3 space-y-1">{order.items.map((item) => <p key={item.id} className="text-sm"><strong>{item.quantity}×</strong> {item.name}</p>)}</div><button className="btn-primary mt-4 w-full" disabled={Boolean(servedAt) || working === `served-${order.id}`} onClick={() => void markServed(order as OrderWithService)}>{working === `served-${order.id}` ? <Loader2 className="animate-spin" size={17}/> : <Check size={17}/>}{servedAt ? "Já servido" : "Marcar como servido"}</button></article>; })}{!readyOrders.length && <div className="surface p-10 text-center"><Check className="mx-auto text-emerald-600" size={36}/><p className="mt-3 font-bold">Nenhum pedido aguardando retirada.</p></div>}</div></>}
     </main>
 
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"><div className="mx-auto grid max-w-xl grid-cols-4"><NavButton active={screen === "tables"} onClick={() => setScreen("tables")} icon={<Table2 size={20}/>} label="Mesas"/><NavButton active={screen === "order"} disabled={!tableNumber} onClick={() => setScreen("order")} icon={<ClipboardList size={20}/>} label="Pedido"/><NavButton active={screen === "account"} disabled={!tableNumber || !activeTabs.length} onClick={() => setScreen("account")} icon={<CircleDollarSign size={20}/>} label="Conta"/><NavButton active={screen === "ready"} onClick={() => setScreen("ready")} icon={<BellRing size={20}/>} label={`Prontos${readyOrders.length ? ` (${readyOrders.length})` : ""}`}/></div></nav>
+    {screen === "order" && items.length > 0 && <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 px-3 pb-2">
+      <button className="mx-auto flex min-h-14 w-full max-w-xl items-center justify-between gap-3 rounded-2xl bg-basso-wine px-4 text-white shadow-2xl disabled:opacity-60" disabled={working === "order" || !tabId} onClick={() => void sendOrder()}>
+        <span className="flex items-center gap-2 font-black">{working === "order" ? <Loader2 className="animate-spin" size={18}/> : <Send size={18}/>}{tabId ? `Enviar ${items.reduce((sum, item) => sum + item.quantity, 0)} item(ns)` : "Escolha a comanda para enviar"}</span>
+        <strong>{currency(total)}</strong>
+      </button>
+    </div>}
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"><div className="mx-auto grid max-w-xl grid-cols-4"><NavButton active={screen === "tables"} onClick={() => setScreen("tables")} icon={<Table2 size={20}/>} label="Mesas"/><NavButton active={screen === "order"} disabled={!tableNumber} onClick={() => setScreen("order")} icon={<ClipboardList size={20}/>} label="Pedido"/><NavButton active={screen === "account"} disabled={!tableNumber || !activeTabs.length} onClick={() => setScreen("account")} icon={<CircleDollarSign size={20}/>} label="Comanda"/><NavButton active={screen === "ready"} onClick={() => setScreen("ready")} icon={<BellRing size={20}/>} label={`Prontos${readyOrders.length ? ` (${readyOrders.length})` : ""}`}/></div></nav>
 
     <PizzaBuilder flavor={selectedFlavor} open={Boolean(selectedFlavor)} onClose={() => setSelectedFlavor(null)} onAdd={(item) => { setItems((current) => [...current, item]); setSelectedFlavor(null); }}/>
   </div>;
