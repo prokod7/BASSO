@@ -1,5 +1,6 @@
 "use client";
 
+import { VendraMarcaMenu } from "@/components/shared/Vendra";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -23,7 +24,7 @@ import { useStableDemoState } from "@/lib/stable-store";
 import { roleLabels } from "@/lib/admin-control";
 import type { ExtendedStoreRuntimeStatus } from "@/types";
 
-const APP_VERSION = "9.0.0";
+import { SYSTEM_VERSION as APP_VERSION } from "@/lib/app-version";
 type RoleKey = "manager" | "counter" | "waiter" | "kitchen" | "bar" | "driver" | "finance" | "viewer";
 type NavItem = { href: string; label: string; icon: LucideIcon; roles?: RoleKey[]; badge?: "orders" };
 type NavSection = { label: string; items: NavItem[]; highlight?: boolean };
@@ -221,6 +222,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <Link href="/" className={cn("flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-white/60 hover:bg-white/5 hover:text-white", collapsed && "justify-center px-0")}><Store size={19} />{!collapsed && "Abrir cardápio"}</Link>
         <button type="button" onClick={logout} disabled={leaving} className={cn("mt-1 flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-white/60 hover:bg-white/5 hover:text-white disabled:opacity-50", collapsed && "justify-center px-0")}>{leaving ? <Loader2 size={19} className="animate-spin" /> : <LogOut size={19} />}{!collapsed && "Sair"}</button>
         <button className="mt-1 hidden min-h-10 w-full items-center justify-center gap-2 rounded-xl text-xs text-white/45 hover:bg-white/5 lg:flex" onClick={() => setCollapsed((value) => !value)}>{collapsed ? <ChevronRight size={17} /> : <><ChevronLeft size={17} /> Recolher menu</>}</button>
+        <div className="mt-3 pb-1"><VendraMarcaMenu recolhido={collapsed} /></div>
       </div>
     </aside>
 

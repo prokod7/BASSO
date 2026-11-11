@@ -1,6 +1,7 @@
 "use client";
 import { QRCodeSVG } from "qrcode.react";
 import type { OrderDetail } from "@/types";
+import { VendraAssinatura } from "@/components/shared/Vendra";
 import { currency } from "@/lib/utils";
 import { compactItemName, itemDetails } from "@/lib/item-presentation";
 
@@ -110,6 +111,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           {orderNote ? <><Divider /><p className="font-black">OBSERVAÇÕES</p><p className="font-bold">{orderNote}</p></> : null}
 
           {SHOW_PICKUP_CODE && order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">RETIRADA DO MOTOBOY</p><p className="mt-1 text-[20px] font-black tracking-[.08em]">{verification.pickupCode}</p><p className="mt-1 text-[10.5px]">Escaneie o QR ou digite o código no PWA do motoboy.</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={118} level="M" marginSize={1} /></div> : null}<p className="mt-1 text-[10.5px]">ID: {order.id}</p></div></> : null}
+          <div className="mt-3 flex justify-center"><VendraAssinatura variante="preta" altura={14} link={false} /></div>
         </>
       ) : (
         <>
