@@ -81,12 +81,14 @@ describe("migration 043 — robô do WhatsApp", () => {
     await expect(db.query("select public.wa_transition($1,gen_random_uuid(),'sending','{}'::jsonb)", [claim.job.id])).rejects.toThrow(/LEASE_LOST/);
   });
 
-  it("eco do celular pausa o robô; retomar limpa contexto e fila", async () => {
+  it("eco do celular pausa o robô; devolver ao robô relê a conversa", async () => {
     const session = await one<{ id: string }>("select id from wa_sessions");
     await db.query("select public.wa_receive('5511999998888','echo1',$1::jsonb,true)", [JSON.stringify({ id: "echo1", to: "5511999998888", timestamp: String(Number(ts()) + 60) })]);
     expect(await one("select paused,pending from wa_sessions")).toEqual({ paused: true, pending: null });
     await db.query("select public.wa_control_session($1,false)", [session.id]);
-    expect(await one("select paused,history from wa_sessions")).toEqual({ paused: false, history: [] });
+    const resumed = await one<{ paused: boolean; history: Array<{ role: string; content: string }> }>("select paused,history from wa_sessions");
+    expect(resumed.paused).toBe(false);
+    expect(resumed.history).toEqual(expect.arrayContaining([{ role: "user", content: "oi" }, { role: "assistant", content: "Olá! 🍕" }]));
     const inbox = (await one<{ i: any[] }>("select public.wa_inbox() i")).i;
     expect(inbox[0]).toMatchObject({ phone: "5511999998888", name: "Ana" });
   });
@@ -122,5 +124,23 @@ describe("migration 044 — saudação automática do WhatsApp Business", () => 
     expect(await one("select paused from wa_sessions where phone=$1", [p])).toEqual({ paused: true });
     await db.query("select public.wa_receive($1,'c2',$2::jsonb,false)", [p, JSON.stringify({ id: "c2", from: p, timestamp: String(now), type: "text", text: { body: "oi" } })]);
     expect(await one("select paused from wa_sessions where phone=$1", [p])).toEqual({ paused: false });
+  });
+});
+
+describe("migration 048 — devolver ao robô com contexto", () => {
+  it("inclui o que o atendente escreveu e responde o que o cliente mandou depois", async () => {
+    const p = "5511933332222";
+    const at = (offset: number) => new Date(Date.now() + offset * 1000).toISOString();
+    await db.query("select public.wa_log_message($1,'r1','quero uma pizza','text','in','customer','Bia',$2)", [p, at(-300)]);
+    await db.query("select public.wa_log_message($1,'r2','Claro! Qual sabor?','text','out','agent',null,$2)", [p, at(-200)]);
+    await db.query("select public.wa_log_message($1,'r3','calabresa','text','in','customer',null,$2)", [p, at(-100)]);
+    await db.query("select public.wa_receive($1,'r3',$2::jsonb,false)", [p, JSON.stringify({ id: "r3", from: p, timestamp: String(Math.floor(Date.now() / 1000) - 100), type: "text", text: { body: "calabresa" } })]);
+    const session = await one<{ id: string }>("select id from wa_sessions where phone=$1", [p]);
+    await db.query("select public.wa_control_session($1,true)", [session.id]);
+    expect(await one("select state from wa_jobs where message_id='r3'")).toEqual({ state: "skipped" });
+    await db.query("select public.wa_control_session($1,false)", [session.id]);
+    const row = await one<{ history: Array<{ role: string; content: string }> }>("select history from wa_sessions where id=$1", [session.id]);
+    expect(row.history).toEqual([{ role: "user", content: "quero uma pizza" }, { role: "assistant", content: "[Atendente da loja]: Claro! Qual sabor?" }]);
+    expect(await one("select state from wa_jobs where message_id='r3'")).toEqual({ state: "queued" });
   });
 });
