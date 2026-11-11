@@ -1,4 +1,4 @@
-import type { Incoming } from "./provider";
+import { editedText, type Incoming } from "./provider";
 import type { ReceiptReading } from "./pix";
 
 /** Downloads a WhatsApp media file (max 10 MB). */
@@ -161,6 +161,10 @@ async function transcribeAudio(m: Incoming): Promise<string> {
 
 export async function incomingText(m: Incoming): Promise<string> {
   if (m.type === "text") return m.text?.body ?? "";
+  if (m.type === "edit") {
+    const text = editedText(m);
+    return text ? `[O cliente corrigiu a mensagem anterior. Considere este texto no lugar da anterior]: ${text}` : "[O cliente editou uma mensagem anterior, mas o novo texto não chegou. Se a mensagem editada era um dado do pedido (nome, endereço etc.), confirme com ele.]";
+  }
   if (m.type === "interactive")
     return m.interactive?.button_reply?.id ?? "";
   const media = m.audio ?? m.image ?? m.document;

@@ -37,6 +37,11 @@ export function pixInstructions(p: Pending, account: PixAccount) {
   );
 }
 
+/** Chave Pix pedida fora de um pedido (ex.: cliente de outro número): sem valor. */
+export function pixKeyMessage(account: PixAccount) {
+  return `Segue nossa chave PIX:\n\n${keyLabel(account)}: *${account.pix_key}*\n${account.holder || account.pix_name || ""}\n\nNos envie o comprovante do pagamento, por favor! Obrigada! 🙏🏻`;
+}
+
 /** Só os números da chave CNPJ/CPF/telefone, para copiar e colar no banco. */
 export function pixCopyText(account: PixAccount) {
   const key = account.pix_key || "";

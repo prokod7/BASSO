@@ -191,6 +191,21 @@ describe("turno da atendente", () => {
     expect(turn.pending).toBeNull();
     expect(turn.response).toMatch(/Troco para quanto\?$/);
   });
+  it("manda a chave Pix quando pedem fora de um pedido e a imagem da promoção só uma vez", async () => {
+    const pixCtx = { ...context, pix: { pix_key: "62.332.415/0001-10", pix_name: "LA FORNERIA BASSO COMER", key_type: "cnpj", holder: "La Forneria Basso" } };
+    const pix = await assistantTurn({ history: [{ role: "assistant", content: "Olá" }, { role: "user", content: "me passa a chave pix" }], texts: ["me passa a chave pix"], context: pixCtx, phone: "5511", quote, ai: ai({ reply: "Claro!", sendPix: true }) });
+    expect(pix.response).toContain("Segue nossa chave PIX:");
+    expect(pix.response).toContain("CNPJ: *62.332.415/0001-10*");
+    expect(pix.response).toContain("comprovante");
+    expect(pix.followUps).toEqual(["62332415000110"]);
+    const promo = { id: "p", name: "Terça Maluca", description: "", badgeText: "", image: "https://x/terca.png", promoPrice: 3999, active: true, paused: false, channels: ["own_delivery", "pickup"], daysOfWeek: [0, 1, 2, 3, 4, 5, 6], allowCouponStack: false, sortOrder: 0, targets: [] };
+    const promoCtx = { ...context, promotions: [promo] } as unknown as BotContext;
+    const first = await assistantTurn({ history: [{ role: "user", content: "tem promoção?" }], texts: ["tem promoção?"], context: promoCtx, phone: "5511", quote, ai: ai({ reply: "Hoje tem!", sendPromo: true }) });
+    expect(first.media).toEqual(["https://x/terca.png"]);
+    expect(first.historyNote).toBeTruthy();
+    const again = await assistantTurn({ history: [{ role: "assistant", content: `Hoje tem!\n${first.historyNote}` }, { role: "user", content: "tradicional" }], texts: ["tradicional"], context: promoCtx, phone: "5511", quote, ai: ai({ reply: "Coca ou Guaraná?", sendPromo: true }) });
+    expect(again.media).toEqual([]);
+  });
   it("pedido de cardápio garante o link", async () => {
     const turn = await assistantTurn({ history: [], texts: ["cardápio"], context, phone: "5511", quote, ai: ai({ reply: "Claro! Aqui está.", sendMenu: true }) });
     expect(turn.response).toContain("https://basso.test");
