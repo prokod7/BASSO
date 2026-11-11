@@ -24,9 +24,9 @@ export async function GET() {
 
     // Núcleo crítico: se uma destas consultas falhar, não fabricamos uma operação vazia.
     const [recentOrdersR, tablesR, tabsR, driversR] = await Promise.all([
-      // Limpeza diária às 3h: só pedidos do dia de operação atual + os que ainda estão em andamento.
+      // Limpeza diária às 3h: só pedidos do dia de operação atual (inclusive os que não tiveram baixa somem).
       db.from("orders").select("*").is("deleted_at", null)
-        .or(`created_at.gte.${operationalDayStart().toISOString()},status.in.(received,confirmed,preparing,ready,out_for_delivery)`)
+        .gte("created_at", operationalDayStart().toISOString())
         .order("created_at", { ascending: false }).limit(250),
       db.from("restaurant_tables").select("*").order("number"),
       db.from("tabs").select("*").in("status", ["open", "partial"]),
