@@ -12,6 +12,7 @@ import { checkoutSchema } from "@/lib/order-validation";
 import { currency, isDemoMode, normalizePhone, uid } from "@/lib/utils";
 import { normalizeCityName, normalizeDistrictName } from "@/lib/delivery-zones";
 import { DistrictSearch } from "@/components/internal/DistrictSearch";
+import { SavedCustomerPrompt, type SavedCustomer } from "@/components/shared/SavedCustomerPrompt";
 import { paymentMethodLabels, publicPaymentMethods, VOUCHER_RULE } from "@/lib/payment-methods";
 import type { Address, Order, OrderChannel, PaymentMethod } from "@/types";
 import { customerDeviceActions } from "@/lib/customer-device-store";
@@ -23,6 +24,23 @@ const emptyAddress: Address = { cep: "", street: "", number: "", district: "", c
 const tableTabKey = (table: number) => `lfb-table-tab-v31-${table}`;
 const tableNameKey = (table: number) => `lfb-table-name-v31-${table}`;
 const PROFILE_KEY = "lfb-checkout-profile-v1";
+const PROFILES_KEY = "lfb-checkout-profiles-v2";
+/** Dados dos últimos pedidos feitos neste aparelho (até 5 telefones). */
+function savedProfiles(): SavedProfile[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(PROFILES_KEY) || "[]") as SavedProfile[];
+    const legacy = JSON.parse(localStorage.getItem(PROFILE_KEY) || "null") as SavedProfile | null;
+    return [...(Array.isArray(list) ? list : []), ...(legacy ? [legacy] : [])];
+  } catch { return []; }
+}
+function rememberProfile(profile: SavedProfile) {
+  try {
+    const digits = (profile.phone || "").replace(/\D/g, "");
+    const others = savedProfiles().filter((p) => (p.phone || "").replace(/\D/g, "") !== digits);
+    localStorage.setItem(PROFILES_KEY, JSON.stringify([profile, ...others].slice(0, 5)));
+    localStorage.removeItem(PROFILE_KEY);
+  } catch { /* armazenamento indisponível */ }
+}
 type SavedProfile = { name?: string; phone?: string; address?: Partial<Address> };
 
 type CheckoutQuote = {
@@ -69,17 +87,25 @@ export default function CheckoutPage() {
   const checkoutKeyRef = useRef(uid("checkout"));
   const store = useStoreAvailability();
 
-  // Recupera nome, telefone e endereço do último pedido feito neste aparelho.
+  // Ao digitar um telefone que já fez pedido neste aparelho, pergunta se quer usar os dados salvos.
+  // (Só dados deste aparelho: o site é público e não pode mostrar o endereço de outra pessoa.)
+  const [savedPrompt, setSavedPrompt] = useState<(SavedCustomer & { profile: SavedProfile }) | null>(null);
+  const askedPhones = useRef(new Set<string>());
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("mesa")) return;
-    try {
-      const saved = JSON.parse(localStorage.getItem(PROFILE_KEY) || "null") as SavedProfile | null;
-      if (!saved) return;
-      if (saved.name) setName(saved.name);
-      if (saved.phone) setPhone(saved.phone);
-      if (saved.address) { setAddress(current => ({ ...current, ...saved.address, latitude: undefined, longitude: undefined })); }
-    } catch { /* armazenamento indisponível */ }
-  }, []);
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10 || askedPhones.current.has(digits)) return;
+    const profile = savedProfiles().find((p) => (p.phone || "").replace(/\D/g, "") === digits);
+    if (!profile || (!profile.name && !profile.address?.street)) return;
+    askedPhones.current.add(digits);
+    setSavedPrompt({ name: profile.name, address: profile.address, profile });
+  }, [phone]);
+  function applySavedProfile() {
+    const profile = savedPrompt?.profile; setSavedPrompt(null);
+    if (!profile) return;
+    if (profile.name) setName(profile.name);
+    if (profile.address) setAddress(current => ({ ...current, ...profile.address, latitude: undefined, longitude: undefined }));
+  }
 
   useEffect(() => {
     const table = Number(new URLSearchParams(window.location.search).get("mesa"));
@@ -255,7 +281,7 @@ export default function CheckoutPage() {
       }
       if (isTableOrder && tableNumber && resolvedTabId) { localStorage.setItem(tableTabKey(tableNumber), resolvedTabId); localStorage.setItem(tableNameKey(tableNumber), tabName.trim()); }
       if (!isTableOrder) {
-        try { localStorage.setItem(PROFILE_KEY, JSON.stringify({ name: customerName, phone, address: channel === "own_delivery" ? { ...address, latitude: undefined, longitude: undefined } : undefined } satisfies SavedProfile)); } catch { /* armazenamento indisponível */ }
+        try { rememberProfile({ name: customerName, phone, address: channel === "own_delivery" ? { ...address, latitude: undefined, longitude: undefined } : undefined } satisfies SavedProfile); } catch { /* armazenamento indisponível */ }
       }
       customerDeviceActions.saveOrder({ id: finalOrderId, number: finalNumber, token: accessToken, phone: order.customerPhone, total: finalTotal, status: "received", createdAt: now, items: cart.items });
       setConfirmed({id:finalOrderId,number:finalNumber,token:accessToken,payment:isTableOrder?undefined:payment,total:finalTotal}); cart.clear(); cart.setOpen(false); setLoading(false);
@@ -281,7 +307,7 @@ export default function CheckoutPage() {
 
       <aside className="lg:sticky lg:top-5 lg:self-start"><div className="surface overflow-hidden"><div className="bg-basso-black p-5 text-white"><h2 className="font-display text-2xl font-bold">Resumo</h2><p className="mt-1 text-xs text-white/55">Valores são validados novamente no servidor.</p></div><div className="max-h-72 space-y-3 overflow-y-auto p-5">{cart.items.map(item => <div key={item.id} className="flex justify-between gap-3 text-sm"><div><strong>{item.quantity}× {item.name}</strong><p className="text-xs text-black/40">{currency(item.unitPrice)} cada</p></div><strong>{currency(item.unitPrice * item.quantity)}</strong></div>)}</div><div className="border-t p-5"><MoneyRow label="Subtotal" value={displaySubtotal}/>{promotionSavings > 0 && <MoneyRow label="Promoções do dia" value={-promotionSavings} success/>}{displayDiscount > 0 && <MoneyRow label="Cupom" value={-displayDiscount} success/>}{channel === "own_delivery" && <MoneyRow label="Entrega" value={displayDeliveryFee}/>}<div className="mt-3 flex justify-between border-t pt-3 text-xl"><strong>Total</strong><strong className="text-basso-wine">{currency(total)}</strong></div>{quoting && <p className="mt-2 text-xs font-semibold text-blue-700">Atualizando preço...</p>}{store.open && !isTableOrder && (channel === "own_delivery" ? store.deliveryMinutes : store.preparationMinutes) ? <p className="mt-2 text-xs text-black/50">Tempo estimado: cerca de {channel === "own_delivery" ? store.deliveryMinutes : store.preparationMinutes} min{channel === "own_delivery" ? " até a entrega" : " para retirada"}.</p> : null}{error && <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}<button className="btn-primary mt-4 min-h-12 w-full" disabled={loading || quoting || Boolean(quoteError) || !store.open || (channel === "own_delivery" && (!selectedCity || !selectedDistrict || (!isDemoMode() && !serverQuote)))}>{loading ? <Loader2 className="animate-spin" size={18}/> : <LockKeyhole size={18}/>} {loading ? "Enviando..." : isTableOrder ? "Enviar para a cozinha" : "Confirmar pedido"}</button>{!loading && !quoteError && blockReason && <p className="mt-2 text-center text-xs font-semibold text-amber-800">{blockReason}</p>}<p className="mt-3 text-center text-[11px] text-black/40">O total, as promoções, o cupom e a taxa de entrega são conferidos no servidor antes do pedido ser criado.</p></div></div></aside>
     </form>
-  </main>;
+  <SavedCustomerPrompt saved={savedPrompt} onUse={applySavedProfile} onSkip={() => setSavedPrompt(null)} /></main>;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) { return <section className="surface p-5 sm:p-6"><h2 className="font-display text-xl font-bold">{title}</h2><div className="mt-4">{children}</div></section>; }
