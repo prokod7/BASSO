@@ -70,7 +70,7 @@ export async function loadBotContext(db: any): Promise<BotContext> {
     },
     promotions,
     streets,
-    pix: { pix_key: business.pixKey, pix_name: settings?.data?.pix_name || business.name || null },
+    pix: { pix_key: business.pixKey, pix_name: settings?.data?.pix_name || business.name || null, key_type: business.pixKeyType || null, holder: text(business.name, "La Forneria Basso") },
   };
 }
 

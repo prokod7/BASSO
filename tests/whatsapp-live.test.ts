@@ -34,3 +34,27 @@ describe("robô: dados vivos", () => {
     expect(withoutGreeting("Olá!")).toBe("Olá!");
   });
 });
+
+import { pixCopyText, pixInstructions } from "@/lib/whatsapp/pix";
+describe("mensagem do Pix", () => {
+  it("segue o padrão da Basso e pede o comprovante", () => {
+    const account = { pix_key: "62.332.415/0001-10", pix_name: "LA FORNERIA BASSO COMER", key_type: "cnpj", holder: "La Forneria Basso" };
+    const text = pixInstructions({ quote: { total: 4499 } } as never, account);
+    expect(text).toContain("Segue nossa chave PIX:");
+    expect(text).toContain("CNPJ: *62.332.415/0001-10*\nLa Forneria Basso");
+    expect(text).toMatch(/Valor: \*R\$\s?44,99\*/);
+    expect(text).toContain("comprovante");
+    expect(pixCopyText(account)).toBe("62332415000110");
+  });
+});
+
+import { judgeReceipt } from "@/lib/whatsapp/pix";
+describe("comprovante para a chave CNPJ", () => {
+  it("aceita CNPJ completo, mascarado ou pelo nome da conta", () => {
+    const account = { pix_key: "62.332.415/0001-10", pix_name: "LA FORNERIA BASSO COMER", key_type: "cnpj", holder: "La Forneria Basso" };
+    const base = { is_pix_receipt: true, completed: true, amount_brl: 44.99, recipient_name: null, recipient_key: null, paid_at: null, bank: null };
+    expect(judgeReceipt({ ...base, recipient_key: "62.332.415/0001-10" }, 4499, account).ok).toBe(true);
+    expect(judgeReceipt({ ...base, recipient_key: "62332415000110" }, 4499, account).ok).toBe(true);
+    expect(judgeReceipt({ ...base, recipient_name: "La Forneria Basso Comercio de Alimentos" }, 4499, account).ok).toBe(true);
+  });
+});
