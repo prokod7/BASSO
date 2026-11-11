@@ -10,7 +10,8 @@ const WINDOW_MS = 24 * 3600000;
 export function statusMessage(status: string, channel: string, number: number, name: string) {
   const first = name.trim().split(/\s+/)[0];
   const who = first ? `, ${first}` : "";
-  // Só avisa o cliente quando o pedido sai para entrega (pedido do responsável).
+  // Avisa o cliente só quando sai para entrega ou quando a retirada fica pronta.
+  if (status === "ready" && channel === "pickup") return `✅ Seu pedido nº ${number} está pronto para retirada${who}! Pode vir buscar 😊`;
   if (status === "out_for_delivery" && channel === "own_delivery") return `🛵 Seu pedido nº ${number} saiu para entrega${who}! Já já chega aí. Bom apetite 🍕`;
   return null;
 }
