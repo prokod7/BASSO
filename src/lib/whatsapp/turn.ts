@@ -6,7 +6,7 @@ import { ACTIVE_STATUSES, friendlyError, money, ordersContext, summarize, type B
 import { menuFiles, withMenuLink } from "./menuMedia";
 import { namesFor, type BotContext } from "./order";
 import { liveStoreInfo, todayPromotions } from "./live";
-import { judgeReceipt, pixInstructions, RECEIPT_FAILED_HANDOFF, type PixAccount, type ReceiptReading } from "./pix";
+import { judgeReceipt, pixCopyText, pixInstructions, RECEIPT_FAILED_HANDOFF, type PixAccount, type ReceiptReading } from "./pix";
 export { pendingAfter } from "./turnRules";
 
 export function closedReply(store: BotContext["store"]) {
@@ -31,7 +31,7 @@ export function pixRequest(pending: Pending, account: PixAccount) {
   if (!account.pix_key) throw new Error("PIX indisponível");
   return {
     response: pixInstructions(pending, account),
-    followUps: [account.pix_key],
+    followUps: [pixCopyText(account)],
     pending: { ...pending, awaiting_receipt: true, receipt_attempts: 0, expires: new Date(Date.now() + 60 * 60000).toISOString() } as Pending,
   };
 }

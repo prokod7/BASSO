@@ -10,18 +10,37 @@ export type ReceiptReading = {
   paid_at: string | null;
   bank: string | null;
 };
-export type PixAccount = { pix_key: string | null; pix_name: string | null };
+export type PixAccount = { pix_key: string | null; pix_name: string | null; key_type?: string | null; holder?: string | null };
 export type ReceiptVerdict =
   | { ok: true; summary: string }
   | { ok: false; reply: string };
 
+/** Tipo da chave para a mensagem ("CNPJ: 62.332.415/0001-10"). */
+function keyLabel(account: PixAccount) {
+  const type = (account.key_type || "").toLowerCase();
+  const digits = (account.pix_key || "").replace(/\D/g, "");
+  if (type === "cnpj" || (!type && digits.length === 14 && /[./-]/.test(account.pix_key || ""))) return "CNPJ";
+  if (type === "cpf") return "CPF";
+  if (type === "email" || (account.pix_key || "").includes("@")) return "E-mail";
+  if (type === "phone" || type === "telefone") return "Telefone";
+  return "Chave";
+}
+
+/** Mensagem do Pix no padrão da Basso; o pedido só é aceito com o comprovante. */
 export function pixInstructions(p: Pending, account: PixAccount) {
   return (
-    `Perfeito! 🙌 Agora é só fazer o Pix de *${money(p.quote.total)}*:\n\n` +
-    `🔑 Chave Pix: *${account.pix_key}*` +
-    (account.pix_name ? `\n👤 ${account.pix_name}` : "") +
-    "\n\nDepois me manda o comprovante aqui (print ou PDF) 📎. Assim que eu conferir, seu pedido vai direto pra cozinha 🍕"
+    `Segue nossa chave PIX:\n\n` +
+    `${keyLabel(account)}: *${account.pix_key}*\n` +
+    `${account.holder || account.pix_name || ""}\n\n`.replace(/^\n\n$/, "\n") +
+    `Valor: *${money(p.quote.total)}*\n\n` +
+    `Nos envie o comprovante do pagamento, por favor! Seu pedido só é aceito depois que recebermos o comprovante. Obrigada! 🙏🏻`
   );
+}
+
+/** Só os números da chave CNPJ/CPF/telefone, para copiar e colar no banco. */
+export function pixCopyText(account: PixAccount) {
+  const key = account.pix_key || "";
+  return ["CNPJ", "CPF", "Telefone"].includes(keyLabel(account)) ? key.replace(/\D/g, "") : key;
 }
 
 const norm = (v: string) =>
