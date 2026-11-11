@@ -61,10 +61,11 @@ describe("comprovante para a chave CNPJ", () => {
 
 import { statusMessage } from "@/lib/whatsapp/notify";
 describe("avisos de status ao cliente", () => {
-  it("só avisa quando sai para entrega", () => {
+  it("avisa quando sai para entrega e quando a retirada fica pronta", () => {
     expect(statusMessage("confirmed", "own_delivery", 8, "Pedro")).toBeNull();
     expect(statusMessage("preparing", "own_delivery", 8, "Pedro")).toBeNull();
-    expect(statusMessage("ready", "pickup", 8, "Pedro")).toBeNull();
+    expect(statusMessage("ready", "pickup", 8, "Pedro")).toContain("pronto para retirada, Pedro");
+    expect(statusMessage("ready", "own_delivery", 8, "Pedro")).toBeNull();
     expect(statusMessage("out_for_delivery", "own_delivery", 8, "Pedro Henrique")).toContain("saiu para entrega, Pedro");
   });
 });
