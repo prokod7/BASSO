@@ -144,3 +144,12 @@ describe("migration 048 — devolver ao robô com contexto", () => {
     expect(await one("select state from wa_jobs where message_id='r3'")).toEqual({ state: "queued" });
   });
 });
+
+describe("migration 049 — número do pedido contínuo", () => {
+  it("não reinicia a contagem no dia seguinte", async () => {
+    await db.exec("update private.order_display_counter set last_number=40");
+    const fn = await one<{ d: string }>("select pg_get_functiondef('private.assign_daily_order_number'::regproc) d");
+    expect(fn.d).toContain("order_display_counter");
+    expect(await one("select last_number from private.order_display_counter")).toEqual({ last_number: 40 });
+  });
+});
