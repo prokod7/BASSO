@@ -6,7 +6,7 @@ import { ACTIVE_STATUSES, friendlyError, money, ordersContext, summarize, type B
 import { menuFiles, withMenuLink } from "./menuMedia";
 import { namesFor, type BotContext } from "./order";
 import { liveStoreInfo, todayPromotions } from "./live";
-import { judgeReceipt, pixCopyText, pixInstructions, RECEIPT_FAILED_HANDOFF, type PixAccount, type ReceiptReading } from "./pix";
+import { judgeReceipt, pixCopyText, pixInstructions, pixKeyMessage, RECEIPT_FAILED_HANDOFF, type PixAccount, type ReceiptReading } from "./pix";
 export { pendingAfter } from "./turnRules";
 
 export function closedReply(store: BotContext["store"]) {
@@ -50,7 +50,7 @@ export async function checkReceipt(pending: Pending, account: PixAccount, read: 
 }
 
 /** Assuntos que justificam chamar a equipe já na primeira mensagem. */
-const SPECIFIC_HANDOFF = /atendente|humano|pessoa|gerente|dono|reclama|problema|errad|frio|atras|cancel|estorno|reembolso|alergi|encomenda|evento|festa|curr[ií]culo|vaga|fornecedor|parceria/i;
+const SPECIFIC_HANDOFF = /atendente|humano|pessoa|gerente|dono|reclama|problema|errad|frio|atras|cancel|estorno|reembolso|alergi|encomenda|evento|festa|curr[ií]culo|vaga|fornecedor|parceria|comprovante|pagamento/i;
 
 /** A primeira mensagem nunca vai para a equipe, salvo assunto muito específico. */
 export function firstContactGuard(history: Turn[], texts: string[], action: AiResult["action"]) {
@@ -66,7 +66,13 @@ export type TurnResult = {
   action: "reply" | "prepare" | "human" | "closed";
   media: string[];
   menuSent: boolean;
+  /** Textos curtos enviados depois da resposta (ex.: só a chave Pix, para copiar). */
+  followUps?: string[];
+  /** Nota interna gravada no histórico junto da resposta (não vai ao cliente). */
+  historyNote?: string;
 };
+
+export const PROMO_SENT_NOTE = "[imagem da promoção enviada]";
 
 /**
  * Um turno da atendente, usado pelo WhatsApp e pelo Laboratório (o laboratório testa
@@ -103,7 +109,15 @@ export async function assistantTurn(opts: {
   const firstReply = !history.slice(0, -1).some((t) => t.role === "assistant");
   const reply = firstReply ? result.reply : withoutGreeting(result.reply);
   let response = result.sendMenu ? withMenuLink(reply, store.menuUrl) : reply;
-  const promoImages = result.sendPromo ? todayPromotions(context).map((p) => p.image).filter((url): url is string => Boolean(url)) : [];
+  // Imagem da promoção só uma vez por conversa.
+  const promoAlreadySent = history.some((t) => t.role === "assistant" && t.content.includes(PROMO_SENT_NOTE));
+  const promoImages = result.sendPromo && !promoAlreadySent ? todayPromotions(context).map((p) => p.image).filter((url): url is string => Boolean(url)) : [];
+  // Chave Pix pedida fora de um pedido daqui (cliente de outro número etc.).
+  let followUps: string[] = [];
+  if (result.sendPix && context.pix.pix_key && !opts.pending) {
+    response = `${response.trim() && !/chave/i.test(response) ? `${response.trim()}\n\n` : ""}${pixKeyMessage(context.pix)}`;
+    followUps = [pixCopyText(context.pix)];
+  }
   let pending: Pending | null = null;
   if (result.action === "prepare") {
     try {
@@ -129,6 +143,8 @@ export async function assistantTurn(opts: {
     usage: result.usage,
     action: result.action,
     media: pending ? [] : [...promoImages, ...(result.sendMenu ? menuFiles() : [])],
+    followUps,
+    historyNote: promoImages.length && !pending ? PROMO_SENT_NOTE : undefined,
     menuSent: result.sendMenu,
   };
 }

@@ -24,7 +24,18 @@ const message = z.object({
       caption: z.string().optional(),
     })
     .optional(),
+  // Mensagem editada pelo cliente (o formato varia; o texto novo é procurado por editedText).
+  edit: z.unknown().optional(),
 });
+
+/** Texto novo de uma mensagem editada, onde quer que ele venha no evento. */
+export function editedText(m: { edit?: unknown }): string {
+  const e = m.edit as Record<string, any> | undefined;
+  if (!e || typeof e !== "object") return "";
+  const candidates = [e.message?.text?.body, e.text?.body, e.body, e.new_message?.text?.body, e.message?.body];
+  const found = candidates.find((value) => typeof value === "string" && value.trim());
+  return found ? String(found).slice(0, 16000) : "";
+}
 export type Incoming = z.infer<typeof message>;
 export const envelope = z.object({
   object: z.literal("whatsapp_business_account"),
@@ -163,8 +174,10 @@ export function inboxBody(m: {
   interactive?: { button_reply?: { title: string } };
   image?: { caption?: string };
   document?: { caption?: string; filename?: string };
+  edit?: unknown;
 }) {
   if (m.text?.body) return m.text.body;
+  if (m.type === "edit") { const text = editedText(m); return text ? `✏️ Corrigiu para: ${text}` : "✏️ Editou uma mensagem"; }
   if (m.interactive?.button_reply) return m.interactive.button_reply.title;
   const labels: Record<string, string> = {
     audio: "🎤 Áudio",

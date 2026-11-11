@@ -96,6 +96,7 @@ export async function processQueue({ limit = 5, budgetMs = 150000 }: { limit?: n
       let pause = job.handoff;
       let media: string[] = [];
       let followUps: string[] = [];
+      let historyNote: string | undefined;
       let menuSent = false;
       if (!response) {
         let pending = session.pending;
@@ -203,8 +204,10 @@ export async function processQueue({ limit = 5, budgetMs = 150000 }: { limit?: n
           aiUsage = turn.usage;
           media = turn.media;
           menuSent = turn.menuSent;
+          if (turn.followUps?.length) followUps = turn.followUps;
+          historyNote = turn.historyNote;
         }
-        history.push({ role: "assistant", content: response! });
+        history.push({ role: "assistant", content: historyNote ? `${response!}\n${historyNote}` : response! });
         stage = "salvar-resposta";
         const staged = await step("stage", { pending, history: history.slice(-30), response, usage: aiUsage, pause, allow_supersede: allowSupersede, claimed_at: claim.claimed_at });
         if (staged.stopped) {
