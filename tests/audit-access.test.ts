@@ -17,7 +17,7 @@ function client(data:Record<string,any>){
  const from=vi.fn((table:string)=>{
   let result=data[table]??[];
   const builder:any={};
-  for(const method of ['select','is','gt','not','order','limit','maybeSingle'])builder[method]=()=>builder;
+  for(const method of ['select','is','gt','not','or','order','limit','maybeSingle'])builder[method]=()=>builder;
   builder.eq=()=>builder;
   builder.in=(column:string,ids:string[])=>{if(Array.isArray(result))result=result.filter(row=>ids.includes(row[column]));return builder;};
   builder.then=(resolve:any,reject:any)=>Promise.resolve({data:result,error:null}).then(resolve,reject);

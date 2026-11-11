@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { operationalDayStart } from "@/lib/operational-day";
 import { requireOperationalRole } from "@/lib/authz";
 import { snapshotAccess } from "@/lib/operational-access";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,7 +24,10 @@ export async function GET() {
 
     // Núcleo crítico: se uma destas consultas falhar, não fabricamos uma operação vazia.
     const [recentOrdersR, tablesR, tabsR, driversR] = await Promise.all([
-      db.from("orders").select("*").is("deleted_at", null).order("created_at", { ascending: false }).limit(250),
+      // Limpeza diária às 3h: só pedidos do dia de operação atual + os que ainda estão em andamento.
+      db.from("orders").select("*").is("deleted_at", null)
+        .or(`created_at.gte.${operationalDayStart().toISOString()},status.in.(received,confirmed,preparing,ready,out_for_delivery)`)
+        .order("created_at", { ascending: false }).limit(250),
       db.from("restaurant_tables").select("*").order("number"),
       db.from("tabs").select("*").in("status", ["open", "partial"]),
       db.from("drivers").select("*").eq("active", true),
