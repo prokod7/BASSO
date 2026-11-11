@@ -153,3 +153,15 @@ describe("migration 049 — número do pedido contínuo", () => {
     expect(await one("select last_number from private.order_display_counter")).toEqual({ last_number: 40 });
   });
 });
+
+describe("migration 050 — conclusão automática às 3h", () => {
+  it("conclui pedidos em aberto de antes das 3h e mantém os do dia", async () => {
+    const add = (id: string, at: string) => db.exec(`insert into orders(id,number,channel,status,payment_status,customer_name,customer_phone,subtotal_cents,total_cents,payment_method,source_idempotency_key,created_at) values('${id}',${900 + id.length},'counter','preparing','pending','Teste','',500,500,'pix','${id}',${at})`);
+    await add("velho3h", "now() - interval '2 days'");
+    await add("novo3h0", "now()");
+    const done = await one<{ n: number }>("select private.auto_complete_open_orders() n");
+    expect(done.n).toBeGreaterThanOrEqual(1);
+    expect(await one("select status, payment_status from orders where id='velho3h'")).toEqual({ status: "completed", payment_status: "pending" });
+    expect(await one("select status from orders where id='novo3h0'")).toEqual({ status: "preparing" });
+  });
+});
