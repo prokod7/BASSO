@@ -403,10 +403,10 @@ export function PizzaBuilder({
     setSelection((current) => ({
       ...current,
       size,
-      flavorB: size === "broto" && (current.flavorB && findFlavor(current.flavorA)?.category !== "sweet" && findFlavor(current.flavorB)?.category !== "sweet") ? undefined : current.flavorB,
-      removedB: size === "broto" && (current.flavorB && findFlavor(current.flavorA)?.category !== "sweet" && findFlavor(current.flavorB)?.category !== "sweet") ? [] : current.removedB,
+      flavorB: size === "broto" && (current.flavorB && (findFlavor(current.flavorA)?.category === "sweet") !== (findFlavor(current.flavorB)?.category === "sweet")) ? undefined : current.flavorB,
+      removedB: size === "broto" && (current.flavorB && (findFlavor(current.flavorA)?.category === "sweet") !== (findFlavor(current.flavorB)?.category === "sweet")) ? [] : current.removedB,
       addonPlacements:
-        size === "broto" && (current.flavorB && findFlavor(current.flavorA)?.category !== "sweet" && findFlavor(current.flavorB)?.category !== "sweet")
+        size === "broto" && (current.flavorB && (findFlavor(current.flavorA)?.category === "sweet") !== (findFlavor(current.flavorB)?.category === "sweet"))
           ? normalizePlacementsWithoutSecondHalf(current.addonPlacements)
           : current.addonPlacements,
     }));
@@ -840,7 +840,7 @@ function PizzaStep({
             <ModeButton active={isHalfHalf} title="Meio a meio" subtitle="50% + 50%" onClick={onHalfHalf} />
           </div>
         )}
-        {selection.size === "broto" && <p className="mt-2 text-xs text-basso-wine">Meio a meio: dois doces ou um doce com um salgado. Para dois salgados, escolha Grande.</p>}
+        {selection.size === "broto" && <p className="mt-2 text-xs text-basso-wine">Meio a meio: dois sabores salgados ou dois doces. Não é permitido misturar doce com salgado na Broto.</p>}
 
         <div className="mt-3 space-y-2">
           {!flavorChosen ? (
@@ -1424,4 +1424,5 @@ function placementLabel(placement: AddonPlacement, currentA: Flavor, currentB?: 
   if (placement === "halfA") return currentB ? `Metade ${currentA.name}` : "Metade da pizza";
   return currentB ? `Metade ${currentB.name}` : "Metade da pizza";
 }
+
 

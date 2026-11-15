@@ -46,11 +46,11 @@ const combo: ComboSelection = {
   notes: "",
 };
 describe("autonomia do cardápio", () => {
-  it("broto mista calcula 50% de cada sabor", () => {
-    expect(pizzaBasePrice(pizza({ flavorB: "chocolate" }))).toBe(
+  it("broto salgada calcula 50% de cada sabor", () => {
+    expect(pizzaBasePrice(pizza({ flavorB: "camarao" }))).toBe(
       Math.round(
         (original.find((f) => f.id === "mozzarella")!.priceBroto +
-          original.find((f) => f.id === "chocolate")!.priceBroto) /
+          original.find((f) => f.id === "camarao")!.priceBroto) /
           2,
       ),
     );
@@ -58,10 +58,12 @@ describe("autonomia do cardápio", () => {
   it.each([
     ["chocolate", "mozzarella"],
     ["mozzarella", "chocolate"],
-    ["chocolate", "brigadeiro"],
-  ])("permite broto com doce em qualquer metade %s/%s", (flavorA, flavorB) =>
-    expect(() => validatePizzaSelection(pizza({ flavorA, flavorB }))).not.toThrow(),
+  ])("bloqueia broto mista em qualquer ordem %s/%s", (flavorA, flavorB) =>
+    expect(() => validatePizzaSelection(pizza({ flavorA, flavorB }))).toThrow(/Não misture doce com salgado/),
   );
+  it("permite dois sabores doces na Broto", () => {
+    expect(() => validatePizzaSelection(pizza({ flavorA: "chocolate", flavorB: "brigadeiro" }))).not.toThrow();
+  });
   it("permite broto doce inteira e Grande meio a meio doce/salgada", () => {
     expect(() =>
       validatePizzaSelection(pizza({ flavorA: "chocolate" })),
@@ -244,3 +246,4 @@ describe("promoção por dia, canal e sabores", () => {
     ).toBe(4999);
   });
 });
+

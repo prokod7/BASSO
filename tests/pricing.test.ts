@@ -12,8 +12,8 @@ describe("regras de pizza", () => {
     expect(pizzaBasePrice(pizza({ flavorA: "mozzarella", flavorB: "bella-italia" }))).toBe(6000);
   });
 
-  it("bloqueia dois sabores salgados na Broto", () => {
-    expect(() => validatePizzaSelection(pizza({ size: "broto", flavorB: "calabresa-tradicional" }))).toThrow(/pelo menos um sabor doce/);
+  it("permite dois sabores salgados na Broto", () => {
+    expect(() => validatePizzaSelection(pizza({ size: "broto", flavorB: "calabresa-tradicional" }))).not.toThrow();
   });
 
   it("permite meio a meio entre Tradicional, Premium e Doce", () => {
@@ -48,4 +48,5 @@ describe("combo oficial", () => {
   it("cobra adicional integral", () => expect(comboTotal({ ...combo, addons: { bacon: 1 } })).toBe(8999));
   it("permite meio a meio do combo entre categorias diferentes", () => expect(() => comboTotal({ ...combo, grandeFlavorB: "camarao" })).not.toThrow());
 });
+
 

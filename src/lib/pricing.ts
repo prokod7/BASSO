@@ -27,7 +27,7 @@ export function flavorPrice(flavor: Flavor, size: PizzaSelection["size"]): numbe
  * Na Pizza Grande, qualquer sabor ativo pode dividir meio a meio com outro sabor ativo.
  */
 export function arePizzaFlavorsCompatible(a: Flavor, b: Flavor, size: PizzaSelection["size"] = "grande"): boolean {
-  return size !== "broto" || a.category === "sweet" || b.category === "sweet";
+  return size !== "broto" || (a.category === "sweet") === (b.category === "sweet");
 }
 
 export function validatePizzaSelection(selection: PizzaSelection, flavorList: Flavor[] = catalog.flavors, addonList: Addon[] = catalog.addons): void {
@@ -44,7 +44,7 @@ export function validatePizzaSelection(selection: PizzaSelection, flavorList: Fl
     if (b.id === a.id) throw new PricingError("Escolha dois sabores diferentes para o meio a meio.");
   }
 
-  if (b && !arePizzaFlavorsCompatible(a, b, selection.size)) throw new PricingError("Broto meio a meio precisa de pelo menos um sabor doce. Dois sabores salgados estão disponíveis somente na Grande.");
+  if (b && !arePizzaFlavorsCompatible(a, b, selection.size)) throw new PricingError("Na Broto, combine dois sabores salgados ou dois doces. Não misture doce com salgado.");
 
   const sweetSelection = selection as SweetPizzaMetadata;
   const hasSweetFlavor = a.category === "sweet" || b?.category === "sweet";
@@ -127,4 +127,5 @@ export function comboTotal(selection: ComboSelection, addonList: Addon[] = catal
 export function cartSubtotal(items: Array<{ unitPrice: number; quantity: number }>): number {
   return items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 }
+
 

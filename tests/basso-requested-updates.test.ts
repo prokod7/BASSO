@@ -25,6 +25,7 @@ beforeAll(async () => {
     await db.exec(fs.readFileSync(`supabase/migrations/${file}`, "utf8"));
   }
   await db.exec(fs.readFileSync("supabase/migrations/20261115055506_basso_requested_updates.sql", "utf8"));
+  await db.exec(fs.readFileSync("supabase/migrations/20261115172921_correct_broto_and_location_authorization.sql", "utf8"));
 }, 180000);
 afterAll(async () => { await db?.close(); });
 
@@ -40,10 +41,14 @@ describe("alterações operacionais solicitadas pela Basso", () => {
     expect(rows.map(r => r.id)).toEqual(["local-day-a", "local-day-b", "local-day-c", "local-day-d"]);
   });
   it("valida as combinações também no banco ao inserir e editar itens", async () => {
-    for (const [index, a, b] of [[1,"chocolate","brigadeiro"],[2,"mozzarella","chocolate"],[3,"chocolate","mozzarella"]] as const) {
+    for (const [index, a, b] of [[1,"chocolate","brigadeiro"],[2,"mozzarella","camarao"],[3,"camarao","caprese"]] as const) {
       await db.query("insert into order_items(id,order_id,kind,name_snapshot,quantity,unit_price_cents,selection) values($1,'local-day-b','pizza','Teste',1,500,$2::jsonb)", [`broto-${index}`, JSON.stringify({ size: "broto", flavorA: a, flavorB: b })]);
     }
-    await expect(db.exec(`update order_items set selection='{"size":"broto","flavorA":"mozzarella","flavorB":"camarao"}' where id='broto-1'`)).rejects.toThrow(/pelo menos um sabor doce/);
+    for (const [a,b] of [["mozzarella","chocolate"],["chocolate","mozzarella"]]) {
+      const selection = JSON.stringify({ size: "broto", flavorA: a, flavorB: b });
+      await expect(db.query("update order_items set selection=$1::jsonb where id='broto-1'", [selection])).rejects.toThrow(/Não misture doce com salgado/);
+      await expect(db.query("insert into order_items(id,order_id,kind,name_snapshot,quantity,unit_price_cents,selection) values('mixed-local','local-day-b','pizza','Teste',1,500,$1::jsonb)", [selection])).rejects.toThrow(/Não misture doce com salgado/);
+    }
     expect((await one("select count(*)::int n from order_items where id like 'broto-%'")).n).toBe(3);
   });
   it("cria e mantém o cadastro operacional do motoboy junto ao perfil", async () => {
@@ -57,11 +62,14 @@ describe("alterações operacionais solicitadas pela Basso", () => {
   it("exige aceite próprio, registra nome/data/versão e exige novo aceite para nova versão", async () => {
     await db.query("select set_config('request.jwt.claim.sub',$1,false)", [driver]);
     expect((await one("select has_driver_authorization() ok")).ok).toBe(false);
+    const terms = await one("select title,body from driver_terms_documents where active");
+    expect(terms.title).toMatch(/compartilhamento de localização/);
+    expect(terms.body).toMatch(/Autorizo expressamente o compartilhamento da localização/);
     await expect(db.query("select accept_driver_terms('versao-antiga','Teste local')")).rejects.toThrow(/atualizados/);
-    await db.query("select accept_driver_terms('2026-11-15.1','Nome confirmado')");
+    await db.query("select accept_driver_terms('2026-11-15.2','Nome confirmado')");
     const first = await one("select display_name,version,accepted_at from driver_terms_acceptances where profile_id=$1", [driver]);
-    expect(first).toMatchObject({ display_name: "Nome confirmado", version: "2026-11-15.1" });
-    await db.query("select accept_driver_terms('2026-11-15.1','Tentativa repetida')");
+    expect(first).toMatchObject({ display_name: "Nome confirmado", version: "2026-11-15.2" });
+    await db.query("select accept_driver_terms('2026-11-15.2','Tentativa repetida')");
     expect(await one("select display_name,version,accepted_at from driver_terms_acceptances where profile_id=$1", [driver])).toEqual(first);
     expect((await one("select has_driver_authorization() ok")).ok).toBe(true);
     await db.query("select set_config('request.jwt.claim.sub',$1,false)", [other]);
@@ -91,3 +99,4 @@ describe("alterações operacionais solicitadas pela Basso", () => {
     expect(lines.slice(1)).toEqual(["1/2 Mussarela", "1x (Milho — Mussarela)", "1/2 Calabresa", "2x (Catupiry — Calabresa)", "1x (Bacon — Pizza inteira)"]);
   });
 });
+

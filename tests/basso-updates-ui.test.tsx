@@ -14,19 +14,19 @@ beforeEach(() => { Object.assign(globalThis, { React }); localStorage.clear(); v
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 const mount = (id: string) => render(<CartProvider><PizzaBuilder flavor={findFlavor(id)} open onClose={() => {}} initialSelection={{ size: "broto", mass: "traditional", flavorA: id, removedA: [], removedB: [], addons: {}, notes: "" }} /></CartProvider>);
 describe("fluxos visíveis da Basso", () => {
-  it("oferece meio a meio da broto doce e permite escolher salgado", () => {
+  it("oferece somente doces para a segunda metade da broto doce", () => {
     mount("brigadeiro");
     fireEvent.click(screen.getByRole("button", { name: /Meio a meio 50%/ }));
-    expect(screen.getByRole("button", { name: /^Mozzarella / })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Mozzarella / })).toBeNull();
     expect(screen.getAllByRole("button", { name: /^Chocolate / }).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: /^Mozzarella / }));
+    fireEvent.click(screen.getAllByRole("button", { name: /^Chocolate / })[0]);
     expect(screen.getByText("Metade 2")).toBeTruthy();
   });
-  it("ao iniciar com salgado, oferece somente doces como segunda metade da broto", () => {
+  it("ao iniciar com salgado, oferece somente salgados como segunda metade da broto", () => {
     mount("mozzarella");
     fireEvent.click(screen.getByRole("button", { name: /Meio a meio 50%/ }));
-    expect(screen.queryByRole("button", { name: /^Calabresa / })).toBeNull();
-    expect(screen.getAllByRole("button", { name: /^Chocolate / }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /^Calabresa / }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /^Chocolate / })).toBeNull();
   });
   it("mantém chamado visível, toca som e remove o aviso quando a conversa é atendida", async () => {
     vi.useFakeTimers();
@@ -47,6 +47,7 @@ describe("fluxos visíveis da Basso", () => {
     vi.stubGlobal("fetch", fetcher);
     render(<DriverAuthorizationPage />);
     await screen.findByText("Termos de teste");
+    expect(screen.getByRole("checkbox", { name: /autorizo expressamente o compartilhamento da minha localização/ })).toBeTruthy();
     const button = screen.getByRole("button", { name: "Aceitar e acessar minhas entregas" }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     fireEvent.click(screen.getByRole("checkbox")); fireEvent.click(button);
@@ -54,3 +55,4 @@ describe("fluxos visíveis da Basso", () => {
     expect(JSON.parse(fetcher.mock.calls[1][1]!.body as string)).toEqual({ version: "v-test", name: "Motoboy local", accepted: true });
   });
 });
+
