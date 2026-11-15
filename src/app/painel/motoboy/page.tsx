@@ -31,7 +31,7 @@ export default function DriverPage() {
   const sendingPosition = useRef(false);
 
   useEffect(() => {
-    if (!driverId && drivers[0]?.id) setDriverId(drivers[0].id);
+    if (!drivers.some(item => item.id === driverId) && drivers[0]?.id) setDriverId(drivers[0].id);
   }, [driverId, drivers]);
 
   useEffect(() => {

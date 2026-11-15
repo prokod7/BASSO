@@ -81,13 +81,9 @@ export async function PATCH(request: NextRequest) {
     if (body.address !== undefined) payload.address = body.address;
     if (body.cnpj !== undefined) payload.cnpj = body.cnpj;
     if (body.config !== undefined || body.contactPhones !== undefined) {
-      const currentConfig = (current.config || {}) as Record<string, unknown>;
-      const currentSite = (currentConfig.site && typeof currentConfig.site === "object" ? currentConfig.site : {}) as Record<string, unknown>;
-      // Textos do site são mesclados; as fotos (site.images) só mudam pela rota de imagens.
-      const site = body.config?.site !== undefined ? { ...currentSite, ...body.config.site, images: currentSite.images || {} } : currentSite;
-      payload.config = { ...currentConfig, ...body.config, site, ...(body.contactPhones !== undefined?{contactPhones:body.contactPhones}:{}) };
+      payload.config = { ...body.config, ...(body.contactPhones !== undefined ? { contactPhones: body.contactPhones } : {}) };
     }
-    const { error } = await db.from("business_settings").update(payload).eq("id", current.id);
+    const { error } = await db.rpc("patch_business_settings", { p_id: current.id, p_patch: payload });
     if (error) throw error;
     await db.from("audit_logs").insert({ actor_id: auth.userId === "demo" ? null : auth.userId, actor_label: auth.displayName, action: "BUSINESS_SETTINGS_UPDATED", entity_type: "business_settings", entity_id: current.id, before_data: current, after_data: payload });
     return NextResponse.json({ saved: true });

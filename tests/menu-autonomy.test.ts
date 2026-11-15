@@ -46,11 +46,11 @@ const combo: ComboSelection = {
   notes: "",
 };
 describe("autonomia do cardápio", () => {
-  it("broto salgada calcula 50% de cada sabor", () => {
-    expect(pizzaBasePrice(pizza({ flavorB: "camarao" }))).toBe(
+  it("broto mista calcula 50% de cada sabor", () => {
+    expect(pizzaBasePrice(pizza({ flavorB: "chocolate" }))).toBe(
       Math.round(
         (original.find((f) => f.id === "mozzarella")!.priceBroto +
-          original.find((f) => f.id === "camarao")!.priceBroto) /
+          original.find((f) => f.id === "chocolate")!.priceBroto) /
           2,
       ),
     );
@@ -59,10 +59,8 @@ describe("autonomia do cardápio", () => {
     ["chocolate", "mozzarella"],
     ["mozzarella", "chocolate"],
     ["chocolate", "brigadeiro"],
-  ])("bloqueia broto com doce em qualquer metade %s/%s", (flavorA, flavorB) =>
-    expect(() => validatePizzaSelection(pizza({ flavorA, flavorB }))).toThrow(
-      /Broto doce/,
-    ),
+  ])("permite broto com doce em qualquer metade %s/%s", (flavorA, flavorB) =>
+    expect(() => validatePizzaSelection(pizza({ flavorA, flavorB }))).not.toThrow(),
   );
   it("permite broto doce inteira e Grande meio a meio doce/salgada", () => {
     expect(() =>

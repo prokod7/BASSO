@@ -19,6 +19,7 @@ function client(data:Record<string,any>){
   const builder:any={};
   for(const method of ['select','is','gt','not','or','gte','order','limit','maybeSingle'])builder[method]=()=>builder;
   builder.eq=()=>builder;
+  builder.single=async()=>({data:Array.isArray(result)?result[0]:result,error:null});
   builder.in=(column:string,ids:string[])=>{if(Array.isArray(result))result=result.filter(row=>ids.includes(row[column]));return builder;};
   builder.then=(resolve:any,reject:any)=>Promise.resolve({data:result,error:null}).then(resolve,reject);
   return builder;
@@ -28,7 +29,7 @@ function client(data:Record<string,any>){
 beforeEach(()=>vi.clearAllMocks());
 describe('limites de autorização',()=>{
  it.each(['waiter','kitchen','bar','driver'] as OperationalRole[])('não consulta nem retorna financeiro para %s',async role=>{
-  const db=client({financial_entries:[{id:'private',amount_cents:90000}],cash_sessions:{id:'cash',initial_cents:20000},audit_logs:[{id:'audit'}],campaigns:[{id:'campaign'}]});
+  const db=client({drivers:[{id:'driver-1',profile_id:'operator',active:true}],financial_entries:[{id:'private',amount_cents:90000}],cash_sessions:{id:'cash',initial_cents:20000},audit_logs:[{id:'audit'}],campaigns:[{id:'campaign'}]});
   mocks.auth.mockResolvedValue(auth(role));mocks.admin.mockReturnValue(db);
   const body=await (await snapshot()).json();
   expect(body.financialEntries).toEqual([]);expect(body.cashInitial).toBe(0);expect(body.cashMovements).toEqual([]);expect(body.audit).toEqual([]);expect(body.campaigns).toEqual([]);

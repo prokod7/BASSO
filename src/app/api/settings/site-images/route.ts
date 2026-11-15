@@ -29,11 +29,10 @@ async function loadSettings(db: Db) {
   return { id: data.id as string, config, site, images };
 }
 
-async function saveImages(db: Db, settings: Awaited<ReturnType<typeof loadSettings>>, images: Record<string, string>) {
-  const { error } = await db.from("business_settings").update({
-    config: { ...settings.config, site: { ...settings.site, images } },
-    updated_at: new Date().toISOString(),
-  }).eq("id", settings.id);
+async function saveImages(db: Db, settings: Awaited<ReturnType<typeof loadSettings>>, images: Record<string, string | null>) {
+  const { error } = await db.rpc("patch_business_settings", { p_id: settings.id, p_patch: {
+    config: { site: { images } }, updated_at: new Date().toISOString(),
+  } });
   if (error) throw error;
 }
 
@@ -57,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (uploadError) throw uploadError;
     const url = db.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
     const previous = settings.images[key];
-    try { await saveImages(db, settings, { ...settings.images, [key]: url }); }
+    try { await saveImages(db, settings, { [key]: url }); }
     catch (error) { await db.storage.from(BUCKET).remove([path]); throw error; }
     const oldPath = storagePathFromPublicUrl(previous);
     if (oldPath && oldPath !== path) await db.storage.from(BUCKET).remove([oldPath]);
@@ -79,8 +78,7 @@ export async function DELETE(request: NextRequest) {
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const settings = await loadSettings(db);
     const previous = settings.images[key];
-    const images = { ...settings.images };
-    delete images[key];
+    const images = { [key]: null };
     await saveImages(db, settings, images);
     const oldPath = storagePathFromPublicUrl(previous);
     if (oldPath) await db.storage.from(BUCKET).remove([oldPath]);

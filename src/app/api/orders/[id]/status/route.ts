@@ -28,11 +28,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const { data: order, error: readError } = await db
       .from("orders")
-      .select("id,channel,status,external_id,external_payload,version,payment_status")
+      .select("id,channel,status,external_id,external_payload,version,payment_status,driver_id")
       .eq("id", id)
       .is("deleted_at", null)
       .single();
     if (readError) throw readError;
+
+    if (auth.role === "driver") {
+      const { data: driver } = await db.from("drivers").select("id").eq("profile_id", auth.userId).eq("active", true).single();
+      if (!driver || order.channel !== "own_delivery" || order.driver_id !== driver.id) throw new Error("Motoboy só pode alterar entregas atribuídas ao próprio perfil.");
+    }
 
     if (body.expectedVersion && Number(order.version || 1) !== body.expectedVersion) {
       return NextResponse.json({

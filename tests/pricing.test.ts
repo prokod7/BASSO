@@ -12,8 +12,8 @@ describe("regras de pizza", () => {
     expect(pizzaBasePrice(pizza({ flavorA: "mozzarella", flavorB: "bella-italia" }))).toBe(6000);
   });
 
-  it("permite dois sabores salgados na Broto", () => {
-    expect(() => validatePizzaSelection(pizza({ size: "broto", flavorB: "calabresa-tradicional" }))).not.toThrow();
+  it("bloqueia dois sabores salgados na Broto", () => {
+    expect(() => validatePizzaSelection(pizza({ size: "broto", flavorB: "calabresa-tradicional" }))).toThrow(/pelo menos um sabor doce/);
   });
 
   it("permite meio a meio entre Tradicional, Premium e Doce", () => {

@@ -245,7 +245,7 @@ export function PizzaBuilder({
     const active = catalog.flavors.filter((item) => item.active);
     if (!flavorPicker) return [];
     if (flavorPicker === "B") {
-      return active.filter((item) => item.id !== currentA.id && arePizzaFlavorsCompatible(currentA, item) && (selection.size !== "broto" || (currentA.category !== "sweet" && item.category !== "sweet")));
+      return active.filter((item) => item.id !== currentA.id && arePizzaFlavorsCompatible(currentA, item, selection.size));
     }
     return active;
   }, [flavorPicker, currentA, selection.size]);
@@ -362,11 +362,11 @@ export function PizzaBuilder({
     setSelection((current) => {
       if (slot === "B") {
         const first = findFlavor(current.flavorA) || currentA;
-        if (!arePizzaFlavorsCompatible(first, nextFlavor) || first.id === nextFlavor.id) return current;
+        if (!arePizzaFlavorsCompatible(first, nextFlavor, current.size) || first.id === nextFlavor.id) return current;
         return { ...current, flavorB: nextFlavor.id, removedB: [] };
       }
       const previousB = current.flavorB ? findFlavor(current.flavorB) : undefined;
-      const keepSecond = Boolean(previousB && previousB.id !== nextFlavor.id && arePizzaFlavorsCompatible(nextFlavor, previousB) && (current.size !== "broto" || (nextFlavor.category !== "sweet" && previousB.category !== "sweet")));
+      const keepSecond = Boolean(previousB && previousB.id !== nextFlavor.id && arePizzaFlavorsCompatible(nextFlavor, previousB, current.size));
       return {
         ...current,
         flavorA: nextFlavor.id,
@@ -395,7 +395,6 @@ export function PizzaBuilder({
 
   const startHalfHalf = () => {
     if (!flavorChosen) { openFlavorPicker("A"); return; }
-    if (selection.size === "broto" && currentA.category === "sweet") return;
     if (currentB) return;
     openFlavorPicker("B");
   };
@@ -404,10 +403,10 @@ export function PizzaBuilder({
     setSelection((current) => ({
       ...current,
       size,
-      flavorB: size === "broto" && (findFlavor(current.flavorA)?.category === "sweet" || findFlavor(current.flavorB || "")?.category === "sweet") ? undefined : current.flavorB,
-      removedB: size === "broto" && (findFlavor(current.flavorA)?.category === "sweet" || findFlavor(current.flavorB || "")?.category === "sweet") ? [] : current.removedB,
+      flavorB: size === "broto" && (current.flavorB && findFlavor(current.flavorA)?.category !== "sweet" && findFlavor(current.flavorB)?.category !== "sweet") ? undefined : current.flavorB,
+      removedB: size === "broto" && (current.flavorB && findFlavor(current.flavorA)?.category !== "sweet" && findFlavor(current.flavorB)?.category !== "sweet") ? [] : current.removedB,
       addonPlacements:
-        size === "broto" && (findFlavor(current.flavorA)?.category === "sweet" || findFlavor(current.flavorB || "")?.category === "sweet")
+        size === "broto" && (current.flavorB && findFlavor(current.flavorA)?.category !== "sweet" && findFlavor(current.flavorB)?.category !== "sweet")
           ? normalizePlacementsWithoutSecondHalf(current.addonPlacements)
           : current.addonPlacements,
     }));
@@ -835,14 +834,13 @@ function PizzaStep({
         <h3 className="mt-1 font-display text-2xl font-black leading-tight">Escolha do seu jeito</h3>
         <p className="mt-1 text-xs leading-relaxed text-black/45">Toque no sabor para trocar. As categorias servem como filtro e não impedem combinações.</p>
 
-        {selection.size === "grande" || currentA.category !== "sweet" ? (
+        {(
           <div className="mt-3 grid grid-cols-2 gap-2">
             <ModeButton active={!isHalfHalf} title="1 sabor" subtitle="Pizza inteira" onClick={onWhole} />
             <ModeButton active={isHalfHalf} title="Meio a meio" subtitle="50% + 50%" onClick={onHalfHalf} />
           </div>
-        ) : (
-          <div className="mt-3 rounded-2xl bg-basso-wine/[.055] px-4 py-3 text-sm font-semibold text-basso-wine">Broto doce aceita um único sabor. A salgada permite dois sabores salgados.</div>
         )}
+        {selection.size === "broto" && <p className="mt-2 text-xs text-basso-wine">Meio a meio: dois doces ou um doce com um salgado. Para dois salgados, escolha Grande.</p>}
 
         <div className="mt-3 space-y-2">
           {!flavorChosen ? (

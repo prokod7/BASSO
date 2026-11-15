@@ -10,11 +10,11 @@ const pizza: CartItem = { id: 'pizza-test', quantity: 1, unitPrice: 6000, kind: 
 describe('detalhes e impressão dos pedidos', () => {
  it('agrupa retirada e adicional logo abaixo do sabor correto', () => {
   const lines = itemDetails(pizza).map(x => x.text);
-  const a = lines.indexOf('½ Baiana'), b = lines.indexOf('½ Troiana');
+  const a = lines.indexOf('1/2 Baiana'), b = lines.indexOf('1/2 Troiana');
   expect(lines[a + 1]).toBe('  SEM molho de pimenta');
-  expect(lines[a + 2]).toBe('  + 1x Queijo coalho especial');
+  expect(lines[a + 2]).toBe('1x (Queijo coalho especial — Baiana)');
   expect(lines[b + 1]).toBe('  SEM parmesão');
-  expect(lines.filter(x => x.includes('pizza inteira'))).toHaveLength(1);
+  expect(lines.filter(x => x.includes('Pizza inteira'))).toHaveLength(1);
   expect(compactItemName(pizza)).toBe('Pizza Grande');
  });
  it('resolve nomes persistidos e não duplica bebida do combo', () => {

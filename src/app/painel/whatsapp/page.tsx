@@ -51,6 +51,11 @@ export default function WhatsAppInboxPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  useEffect(() => {
+    const select = () => { const id = new URLSearchParams(window.location.search).get("session"); if (id) { setSelected(id); void post({ action: "read", id }).catch(() => undefined); } };
+    select(); window.addEventListener("popstate", select); window.addEventListener("lfb:open-wa-session", select);
+    return () => { window.removeEventListener("popstate", select); window.removeEventListener("lfb:open-wa-session", select); };
+  }, []);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "human">("all");

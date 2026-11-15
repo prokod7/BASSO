@@ -42,6 +42,10 @@ export async function requireOperationalRole(allowed: OperationalRole[], permiss
   if (profile.must_change_password) throw new Error("Troque sua senha antes de continuar a operação.");
 
   const role = profile.role as OperationalRole;
+  if (role === "driver") {
+    const { data: accepted, error: termsError } = await client.rpc("has_driver_authorization");
+    if (termsError || accepted !== true) throw new Error("Aceite a autorização do motoboy antes de continuar.");
+  }
   if (!allowed.includes(role)) throw new Error("Acesso não autorizado para este perfil.");
 
   const permissions = (profile.permissions && typeof profile.permissions === "object" ? profile.permissions : {}) as Record<string, boolean>;

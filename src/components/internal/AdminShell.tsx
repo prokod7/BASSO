@@ -16,6 +16,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn, isDemoMode } from "@/lib/utils";
 import { OperationalHydrator, type OperationalStatusDetail } from "@/components/internal/OperationalHydrator";
 import { GlobalSearchDialog } from "@/components/internal/GlobalSearchDialog";
+import { WhatsAppHandoffAlert } from "@/components/internal/WhatsAppHandoffAlert";
 import { NotificationCenter } from "@/components/internal/NotificationCenter";
 import { playNewOrderSound, ringForNewOrders } from "@/lib/order-notification-sound";
 import { StoreControlPanel } from "@/components/internal/StoreControlPanel";
@@ -98,6 +99,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [userName, setUserName] = useState(isDemoMode() ? "Gestor Demo" : "Gestor");
+  const [profileReady, setProfileReady] = useState(isDemoMode());
   const [role, setRole] = useState<RoleKey>("manager");
   const [storePanel, setStorePanel] = useState(false);
   const [storeStatus, setStoreStatus] = useState<ExtendedStoreRuntimeStatus>(isDemoMode() ? { ...initialStoreStatus, operationalStatus: "open", acceptingOrders: true } : initialStoreStatus);
@@ -159,6 +161,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           const { data: profile } = await client.from("profiles").select("display_name,role,must_change_password,last_seen_at").eq("id", currentUser.id).maybeSingle();
           if (profile?.display_name) setUserName(profile.display_name);
           if (profile?.role && profile.role in roleLabels) setRole(profile.role as RoleKey);
+          setProfileReady(true);
           if (profile?.must_change_password) router.replace("/trocar-senha");
         })().catch(() => setStatus({ status: "error", message: "Não foi possível carregar o perfil do usuário." }));
       }
@@ -243,6 +246,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
+      <WhatsAppHandoffAlert enabled={profileReady && !isDemoMode() && (role === "manager" || role === "counter")} />
       {(status.status === "error" || status.status === "offline") && <div className={`border-b px-4 py-2 text-center text-xs font-semibold sm:px-6 ${status.status === "offline" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-red-200 bg-red-50 text-red-700"}`}>{status.message}</div>}
       <main className="min-h-[calc(100dvh-4rem)] p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 lg:p-8">{children}</main>
     </div>

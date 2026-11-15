@@ -26,8 +26,8 @@ export function flavorPrice(flavor: Flavor, size: PizzaSelection["size"]): numbe
  * As categorias existem para organizar e filtrar o cardápio.
  * Na Pizza Grande, qualquer sabor ativo pode dividir meio a meio com outro sabor ativo.
  */
-export function arePizzaFlavorsCompatible(_a: Flavor, _b: Flavor): boolean {
-  return true;
+export function arePizzaFlavorsCompatible(a: Flavor, b: Flavor, size: PizzaSelection["size"] = "grande"): boolean {
+  return size !== "broto" || a.category === "sweet" || b.category === "sweet";
 }
 
 export function validatePizzaSelection(selection: PizzaSelection, flavorList: Flavor[] = catalog.flavors, addonList: Addon[] = catalog.addons): void {
@@ -44,7 +44,7 @@ export function validatePizzaSelection(selection: PizzaSelection, flavorList: Fl
     if (b.id === a.id) throw new PricingError("Escolha dois sabores diferentes para o meio a meio.");
   }
 
-  if (selection.size === "broto" && b && (a.category === "sweet" || b.category === "sweet")) throw new PricingError("Broto doce aceita somente um sabor. Na broto salgada, escolha até dois sabores salgados.");
+  if (b && !arePizzaFlavorsCompatible(a, b, selection.size)) throw new PricingError("Broto meio a meio precisa de pelo menos um sabor doce. Dois sabores salgados estão disponíveis somente na Grande.");
 
   const sweetSelection = selection as SweetPizzaMetadata;
   const hasSweetFlavor = a.category === "sweet" || b?.category === "sweet";

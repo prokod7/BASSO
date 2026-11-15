@@ -85,7 +85,7 @@ export function compactCatalog(menu: RuntimeMenu, zones: Zone[], store: { name: 
   lines.push(
     "REGRAS DA PIZZA (preços em R$; G = Grande, B = Broto)",
     "- Grande: 1 ou 2 sabores (meio a meio cobra metade do preço de cada sabor). Qualquer sabor combina com qualquer outro na Grande.",
-    "- Broto: salgada aceita 1 ou 2 sabores salgados; Broto doce só 1 sabor.",
+    "- Broto: inteira de qualquer sabor; meio a meio somente dois doces ou um doce com um salgado. Nunca dois salgados.",
     "- Borda: todas saem com a borda tradicional da casa. NÃO existem bordas recheadas nem opções de borda.",
     masses.length > 1
       ? `- Massas: ${masses.map((m, i) => `${m.name}${i === 0 ? " (padrão)" : ""}${m.price ? ` +${reais(m.price)}` : ""}`).join("; ")}. Pergunte uma vez qual massa.`

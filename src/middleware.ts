@@ -53,16 +53,27 @@ export async function middleware(request: NextRequest) {
   }
 
   const { data: profile, error } = await supabase.from("profiles")
-    .select("active,must_change_password").eq("id", user.id).maybeSingle();
+    .select("active,must_change_password,role").eq("id", user.id).maybeSingle();
   if (error || !profile?.active) return redirect(new URL("/login?error=access", request.url));
   if (profile.must_change_password && request.nextUrl.pathname !== "/trocar-senha") {
     return redirect(new URL("/trocar-senha", request.url));
   }
 
+  if (profile.role === "driver" && !profile.must_change_password) {
+    const { data: accepted, error: termsError } = await supabase.rpc("has_driver_authorization");
+    if ((termsError || accepted !== true) && request.nextUrl.pathname !== "/autorizacao-motoboy") {
+      return redirect(new URL("/autorizacao-motoboy", request.url));
+    }
+    if (!termsError && accepted === true && (request.nextUrl.pathname === "/painel" || request.nextUrl.pathname === "/autorizacao-motoboy")) {
+      return redirect(new URL("/painel/motoboy", request.url));
+    }
+  } else if (request.nextUrl.pathname === "/autorizacao-motoboy" && profile.role !== "driver") {
+    return redirect(new URL("/painel", request.url));
+  }
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
 
 export const config = {
-  matcher: ["/painel/:path*", "/garcom/:path*", "/trocar-senha"],
+  matcher: ["/painel/:path*", "/garcom/:path*", "/trocar-senha", "/autorizacao-motoboy"],
 };

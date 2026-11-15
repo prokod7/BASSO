@@ -60,10 +60,15 @@ async function loadDetail(db: NonNullable<ReturnType<typeof createAdminClient>>,
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance", "viewer"], "orders.view");
+    const auth = await requireOperationalRole(["manager", "counter", "waiter", "kitchen", "bar", "driver", "finance", "viewer"], "orders.view");
     const { id } = await params;
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
+    if (auth.role === "driver") {
+      const { data: driver } = await db.from("drivers").select("id").eq("profile_id", auth.userId).eq("active", true).single();
+      const { data: order } = await db.from("orders").select("channel,status,driver_id").eq("id", id).single();
+      if (!driver || !order || order.channel !== "own_delivery" || (order.driver_id !== driver.id && !(order.status === "ready" && !order.driver_id))) throw new Error("Pedido não autorizado para este motoboy.");
+    }
     return NextResponse.json({ order: await loadDetail(db, id) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao carregar o pedido." }, { status: 400 });
@@ -136,6 +141,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       await db.from("audit_logs").insert({ actor_id: actorId, actor_label: auth.displayName, action: "ORDER_INCIDENT_RESOLVED", entity_type: "order_incident", entity_id: body.incidentId, reason: body.resolution, before_data: before });
     }
 
+    if (auth.role === "driver") {
+      const { data: driver } = await db.from("drivers").select("id").eq("profile_id", auth.userId).eq("active", true).single();
+      const { data: order } = await db.from("orders").select("channel,status,driver_id").eq("id", id).single();
+      if (!driver || !order || order.channel !== "own_delivery" || (order.driver_id !== driver.id && !(order.status === "ready" && !order.driver_id))) throw new Error("Pedido não autorizado para este motoboy.");
+    }
     return NextResponse.json({ order: await loadDetail(db, id) });
   } catch (error) {
     return NextResponse.json({ error: apiErrorMessage(error, "Falha ao atualizar o pedido.") }, { status: 400 });

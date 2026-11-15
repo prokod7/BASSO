@@ -22,11 +22,11 @@ export function itemDetails(item: Pick<CartItem, "selection">): Detail[] {
   const extras = (place: string) => {
     for (const [id, qty] of Object.entries(s.addons || {})) {
       if (Number(qty) > 0 && (s.addonPlacements?.[id] || "whole") === place)
-        lines.push({ text: `  + ${qty}x ${addon(id)}${place === "whole" && b ? " • pizza inteira" : ""}`, emphasis: true });
+        lines.push({ text: `${qty}x (${addon(id)} — ${place === "halfA" ? flavor(a) : place === "halfB" ? flavor(b) : "Pizza inteira"})`, emphasis: true });
     }
   };
   const part = (id: string, removed: unknown, place: string) => {
-    lines.push({ text: `${b ? "½ " : ""}${flavor(id)}`, emphasis: true });
+    lines.push({ text: `${b ? "1/2 " : ""}${flavor(id)}`, emphasis: true });
     if (Array.isArray(removed) && removed.length)
       lines.push({ text: `  SEM ${removed.filter(x => typeof x === "string").join(", ")}`, emphasis: true });
     extras(place);

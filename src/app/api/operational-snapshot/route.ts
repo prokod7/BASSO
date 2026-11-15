@@ -22,15 +22,23 @@ export async function GET() {
     const hidden = () => Promise.resolve({ data: [] as any[], error: null });
     const hiddenCash = () => Promise.resolve({ data: null, error: null });
 
+    let ownDriverId: string | null = null;
+    if (auth.role === "driver") {
+      const owned = await db.from("drivers").select("id").eq("profile_id", auth.userId).eq("active", true).single();
+      if (owned.error || !owned.data) throw new Error("Cadastro operacional do motoboy não encontrado.");
+      ownDriverId = owned.data.id;
+    }
+    let recentQuery = db.from("orders").select("*").is("deleted_at", null).gte("created_at", operationalDayStart().toISOString());
+    if (ownDriverId) recentQuery = recentQuery.eq("channel", "own_delivery").or(`driver_id.eq.${ownDriverId},and(driver_id.is.null,status.eq.ready)`);
+    let driverQuery = db.from("drivers").select("*").eq("active", true);
+    if (ownDriverId) driverQuery = driverQuery.eq("id", ownDriverId);
     // Núcleo crítico: se uma destas consultas falhar, não fabricamos uma operação vazia.
     const [recentOrdersR, tablesR, tabsR, driversR] = await Promise.all([
       // Limpeza diária às 3h: só pedidos do dia de operação atual (inclusive os que não tiveram baixa somem).
-      db.from("orders").select("*").is("deleted_at", null)
-        .gte("created_at", operationalDayStart().toISOString())
-        .order("created_at", { ascending: false }).limit(250),
-      db.from("restaurant_tables").select("*").order("number"),
-      db.from("tabs").select("*").in("status", ["open", "partial"]),
-      db.from("drivers").select("*").eq("active", true),
+      recentQuery.order("created_at", { ascending: false }).limit(250),
+      ownDriverId ? hidden() : db.from("restaurant_tables").select("*").order("number"),
+      ownDriverId ? hidden() : db.from("tabs").select("*").in("status", ["open", "partial"]),
+      driverQuery,
     ]);
 
     for (const [label, result] of [
