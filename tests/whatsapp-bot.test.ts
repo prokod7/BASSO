@@ -51,7 +51,7 @@ describe("cardápio compacto da Basso", () => {
   it("a instrução não pergunta borda e oferece pudim e vinho", () => {
     const text = instructions({ name: "La Forneria Basso", menuUrl: "https://x.test" });
     expect(text).toMatch(/Borda: NÃO pergunte/);
-    expect(text).toContain("Pudim no Copo Americano");
+    expect(text).toContain("*Pudim no Copo*");
     expect(text).toMatch(/vinho/i);
     expect(JSON.stringify(toolSchema)).not.toMatch(/border|borda/i);
   });

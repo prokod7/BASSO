@@ -195,7 +195,7 @@ export function inboxBody(m: {
 
 /** Sends a public image (JPEG/PNG URL), e.g. the menu pictures. */
 /** Sends a public file by link: PDF as a document (keeps its name), otherwise a photo. */
-export async function sendMedia(to: string, link: string, callback: string) {
+export async function sendMedia(to: string, link: string, callback: string, caption?: string) {
   const media = /\.pdf$/i.test(link)
     ? {
         type: "document",
@@ -204,7 +204,7 @@ export async function sendMedia(to: string, link: string, callback: string) {
           filename: decodeURIComponent(link.split("/").pop() ?? "Cardapio.pdf"),
         },
       }
-    : { type: "image", image: { link } };
+    : { type: "image", image: { link, ...(caption ? { caption } : {}) } };
   const res = await fetch(
     `https://api.dualhook.com/v25.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
     {
