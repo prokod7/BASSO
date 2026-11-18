@@ -9,6 +9,8 @@ type Claimed = { id: string; order_id: string | null; sector: string; is_reprint
 type Printed = { at: string; label: string; ok: boolean; error?: string };
 
 const POLL_MS = 5000;
+const IDLE_POLL_MS = 12000;
+const EMPTY_POLLS_BEFORE_IDLE = 3;
 const STORE_KEY = "lfb-print-station";
 
 async function acknowledge(job: Claimed, ok: boolean, error?: string) {
@@ -89,6 +91,7 @@ export default function AutoPrintStation() {
         await acknowledge(job, true);
         setLog((l) => [{ at: new Date().toLocaleTimeString("pt-BR"), label, ok: true }, ...l].slice(0, 30));
       }
+      return Array.isArray(body.jobs) && body.jobs.length === 0;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Sem conexão com o sistema.");
     } finally {
@@ -101,9 +104,12 @@ export default function AutoPrintStation() {
     const controller = new AbortController();
     const { signal } = controller;
     const poll = async () => {
+      let emptyPolls = 0;
       while (!signal.aborted) {
         const started = Date.now();
-        await tick();
+        const empty = await tick();
+        emptyPolls = empty ? emptyPolls + 1 : 0;
+        const interval = emptyPolls >= EMPTY_POLLS_BEFORE_IDLE ? IDLE_POLL_MS : POLL_MS;
         if (signal.aborted) break;
         await new Promise<void>((resolve) => {
           const finish = () => {
@@ -111,7 +117,7 @@ export default function AutoPrintStation() {
             signal.removeEventListener("abort", finish);
             resolve();
           };
-          const timer = window.setTimeout(finish, Math.max(0, POLL_MS - (Date.now() - started)));
+          const timer = window.setTimeout(finish, Math.max(0, interval - (Date.now() - started)));
           signal.addEventListener("abort", finish, { once: true });
         });
       }
