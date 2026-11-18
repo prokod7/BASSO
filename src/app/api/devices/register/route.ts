@@ -9,7 +9,7 @@ const schema = z.object({
   label: z.string().min(2).max(120),
   provider: z.string().max(80).optional(),
   serial: z.string().max(120).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function POST(request: NextRequest) {

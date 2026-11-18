@@ -12,7 +12,7 @@ const createSchema = z.object({
   dueAt: z.string().datetime().nullable().optional(),
   sourceType: z.string().max(80).nullable().optional(),
   sourceId: z.string().max(160).nullable().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function GET(request: NextRequest) {

@@ -12,7 +12,7 @@ const createSchema = z.object({
   title: z.string().min(2).max(180),
   body: z.string().max(2000).default(""),
   href: z.string().max(500).nullable().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function GET(request: NextRequest) {

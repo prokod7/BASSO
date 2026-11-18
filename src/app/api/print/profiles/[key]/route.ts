@@ -10,12 +10,12 @@ const schema = z.object({
   widthMm: z.union([z.literal(58), z.literal(80)]).optional(),
   paperColumns: z.number().int().min(24).max(64).optional(),
   connectionType: z.enum(["usb", "network", "wifi", "bluetooth", "system"]).optional(),
-  connectionConfig: z.record(z.unknown()).optional(),
+  connectionConfig: z.record(z.string(), z.unknown()).optional(),
   sector: z.string().min(2).max(80).optional(),
   autoPrint: z.boolean().optional(),
   copies: z.number().int().min(1).max(5).optional(),
   active: z.boolean().optional(),
-  template: z.record(z.unknown()).optional(),
+  template: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ key: string }> }) {

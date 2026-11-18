@@ -9,7 +9,7 @@ const createSchema = z.object({
   entityType: z.string().min(2).max(80),
   entityId: z.string().min(1).max(160),
   reason: z.string().min(2).max(1000),
-  requestedPayload: z.record(z.unknown()).default({}),
+  requestedPayload: z.record(z.string(), z.unknown()).default({}),
   expiresAt: z.string().datetime().nullable().optional(),
 });
 

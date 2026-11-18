@@ -39,7 +39,7 @@ const schema = z.object({
       }).refine(m => m.traditional.active || m.integral.active, "Deixe pelo menos uma massa disponível."),
     }).optional(),
     site: z.object({
-      sectionSubtitles: z.record(z.enum(["featured","traditional","premium","sweet"]), z.string().max(240).nullable()).optional(),
+      sectionSubtitles: z.partialRecord(z.enum(["featured","traditional","premium","sweet"]), z.string().max(240).nullable()).optional(),
       heroBadge: z.string().max(80).nullable().optional(),
       heroTitle: z.string().max(120).nullable().optional(),
       heroSubtitle: z.string().max(300).nullable().optional(),

@@ -13,7 +13,7 @@ const schema = z.object({
   stockTracked: z.boolean().default(false),
   active: z.boolean().default(true),
   channels: z.array(channel).min(1).default(["own_delivery", "pickup", "counter", "dine_in", "table_qr"]),
-  schedule: z.record(z.any()).default({}),
+  schedule: z.record(z.string(), z.any()).default({}),
   allergens: z.array(z.string().min(1).max(120)).max(30).default([]),
   imageUrl: z.string().max(1000).nullable().optional(),
 });
