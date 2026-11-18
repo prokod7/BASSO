@@ -7,7 +7,7 @@ import type { PizzaSelection } from "@/types";
 import { compactCatalog, matchDistrict, resolveDraft, type Draft, type DraftItem, type Zone } from "@/lib/whatsapp/catalog";
 import { affirmative, confirmation, ordersContext, pickLead, phoneVariants, summarize, type Pending } from "@/lib/whatsapp/domain";
 import { judgeReceipt } from "@/lib/whatsapp/pix";
-import { assistantTurn, CONFIRM_LINE, firstContactGuard, HUMAN_REPLY } from "@/lib/whatsapp/turn";
+import { assistantTurn, CONFIRM_LINE, firstContactGuard, HUMAN_REPLY, PUDDING_OFFER } from "@/lib/whatsapp/turn";
 import { pendingAfter } from "@/lib/whatsapp/turnRules";
 import { toolSchema, instructions } from "@/lib/whatsapp/ai";
 import { namesFor, type BotContext } from "@/lib/whatsapp/order";
@@ -48,11 +48,11 @@ describe("cardápio compacto da Basso", () => {
   it("gera códigos estáveis para o mesmo cardápio (cache de prompt)", () => {
     expect(compactCatalog(menu, zones, store).text).toBe(catalog.text);
   });
-  it("a instrução não pergunta borda e oferece pudim e vinho", () => {
+  it("a instrução não pergunta borda e oferece pudim sem sugerir bebidas", () => {
     const text = instructions({ name: "La Forneria Basso", menuUrl: "https://x.test" });
     expect(text).toMatch(/Borda: NÃO pergunte/);
-    expect(text).toContain("*Pudim no Copo*");
-    expect(text).toMatch(/vinho/i);
+    expect(text).toContain("Pudim no Copo: Tradicional");
+    expect(text).toContain("Não ofereça bebidas, refrigerantes ou vinhos");
     expect(JSON.stringify(toolSchema)).not.toMatch(/border|borda/i);
   });
 });
@@ -161,6 +161,15 @@ describe("turno da atendente", () => {
     return { quote: { subtotal, discount: 0, deliveryFee: 0, total: subtotal }, basket: { ...basket, items } };
   });
   const ai = (result: object) => vi.fn(async () => ({ action: "reply" as const, reply: "ok", order: null, sendMenu: false, usage: {}, ...result }));
+
+  it("evita nova oferta de pudim quando a IA repete a oferta depois da recusa", async () => {
+    const turn = await assistantTurn({
+      history: [{ role: "assistant", content: PUDDING_OFFER }, { role: "user", content: "sem sobremesa" }],
+      texts: ["sem sobremesa"], context, phone: "5511", quote, ai: ai({ reply: PUDDING_OFFER }),
+    });
+    expect(turn.response).toContain("finalizar?");
+    expect(turn.response).not.toContain("Pudim");
+  });
 
   it("prepara o resumo com massa, adicional por metade e pudim", async () => {
     const order = draft([

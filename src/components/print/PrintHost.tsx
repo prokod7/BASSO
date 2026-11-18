@@ -39,11 +39,11 @@ async function loadVerification(order: OrderDetail) {
 
 /** Abre a impressão. afterprint também dispara ao cancelar; sem afterprint (kiosk), segue em 1,5 s. */
 function printNow() {
-  return new Promise<void>((resolve) => {
+  return new Promise<void>((resolve, reject) => {
     let done = false;
     const finish = () => { if (done) return; done = true; window.removeEventListener("afterprint", finish); resolve(); };
     window.addEventListener("afterprint", finish);
-    try { window.print(); } catch { /* segue */ }
+    try { window.print(); } catch (error) { window.removeEventListener("afterprint", finish); reject(error); return; }
     if (!done) window.setTimeout(finish, 1500);
   });
 }
