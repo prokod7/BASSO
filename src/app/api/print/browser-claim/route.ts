@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
   try {
     await requireOperationalRole(["manager", "counter", "kitchen", "bar"], "kds.manage");
     const body = schema.parse(await request.json());
-    if (body.protocol !== 2) return NextResponse.json({ error: "Atualize esta janela para retomar a impressão automática." }, { status: 409 });
     const db = createAdminClient();
     if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
     const now = Date.now();
@@ -38,7 +37,7 @@ export async function POST(request: NextRequest) {
     if (!waiting?.length) return NextResponse.json({ jobs: [] });
     const { data: claimed, error } = await db
       .from("print_jobs")
-      .update({ status: "processing", processed_at: new Date().toISOString(), last_error: null })
+      .update({ status: "processing", processed_at: new Date().toISOString(), last_error: body.protocol === 2 ? null : "Reserva de estação anterior" })
       .in("id", waiting.map((job) => job.id))
       .eq("status", "queued")
       .select("id,order_id,sector,is_reprint,created_at,processed_at");
