@@ -2,7 +2,6 @@
   "baseUrl": "https://basso-seven.vercel.app",
   "apiKey": "USE-A-MESMA-PRINT_BRIDGE_KEY-DA-VERCEL",
   "pollIntervalMs": 2500,
-  "batchSize": 3,
   "paperColumns": 42,
   "printers": {
     "cozinha": { "type": "system", "name": "NOME-EXATO-DA-EPSON-NO-WINDOWS" },

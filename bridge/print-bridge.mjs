@@ -155,17 +155,19 @@ async function heartbeat() {
 
 async function cycle() {
   await heartbeat();
-  const { jobs = [] } = await request("/api/print/claim", { limit: Number(config.batchSize || 3) });
+  const { jobs = [] } = await request("/api/print/claim", { printers: Object.keys(config.printers || {}) });
   for (const job of jobs) {
+    let errorMessage;
     try {
       await print(job);
-      await request("/api/print/complete", { jobId: job.id, success: true });
-      console.log(`[OK] ${job.id} -> ${job.printer_key}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await request("/api/print/complete", { jobId: job.id, success: false, error: message }).catch(() => undefined);
-      console.error(`[ERRO] ${job.id}: ${message}`);
+      errorMessage = error instanceof Error ? error.message : String(error);
     }
+    await request("/api/print/complete", {
+      jobId: job.id, claimTime: job.claimed_at, success: errorMessage === undefined, error: errorMessage,
+    });
+    if (errorMessage !== undefined) console.error(`[ERRO] ${job.id}: ${errorMessage}`);
+    else console.log(`[ENVIADO] ${job.id} -> ${job.printer_key}`);
   }
 }
 
