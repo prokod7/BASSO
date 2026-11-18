@@ -72,8 +72,12 @@ export type TurnResult = {
   historyNote?: string;
 };
 
-export const PUDDING_OFFER = "Para finalizar, gostaria de incluir uma sobremesa em seu pedido?\n*Pudim no Copo*:Tradicional, Frutas Vermelhas, Limão Siciliano e Maracujá - R$15,00 Unidade.💛";
+export const PUDDING_OFFER = "Para finalizar, gostaria de incluir uma sobremesa em seu pedido?\n\nPudim no Copo: Tradicional, Frutas Vermelhas, Limão Siciliano e Maracujá — R$ 15,00 a unidade. 💛";
 export const PUDDING_IMAGE = "https://basso-seven.vercel.app/assets/whatsapp/pudim-basso.jpg";
+const PREVIOUS_PUDDING_OFFER = "Para finalizar, gostaria de incluir uma sobremesa em seu pedido?\n*Pudim no Copo*:Tradicional, Frutas Vermelhas, Limão Siciliano e Maracujá - R$15,00 Unidade.💛";
+export function isPuddingOffer(text: string | null | undefined) {
+  return text === PUDDING_OFFER || text === PREVIOUS_PUDDING_OFFER;
+}
 export const PROMO_SENT_NOTE = "[imagem da promoção enviada]";
 
 /**

@@ -12,6 +12,6 @@ describe('oferta de pudim', () => {
     const payload=JSON.parse(fetcher.mock.calls[0][1].body);
     expect(payload.type).toBe('image');
     expect(payload.image).toEqual({link:PUDDING_IMAGE,caption:PUDDING_OFFER});
-    expect(payload.image.caption).toContain('Limão Siciliano e Maracujá - R$15,00 Unidade.💛');
+    expect(payload.image.caption).toBe('Para finalizar, gostaria de incluir uma sobremesa em seu pedido?\n\nPudim no Copo: Tradicional, Frutas Vermelhas, Limão Siciliano e Maracujá — R$ 15,00 a unidade. 💛');
   });
 });

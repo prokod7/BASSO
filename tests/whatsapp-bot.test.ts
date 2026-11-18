@@ -48,11 +48,11 @@ describe("cardápio compacto da Basso", () => {
   it("gera códigos estáveis para o mesmo cardápio (cache de prompt)", () => {
     expect(compactCatalog(menu, zones, store).text).toBe(catalog.text);
   });
-  it("a instrução não pergunta borda e oferece pudim e vinho", () => {
+  it("a instrução não pergunta borda e oferece pudim sem sugerir bebidas", () => {
     const text = instructions({ name: "La Forneria Basso", menuUrl: "https://x.test" });
     expect(text).toMatch(/Borda: NÃO pergunte/);
-    expect(text).toContain("*Pudim no Copo*");
-    expect(text).toMatch(/vinho/i);
+    expect(text).toContain("Pudim no Copo: Tradicional");
+    expect(text).toContain("Não ofereça bebidas, refrigerantes ou vinhos");
     expect(JSON.stringify(toolSchema)).not.toMatch(/border|borda/i);
   });
 });

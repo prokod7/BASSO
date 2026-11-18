@@ -5,11 +5,20 @@ import { CheckCircle2, PauseCircle, PlayCircle, Printer, TriangleAlert } from "l
 import { requestPrint } from "@/components/print/PrintHost";
 
 type Settings = { on: boolean; kitchen: boolean; counter: boolean; copies: number };
-type Claimed = { id: string; order_id: string | null; sector: string; is_reprint: boolean; created_at: string };
+type Claimed = { id: string; order_id: string | null; sector: string; is_reprint: boolean; created_at: string; processed_at: string };
 type Printed = { at: string; label: string; ok: boolean; error?: string };
 
 const POLL_MS = 5000;
 const STORE_KEY = "lfb-print-station";
+
+async function acknowledge(job: Claimed, ok: boolean, error?: string) {
+  const response = await fetch("/api/print/browser-done", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jobId: job.id, claimTime: job.processed_at, ok, error }),
+  });
+  if (!response.ok) throw new Error("Falha ao registrar o resultado. Confira a fila e o papel antes de reimprimir.");
+}
 
 function loadSettings(): Settings {
   const base: Settings = { on: false, kitchen: true, counter: true, copies: 1 };
@@ -38,7 +47,7 @@ export default function AutoPrintStation() {
   const [error, setError] = useState("");
   const [log, setLog] = useState<Printed[]>([]);
   const busy = useRef(false);
-  const failures = useRef<Record<string, number>>({});
+
 
   useEffect(() => { setSettings(loadSettings()); }, []);
   useEffect(() => { if (settings) try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch { /* ignore */ } }, [settings]);
@@ -60,7 +69,7 @@ export default function AutoPrintStation() {
     if (!sectors.length) return;
     busy.current = true;
     try {
-      const response = await fetch("/api/print/browser-claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sectors }), cache: "no-store" });
+      const response = await fetch("/api/print/browser-claim", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sectors, protocol: 2 }), cache: "no-store" });
       const body = (await response.json().catch(() => ({}))) as { jobs?: Claimed[]; error?: string };
       if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "Sessão expirada: entre de novo no sistema nesta janela." : body.error || "Falha ao consultar a fila.");
       setError("");
@@ -68,17 +77,17 @@ export default function AutoPrintStation() {
       for (const job of body.jobs || []) {
         const label = `${job.sector === "counter" ? "Entrega/balcão" : "Cozinha"}${job.order_id ? "" : " • teste"}${job.is_reprint ? " (reimpressão)" : ""}`;
         try {
-          if ((failures.current[job.id] || 0) >= 3) throw new Error("Falhou 3 vezes; imprima manualmente pelo pedido.");
-          if (job.order_id) await requestPrint({ orderId: job.order_id, types: [job.sector === "counter" ? "entrega" : "cozinha"], copies: settings.copies, source: "print_page" });
+
+          if (job.order_id) await requestPrint({ orderId: job.order_id, types: [job.sector === "counter" ? "entrega" : "cozinha"], copies: job.sector === "kitchen" ? 1 : settings.copies, source: "print_page" });
           else await requestPrint({ test: true, types: [] });
-          await fetch("/api/print/browser-done", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jobId: job.id, ok: true }) });
-          setLog((l) => [{ at: new Date().toLocaleTimeString("pt-BR"), label, ok: true }, ...l].slice(0, 30));
         } catch (cause) {
-          failures.current[job.id] = (failures.current[job.id] || 0) + 1;
           const message = cause instanceof Error ? cause.message : "Falha ao imprimir";
-          await fetch("/api/print/browser-done", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jobId: job.id, ok: (failures.current[job.id] || 0) >= 3, error: message }) }).catch(() => undefined);
           setLog((l) => [{ at: new Date().toLocaleTimeString("pt-BR"), label, ok: false, error: message }, ...l].slice(0, 30));
+          await acknowledge(job, false, message);
+          continue;
         }
+        await acknowledge(job, true);
+        setLog((l) => [{ at: new Date().toLocaleTimeString("pt-BR"), label, ok: true }, ...l].slice(0, 30));
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Sem conexão com o sistema.");
@@ -119,7 +128,7 @@ export default function AutoPrintStation() {
           <label className="mt-2 flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm font-semibold"><input type="checkbox" checked={settings.counter} onChange={(e) => set({ counter: e.target.checked })} /> Via de entrega/balcão (completa)</label>
         </fieldset>
         <div>
-          <label className="label" htmlFor="ps-copies">Cópias de cada via</label>
+          <label className="label" htmlFor="ps-copies">Cópias por via (cozinha sempre 1)</label>
           <select id="ps-copies" className="input mt-2" value={settings.copies} onChange={(e) => set({ copies: Number(e.target.value) })}>
             {[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
