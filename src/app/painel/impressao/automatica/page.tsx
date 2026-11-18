@@ -98,10 +98,35 @@ export default function AutoPrintStation() {
 
   useEffect(() => {
     if (!settings?.on) return;
-    void tick();
-    const timer = window.setInterval(() => void tick(), POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [settings?.on, tick]);
+    const controller = new AbortController();
+    const { signal } = controller;
+    const poll = async () => {
+      while (!signal.aborted) {
+        const started = Date.now();
+        await tick();
+        if (signal.aborted) break;
+        await new Promise<void>((resolve) => {
+          const finish = () => {
+            window.clearTimeout(timer);
+            signal.removeEventListener("abort", finish);
+            resolve();
+          };
+          const timer = window.setTimeout(finish, Math.max(0, POLL_MS - (Date.now() - started)));
+          signal.addEventListener("abort", finish, { once: true });
+        });
+      }
+    };
+    if (navigator.locks) {
+      const key = [STORE_KEY, settings.kitchen, settings.counter, settings.copies].join(":");
+      setStatus("Aguardando a estação de impressão neste navegador…");
+      void navigator.locks.request(key, { signal }, poll).catch(() => {
+        if (!signal.aborted) void poll();
+      });
+    } else {
+      void poll();
+    }
+    return () => controller.abort();
+  }, [settings, tick]);
 
   if (!settings) return null;
   const set = (patch: Partial<Settings>) => setSettings((s) => (s ? { ...s, ...patch } : s));
