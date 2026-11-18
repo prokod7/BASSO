@@ -23,3 +23,7 @@ A Vercel não consegue acessar uma impressora USB dentro da pizzaria. O Print Br
 - Job `failed`: consulte `last_error`, corrija driver/nome/conexão e reprocese.
 
 Os jobs históricos anteriores ao MU08 são cancelados pela migration 018 para impedir que pedidos antigos sejam impressos em massa na primeira ativação.
+
+Na instalação com três computadores, mantenha em cada config.json somente os destinos atendidos por aquela estação. Dois balcões com o destino counter compartilham a mesma fila. A indicação de uma via exclusiva para um determinado balcão exige destinos distintos na origem do trabalho.
+
+Atualize o script local junto com a API que aceita a lista de impressoras. Cada consulta reserva uma via. Um resultado incerto após a entrega ao serviço exige conferência do papel antes da reimpressão. O status done informa que a chamada de saída terminou. No modo file, isso registra apenas a gravação de um arquivo. Trabalhos antigos só voltam pelo comando manual do painel.
