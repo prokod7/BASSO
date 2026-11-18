@@ -116,7 +116,12 @@ export async function assistantTurn(opts: {
   const reply = firstReply ? result.reply : withoutGreeting(result.reply);
   let response = result.sendMenu ? withMenuLink(reply, store.menuUrl) : reply;
   // O texto fixo identifica a oferta no job persistido, inclusive em retomadas.
-  if (result.action === "reply" && /pudim/i.test(response) && /incluir.{0,40}sobremesa/i.test(response) && /\?/.test(response)) response = PUDDING_OFFER;
+  if (result.action === "reply" && /pudim/i.test(response) && /incluir.{0,40}sobremesa/i.test(response) && /\?/.test(response)) {
+    const previous = history.filter((turn) => turn.role === "assistant");
+    const lastOrder = previous.map((turn) => /^(?:Pedido nº \d+ confirmado ✅|Comprovante conferido ✅ Seu pedido nº)/.test(turn.content)).lastIndexOf(true);
+    const alreadyOffered = previous.slice(lastOrder + 1).some((turn) => isPuddingOffer(turn.content));
+    response = alreadyOffered ? "Podemos seguir com o seu pedido. Quer ajustar algum item ou finalizar?" : PUDDING_OFFER;
+  }
   // Imagem da promoção só uma vez por conversa.
   const promoAlreadySent = history.some((t) => t.role === "assistant" && t.content.includes(PROMO_SENT_NOTE));
   const promoImages = result.sendPromo && !promoAlreadySent ? todayPromotions(context).map((p) => p.image).filter((url): url is string => Boolean(url)) : [];
