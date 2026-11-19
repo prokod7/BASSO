@@ -112,7 +112,7 @@ input[type="checkbox"], input[type="radio"] { width: 1.15rem; height: 1.15rem; f
 .ticket-80 .grid > span:last-child, .ticket-80 .flex > span:last-child, .ticket-80 .flex > strong:last-child { white-space: nowrap; }
 .ticket-80 .grid > *:first-child, .ticket-80 .flex > *:first-child { min-width: 0; overflow-wrap: anywhere; }
 /* Cozinha: letra maior. */
-.ticket-kitchen { font-size: 16px; line-height: 1.5; }
+.ticket-kitchen { font-size: 16px; line-height: 1.5; padding-left: 6mm; }
 .ticket-80 .grid, .ticket-80 .flex { margin: 3px 0; }
 .ticket-80 [class*="border-dashed"] { margin-top: 10px !important; margin-bottom: 10px !important; }
 .print-receipt { display: none; }

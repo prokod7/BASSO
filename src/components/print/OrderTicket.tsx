@@ -1,6 +1,7 @@
 "use client";
 import { QRCodeSVG } from "qrcode.react";
 import type { OrderDetail } from "@/types";
+import { printableOrderNote } from "@/lib/print-note";
 import { currency } from "@/lib/utils";
 import { compactItemName, itemDetails } from "@/lib/item-presentation";
 
@@ -32,7 +33,7 @@ const paymentLabels: Record<string, string> = {
 };
 
 function safeNote(value?: string | null) {
-  const note = String(value || "").trim();
+  const note = printableOrderNote(value);
   if (!note) return "";
   if (/^[\[{]/.test(note)) {
     try { JSON.parse(note); return ""; } catch { /* observação normal */ }
@@ -65,7 +66,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
     {printType === "entrega" ? (
         <>
           <style>{`
-            .ticket-80.ticket-counter { margin: 0; padding: 0 1mm 0 6mm; font-size: 16px; line-height: 1.25; }
+            .ticket-80.ticket-counter { margin: 0; padding: 0 1.5mm 0 6mm; font-size: 16px; line-height: 1.25; }
             .ticket-counter p, .ticket-counter .grid, .ticket-counter .flex { margin: 0; }
             .ticket-counter .counter-block { border-top: 1px dashed; margin-top: 2mm; padding-top: 1.5mm; }
             .ticket-counter .counter-item + .counter-item { margin-top: 2.5mm; }
@@ -141,8 +142,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           <Divider />
           <div className="flex justify-between"><span>Quantidade de itens:</span><strong>{itemCount}</strong></div>
           {SHOW_PICKUP_CODE && order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">CÓDIGO DE RETIRADA</p><p className="text-[22px] font-black tracking-[.08em]">{verification.pickupCode}</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={112} level="M" marginSize={1} /></div> : null}</div></> : null}
-          <Divider />
-          <p className="text-center text-[10.5px]">ID: {order.id}</p>
+
         </>
       )}
   </div>;

@@ -1,10 +1,11 @@
 import { compactItemName, itemDetails } from "@/lib/item-presentation";
+import { printableOrderNote } from "@/lib/print-note";
 import type { CartItem } from "@/types";
 export function presentPrintJob(job: any) {
   const payload = job.payload || {};
   const order = payload.order || {};
   return { ...job, payload: { ...payload,
-    order: { ...order, number: order.daily_number ?? order.number },
+    order: { ...order, number: order.daily_number ?? order.number, notes: printableOrderNote(order.notes) },
     items: (payload.items || []).map((row: any) => {
       const item = { ...row, name: row.name_snapshot || row.name || "Item" } as CartItem;
       return { ...row, display_name: compactItemName(item), detail_lines: itemDetails(item) };
