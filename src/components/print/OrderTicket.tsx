@@ -1,7 +1,6 @@
 "use client";
 import { QRCodeSVG } from "qrcode.react";
 import type { OrderDetail } from "@/types";
-import { VendraAssinatura } from "@/components/shared/Vendra";
 import { currency } from "@/lib/utils";
 import { compactItemName, itemDetails } from "@/lib/item-presentation";
 
@@ -62,56 +61,56 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
   const itemCount = activeItems.reduce((sum, item) => sum + item.quantity, 0);
   const stamp = dateAndTime(order.createdAt);
   const title = printType === "cozinha" ? "COZINHA" : (channelLabels[order.channel] || "PEDIDO");
-  return <div className={`ticket-80 ${printType === "cozinha" ? "ticket-kitchen" : ""}`}>
+  return <div className={`ticket-80 ${printType === "cozinha" ? "ticket-kitchen" : "ticket-counter"}`}>
     {printType === "entrega" ? (
         <>
+          <style>{`
+            .ticket-80.ticket-counter { margin-left: 6mm; padding: 0 1mm; font-size: 13px; line-height: 1.22; }
+            .ticket-counter p, .ticket-counter .grid, .ticket-counter .flex { margin: 0; }
+            .ticket-counter .counter-block { border-top: 1px dashed; margin-top: 1.5mm; padding-top: 1.5mm; }
+            .ticket-counter .counter-item + .counter-item { margin-top: 0.8mm; }
+            .ticket-counter .counter-item { break-inside: avoid; }
+          `}</style>
           <header>
-            <p className="font-black">{store.businessName || "La Forneria Basso"}</p>
-            <p>CNPJ: {store.cnpj || "62.332.415/0001-10"}</p>
-            <p>{store.addressLabel || "Rua do Progresso, 407 — Centro — Rio Grande da Serra/SP"}</p>
+            <p>{store.businessName || "La Forneria Basso"}</p>
+            <p className="text-[16px] font-black">{title} #{order.number}</p>
+            <p>{stamp.date} {stamp.time}{order.tableNumber ? ` · Mesa ${order.tableNumber}` : ""}</p>
           </header>
-          <Divider />
-          <div className="flex items-end justify-between gap-2">
-            <strong className="text-[18px] tracking-normal">{title}</strong>
-            <span>{stamp.date} - {stamp.time}</span>
+          <p>{order.customerName || "Consumidor"}{order.customerPhone ? ` · ${order.customerPhone}` : ""}</p>
+          {address && <div>
+            <p>{[address.street, address.number, address.district].filter(Boolean).join(", ")}</p>
+            <p>{[address.city, address.state].filter(Boolean).join(" - ")}</p>
+            {address.complement && <p>Comp.: {address.complement}</p>}
+            {address.reference && <p>Ref.: {address.reference}</p>}
+          </div>}
+          <div className="counter-block">
+            {activeItems.map(item => {
+              const selection = item.selection;
+              const pizza = (item.kind === "pizza" || item.kind === "reward") && selection && "flavorA" in selection ? selection : null;
+              const details = itemDetails(item);
+              let name = compactItemName(item);
+              if (pizza?.flavorA && !pizza.flavorB) {
+                const flavor = details.splice(pizza.mass ? 1 : 0, 1)[0];
+                if (flavor) name = `${item.kind === "reward" ? "Recompensa · " : ""}${flavor.text} (${pizza.size === "broto" ? "Broto" : "G"})`;
+              }
+              return <div key={item.id} className="counter-item">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-1">
+                  <strong>{item.quantity}x {plain(name)}</strong><span>{currency(item.unitPrice * item.quantity).replace(/^R\$\s*/, "")}</span>
+                </div>
+                {details.filter(line => !(pizza?.mass === "traditional" && line.text.startsWith("Massa:"))).map((line, i) => <p key={i}>{plain(line.text)}</p>)}
+              </div>;
+            })}
           </div>
-          <div className="mt-2">
-            <p>Pedido: <strong className="text-[18px]">#{order.number}</strong></p>
-            <p>Cliente: {order.customerName || "Consumidor"}</p>
-            {order.customerPhone ? <p>Telefone: {order.customerPhone}</p> : null}
-            {order.tableNumber ? <p>Mesa: {order.tableNumber}</p> : null}
-            <p>ID do pedido: {order.id}</p>
+          <div className="counter-block">
+            {(order.discount > 0 || order.deliveryFee > 0) && <div className="flex justify-between"><span>Subtotal</span><span>{currency(order.subtotal)}</span></div>}
+            {order.deliveryFee > 0 && <div className="flex justify-between"><span>Entrega</span><span>{currency(order.deliveryFee)}</span></div>}
+            {order.discount > 0 && <div className="flex justify-between"><span>Desconto</span><span>−{currency(order.discount)}</span></div>}
+            <div className="flex justify-between text-[16px]"><strong>Total</strong><strong>{currency(order.total)}</strong></div>
+            <p>{paymentLabels[order.paymentMethod] || order.paymentMethod}</p>
+            {order.paymentMethod === "cash" && !!order.changeFor && <p>Receber {currency(order.changeFor)} · Troco {currency(Math.max(0, order.changeFor - order.total))}</p>}
           </div>
-
-          {address ? <><Divider /><p>{address.street}, {address.number}</p><p>{address.district}</p><p>{address.city} - {address.state}</p>{address.complement ? <p>Comp.: {address.complement}</p> : null}{address.reference ? <p>Ref.: {address.reference}</p> : null}</> : null}
-
-          <Divider />
-          <div className="grid grid-cols-[1fr_auto] gap-2 font-bold"><span>Qt. Descrição</span><span>Valor</span></div>
-          <Divider compact />
-          <div className="space-y-3">
-            {activeItems.map(item => <div key={item.id}>
-              <div className="grid grid-cols-[1fr_auto] gap-2 text-[16px]"><strong>{item.quantity} {plain(compactItemName(item))}</strong><span>{currency(item.unitPrice * item.quantity).replace("R$ ", "")}</span></div>
-              {itemDetails(item).map((line, index) => <p key={`${item.id}-${index}`} className={`pl-3 ${line.emphasis ? "font-bold" : ""}`}>{plain(line.text)}</p>)}
-            </div>)}
-          </div>
-
-          <Divider />
-          <div className="flex justify-between"><span>Quantidade de itens:</span><strong>{itemCount}</strong></div>
-          <Divider compact />
-          <div className="space-y-0.5">
-            <div className="flex justify-between"><span>Total itens(+)</span><span>{currency(order.subtotal)}</span></div>
-            <div className="flex justify-between"><span>Taxa de entrega(+)</span><span>{currency(order.deliveryFee)}</span></div>
-            <div className="flex justify-between"><span>Desconto(-)</span><span>{currency(order.discount)}</span></div>
-            <div className="flex justify-between text-[16px] font-black"><span>TOTAL(=)</span><span>{currency(order.total)}</span></div>
-          </div>
-          <Divider />
-          <p>Forma de pagamento</p>
-          <div className="flex justify-between"><strong>{paymentLabels[order.paymentMethod] || order.paymentMethod}</strong><strong>{currency(order.total)}</strong></div>
-          {order.paymentMethod === "cash" && order.changeFor ? <><div className="flex justify-between"><span>- Receber:</span><span>{currency(order.changeFor)}</span></div><div className="flex justify-between"><span>- Troco:</span><span>{currency(Math.max(0, order.changeFor - order.total))}</span></div></> : null}
-          {orderNote ? <><Divider /><p className="font-black">OBSERVAÇÕES</p><p className="font-bold">{orderNote}</p></> : null}
-
+          {orderNote && <p>Obs.: {orderNote}</p>}
           {SHOW_PICKUP_CODE && order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">RETIRADA DO MOTOBOY</p><p className="mt-1 text-[20px] font-black tracking-[.08em]">{verification.pickupCode}</p><p className="mt-1 text-[10.5px]">Escaneie o QR ou digite o código no PWA do motoboy.</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={118} level="M" marginSize={1} /></div> : null}<p className="mt-1 text-[10.5px]">ID: {order.id}</p></div></> : null}
-          <div className="mt-3 flex justify-center"><VendraAssinatura variante="preta" altura={14} link={false} /></div>
         </>
       ) : (
         <>
