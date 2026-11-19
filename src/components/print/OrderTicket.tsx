@@ -88,11 +88,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
               const selection = item.selection;
               const pizza = (item.kind === "pizza" || item.kind === "reward") && selection && "flavorA" in selection ? selection : null;
               const details = itemDetails(item);
-              let name = compactItemName(item);
-              if (pizza?.flavorA && !pizza.flavorB) {
-                const flavor = details.splice(pizza.mass ? 1 : 0, 1)[0];
-                if (flavor) name = `${item.kind === "reward" ? "Recompensa · " : ""}${flavor.text} (${pizza.size === "broto" ? "Broto" : "G"})`;
-              }
+              const name = pizza ? `${item.kind === "reward" ? "Recompensa · " : ""}PIZZA ${pizza.size === "broto" ? "BROTO" : "GRANDE"}` : compactItemName(item);
               return <div key={item.id} className="counter-item">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-1">
                   <strong>{item.quantity}x {plain(name)}</strong><span>{currency(item.unitPrice * item.quantity).replace(/^R\$\s*/, "")}</span>
