@@ -109,6 +109,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
               </div>;
             })}
           </div>
+          <div aria-hidden="true" style={{ height: "15mm" }} />
           <div className="counter-block flex justify-between"><span>Quantidade de itens:</span><strong>{itemCount}</strong></div>
           <div className="counter-block">
             {(order.discount > 0 || order.deliveryFee > 0) && <div className="flex justify-between"><span>Subtotal</span><span>{currency(order.subtotal)}</span></div>}
