@@ -24,7 +24,8 @@ export function StoreControlPanel({ status, onChange, onClose }: { status: Exten
     setForm((current) => ({ ...current, activeChannels: current.activeChannels.includes(channel) ? current.activeChannels.filter((item) => item !== channel) : [...current.activeChannels, channel] }));
   }
 
-  async function save(nextStatus = form.operationalStatus) {
+  async function save(requestedStatus?: ExtendedStoreRuntimeStatus["operationalStatus"]) {
+    const nextStatus = requestedStatus ?? form.operationalStatus;
     if (!form.activeChannels.length) {
       setMessage("Mantenha ao menos um canal operacional ativo.");
       return;
@@ -32,7 +33,7 @@ export function StoreControlPanel({ status, onChange, onClose }: { status: Exten
     setWorking(true);
     setMessage("");
     try {
-      const payload = { ...form, operationalStatus: nextStatus, acceptingOrders: nextStatus === "open", pauseReason: nextStatus === "paused" ? (form.pauseReason?.trim() || "Operação pausada temporariamente") : null, manualOverride: true, temporaryUntil: form.temporaryUntil || null, publicMessage: form.publicMessage || null };
+      const payload = { ...form, operationalStatus: nextStatus, acceptingOrders: nextStatus === "open", pauseReason: nextStatus === "paused" ? (form.pauseReason?.trim() || "Operação pausada temporariamente") : null, manualOverride: requestedStatus ? true : form.manualOverride, temporaryUntil: form.temporaryUntil || null, publicMessage: form.publicMessage || null };
       let saved: ExtendedStoreRuntimeStatus = { ...payload, pauseReason: payload.pauseReason || undefined, temporaryUntil: payload.temporaryUntil || undefined, publicMessage: payload.publicMessage || undefined, updatedAt: new Date().toISOString() };
       if (!isDemoMode()) {
         const response = await fetch("/api/store-status", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
