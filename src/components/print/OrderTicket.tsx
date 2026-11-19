@@ -65,7 +65,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
     {printType === "entrega" ? (
         <>
           <style>{`
-            .ticket-80.ticket-counter { margin-left: 6mm; padding: 0 1mm; font-size: 13px; line-height: 1.22; }
+            .ticket-80.ticket-counter { margin: 0; padding: 0 1mm 0 6mm; font-size: 16px; line-height: 1.25; }
             .ticket-counter p, .ticket-counter .grid, .ticket-counter .flex { margin: 0; }
             .ticket-counter .counter-block { border-top: 1px dashed; margin-top: 1.5mm; padding-top: 1.5mm; }
             .ticket-counter .counter-item + .counter-item { margin-top: 0.8mm; }
@@ -73,7 +73,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           `}</style>
           <header>
             <p>{store.businessName || "La Forneria Basso"}</p>
-            <p className="text-[16px] font-black">{title} #{order.number}</p>
+            <p className="text-[20px] font-black">{title} #{order.number}</p>
             <p>{stamp.date} {stamp.time}{order.tableNumber ? ` · Mesa ${order.tableNumber}` : ""}</p>
           </header>
           <p>{order.customerName || "Consumidor"}{order.customerPhone ? ` · ${order.customerPhone}` : ""}</p>
@@ -97,7 +97,7 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-1">
                   <strong>{item.quantity}x {plain(name)}</strong><span>{currency(item.unitPrice * item.quantity).replace(/^R\$\s*/, "")}</span>
                 </div>
-                {details.filter(line => !(pizza?.mass === "traditional" && line.text.startsWith("Massa:"))).map((line, i) => <p key={i}>{plain(line.text)}</p>)}
+                {details.filter(line => !(pizza?.mass === "traditional" && line.text.startsWith("Massa:"))).map((line, i) => <p key={i} className={line.emphasis ? "font-black" : undefined}>{plain(line.text)}</p>)}
               </div>;
             })}
           </div>
@@ -105,11 +105,11 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
             {(order.discount > 0 || order.deliveryFee > 0) && <div className="flex justify-between"><span>Subtotal</span><span>{currency(order.subtotal)}</span></div>}
             {order.deliveryFee > 0 && <div className="flex justify-between"><span>Entrega</span><span>{currency(order.deliveryFee)}</span></div>}
             {order.discount > 0 && <div className="flex justify-between"><span>Desconto</span><span>−{currency(order.discount)}</span></div>}
-            <div className="flex justify-between text-[16px]"><strong>Total</strong><strong>{currency(order.total)}</strong></div>
+            <div className="flex justify-between text-[18px]"><strong>Total</strong><strong>{currency(order.total)}</strong></div>
             <p>{paymentLabels[order.paymentMethod] || order.paymentMethod}</p>
             {order.paymentMethod === "cash" && !!order.changeFor && <p>Receber {currency(order.changeFor)} · Troco {currency(Math.max(0, order.changeFor - order.total))}</p>}
           </div>
-          {orderNote && <p>Obs.: {orderNote}</p>}
+          {orderNote && <p className="font-black">Obs.: {orderNote}</p>}
           {SHOW_PICKUP_CODE && order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">RETIRADA DO MOTOBOY</p><p className="mt-1 text-[20px] font-black tracking-[.08em]">{verification.pickupCode}</p><p className="mt-1 text-[10.5px]">Escaneie o QR ou digite o código no PWA do motoboy.</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={118} level="M" marginSize={1} /></div> : null}<p className="mt-1 text-[10.5px]">ID: {order.id}</p></div></> : null}
         </>
       ) : (

@@ -76,7 +76,7 @@ export default function BrowserPrintPage({ params }: { params: Promise<{ id: str
         @media print {
           html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
           .no-print { display: none !important; }
-          .print-shell { width: 80mm !important; max-width: none !important; padding: 0 !important; margin: 0 !important; }
+          .print-shell { width: 64mm !important; max-width: none !important; padding: 0 !important; margin: 0 !important; }
         }
       `}</style>
       <div className="no-print mb-4 grid grid-cols-2 gap-2 font-sans">

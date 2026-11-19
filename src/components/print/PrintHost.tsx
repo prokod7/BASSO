@@ -73,9 +73,12 @@ export function PrintHost() {
             }
           }
           for (let copy = 0; copy < Math.max(1, request.copies || 1); copy++) {
-            flushSync(() => setDocs(list.map((doc) => ({ ...doc, key: `${doc.key}:${copy}` }))));
-            // O QR do motoboy é SVG: já está no DOM depois do flushSync.
-            await printNow();
+            // Uma via por trabalho de impressão: a térmica não pode depender de quebra de página.
+            for (const doc of list) {
+              flushSync(() => setDocs([{ ...doc, key: `${doc.key}:${copy}` }]));
+              // O QR do motoboy é SVG: já está no DOM depois do flushSync.
+              await printNow();
+            }
           }
           resolve();
         } catch (error) {
