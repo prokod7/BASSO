@@ -67,23 +67,34 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
           <style>{`
             .ticket-80.ticket-counter { margin: 0; padding: 0 1mm 0 6mm; font-size: 16px; line-height: 1.25; }
             .ticket-counter p, .ticket-counter .grid, .ticket-counter .flex { margin: 0; }
-            .ticket-counter .counter-block { border-top: 1px dashed; margin-top: 1.5mm; padding-top: 1.5mm; }
-            .ticket-counter .counter-item + .counter-item { margin-top: 0.8mm; }
+            .ticket-counter .counter-block { border-top: 1px dashed; margin-top: 2mm; padding-top: 1.5mm; }
+            .ticket-counter .counter-item + .counter-item { margin-top: 2.5mm; }
             .ticket-counter .counter-item { break-inside: avoid; }
+            .ticket-counter .counter-details { padding-left: 3mm; overflow-wrap: anywhere; }
+            .ticket-counter .counter-columns { border-bottom: 1px dashed; padding-bottom: 1mm; margin-bottom: 1.5mm; }
+            .ticket-counter .counter-channel { text-align: center; }
+            .ticket-counter .counter-stamp { text-align: right; }
           `}</style>
           <header>
             <p>{store.businessName || "La Forneria Basso"}</p>
-            <p className="text-[20px] font-black">{title} #{order.number}</p>
-            <p>{stamp.date} {stamp.time}{order.tableNumber ? ` · Mesa ${order.tableNumber}` : ""}</p>
+            <div className="counter-block">
+              <p className="counter-channel text-[20px] font-black">{order.channel === "pickup" ? "RETIRADA NO BALCÃO" : title}</p>
+              <p className="counter-stamp">{stamp.date} {stamp.time}</p>
+            </div>
           </header>
-          <p>{order.customerName || "Consumidor"}{order.customerPhone ? ` · ${order.customerPhone}` : ""}</p>
+          <div className="counter-block">
+          <p><strong>Pedido: #{order.number}</strong>{order.tableNumber ? ` · Mesa ${order.tableNumber}` : ""}</p>
+          <p>{order.customerName || "Consumidor"}</p>
+          {order.customerPhone && <p>Tel.: {order.customerPhone}</p>}
           {address && <div>
             <p>{[address.street, address.number, address.district].filter(Boolean).join(", ")}</p>
             <p>{[address.city, address.state].filter(Boolean).join(" - ")}</p>
             {address.complement && <p>Comp.: {address.complement}</p>}
             {address.reference && <p>Ref.: {address.reference}</p>}
           </div>}
+          </div>
           <div className="counter-block">
+            <div className="counter-columns flex justify-between"><span>Qtd. / Descrição</span><span>Valor</span></div>
             {activeItems.map(item => {
               const selection = item.selection;
               const pizza = (item.kind === "pizza" || item.kind === "reward") && selection && "flavorA" in selection ? selection : null;
@@ -93,19 +104,23 @@ export function OrderTicket({ order, printType, verification, store }: { order: 
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-1">
                   <strong>{item.quantity}x {plain(name)}</strong><span>{currency(item.unitPrice * item.quantity).replace(/^R\$\s*/, "")}</span>
                 </div>
-                {details.filter(line => !(pizza?.mass === "traditional" && line.text.startsWith("Massa:"))).map((line, i) => <p key={i} className={line.emphasis ? "font-black" : undefined}>{plain(line.text)}</p>)}
+                {details.filter(line => !(pizza?.mass === "traditional" && line.text.startsWith("Massa:"))).map((line, i) => <p key={i} className={`counter-details ${line.emphasis ? "font-black" : ""}`}>{plain(line.text)}</p>)}
               </div>;
             })}
           </div>
+          <div className="counter-block flex justify-between"><span>Quantidade de itens:</span><strong>{itemCount}</strong></div>
           <div className="counter-block">
             {(order.discount > 0 || order.deliveryFee > 0) && <div className="flex justify-between"><span>Subtotal</span><span>{currency(order.subtotal)}</span></div>}
             {order.deliveryFee > 0 && <div className="flex justify-between"><span>Entrega</span><span>{currency(order.deliveryFee)}</span></div>}
             {order.discount > 0 && <div className="flex justify-between"><span>Desconto</span><span>−{currency(order.discount)}</span></div>}
             <div className="flex justify-between text-[18px]"><strong>Total</strong><strong>{currency(order.total)}</strong></div>
-            <p>{paymentLabels[order.paymentMethod] || order.paymentMethod}</p>
+          </div>
+          <div className="counter-block">
+            <p>Forma de pagamento</p>
+            <div className="flex justify-between"><strong>{paymentLabels[order.paymentMethod] || order.paymentMethod}</strong><span>{currency(order.total)}</span></div>
             {order.paymentMethod === "cash" && !!order.changeFor && <p>Receber {currency(order.changeFor)} · Troco {currency(Math.max(0, order.changeFor - order.total))}</p>}
           </div>
-          {orderNote && <p className="font-black">Obs.: {orderNote}</p>}
+          {orderNote && <p className="counter-block font-black">Obs.: {orderNote}</p>}
           {SHOW_PICKUP_CODE && order.channel === "own_delivery" && verification?.pickupCode ? <><Divider /><div className="text-center"><p className="font-black">RETIRADA DO MOTOBOY</p><p className="mt-1 text-[20px] font-black tracking-[.08em]">{verification.pickupCode}</p><p className="mt-1 text-[10.5px]">Escaneie o QR ou digite o código no PWA do motoboy.</p>{verification.pickupUrl ? <div className="mx-auto mt-2 w-fit"><QRCodeSVG value={verification.pickupUrl} size={118} level="M" marginSize={1} /></div> : null}<p className="mt-1 text-[10.5px]">ID: {order.id}</p></div></> : null}
         </>
       ) : (
