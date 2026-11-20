@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 }
 
 const schema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("toggle"), enabled: z.boolean() }),
+  z.object({ action: z.literal("toggle"), enabled: z.boolean(), pin: z.string().max(4).optional() }),
   z.object({
     action: z.literal("settings"),
     quiet_seconds: z.number().int().min(0).max(60),
@@ -66,7 +66,7 @@ const schema = z.discriminatedUnion("action", [
     pickup_time: z.string().trim().max(60).optional(),
     delivery_time: z.string().trim().max(60).optional(),
   }),
-  z.object({ action: z.literal("session"), id: z.string().uuid(), paused: z.boolean() }),
+  z.object({ action: z.literal("session"), id: z.string().uuid(), paused: z.boolean(), pin: z.string().max(4).optional() }),
   z.object({ action: z.literal("read"), id: z.string().uuid() }),
   z.object({ action: z.literal("send"), id: z.string().uuid(), text: z.string().trim().min(1).max(4000) }),
 ]);
@@ -79,10 +79,11 @@ const roles: Record<z.infer<typeof schema>["action"], { roles: OperationalRole[]
 };
 
 export async function POST(request: NextRequest) {
+  let actorId: string;
   let body: z.infer<typeof schema>;
   try {
     body = schema.parse(await request.json());
-    await requireOperationalRole(roles[body.action].roles, roles[body.action].permission);
+    actorId = (await requireOperationalRole(roles[body.action].roles, roles[body.action].permission)).userId;
   } catch (error) {
     const message = error instanceof z.ZodError ? "Dados inválidos." : error instanceof Error ? error.message : "Sem permissão.";
     return NextResponse.json({ error: message }, { status: 403 });
@@ -90,6 +91,11 @@ export async function POST(request: NextRequest) {
   const db = createAdminClient();
   if (!db) return NextResponse.json({ error: "Supabase não configurado." }, { status: 503 });
   try {
+    if ((body.action === "toggle" && !body.enabled) || (body.action === "session" && body.paused)) {
+      if (!body.pin) return NextResponse.json({ error: "Informe o PIN do proprietário." }, { status: 403 });
+      const check = await db.rpc("wa_verify_owner_pin", { actor_id: actorId, entered: body.pin });
+      if (check.error || check.data !== true) return NextResponse.json({ error: "PIN inválido ou temporariamente bloqueado." }, { status: 403 });
+    }
     if (body.action === "toggle") {
       if (body.enabled && !readiness().enabled) return NextResponse.json({ error: "Defina WHATSAPP_BOT_ENABLED=true na Vercel para liberar o robô." }, { status: 400 });
       if (body.enabled && !readiness().ready) return NextResponse.json({ error: `Cadastre na Vercel: ${readiness().missing.join(", ")}.` }, { status: 400 });
@@ -107,17 +113,14 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
     } else {
       if (!canSend()) return NextResponse.json({ error: "Conecte o número do WhatsApp (Dualhook) para responder por aqui." }, { status: 400 });
-      const { data: session, error } = await db.from("wa_sessions").select("id,phone,last_inbound").eq("id", body.id).maybeSingle();
+      const { data: session, error } = await db.from("wa_sessions").select("id,phone,last_inbound,paused").eq("id", body.id).maybeSingle();
       if (error || !session) throw new Error("Conversa não encontrada.");
+      if (!session.paused) return NextResponse.json({ error: "Assuma a conversa com o PIN antes de responder." }, { status: 409 });
       if (!session.last_inbound || Date.now() - Date.parse(session.last_inbound) > WINDOW_MS)
         return NextResponse.json({ error: "Passaram 24 horas desde a última mensagem do cliente. O WhatsApp só libera nova conversa quando ele escrever de novo." }, { status: 400 });
       const outbound = await sendMessage(session.phone, body.text, randomUUID());
-      const [logged, taken] = await Promise.all([
-        db.rpc("wa_log_message", { p: session.phone, m: outbound, body: body.text, kind: "text", direction: "out", author: "agent", contact: null, sent_at: null }),
-        // Uma pessoa respondeu: o robô sai desta conversa.
-        db.rpc("wa_agent_takeover", { sid: session.id }),
-      ]);
-      if (logged.error || taken.error) throw new Error("Mensagem enviada, mas não registrada.");
+      const logged = await db.rpc("wa_log_message", { p: session.phone, m: outbound, body: body.text, kind: "text", direction: "out", author: "agent", contact: null, sent_at: null });
+      if (logged.error) throw new Error("Mensagem enviada, mas não registrada.");
     }
     return NextResponse.json({ ok: true });
   } catch (error) {

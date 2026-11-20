@@ -60,6 +60,9 @@ export default function WhatsAppInboxPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "human">("all");
   const [panel, setPanel] = useState(false);
+  const [pinAction, setPinAction] = useState<Record<string, unknown> | null>(null);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState("");
   const [busy, setBusy] = useState(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -102,11 +105,27 @@ export default function WhatsAppInboxPage() {
   const blocked = !data?.canSend ? "Conecte o número do WhatsApp (Dualhook) para responder por aqui." : thread && !windowOpen ? "Passaram 24 h desde a última mensagem do cliente: o WhatsApp só libera resposta quando ele escrever de novo." : "";
   const robotOn = !!data?.enabled && !!data?.configuration.enabled;
 
-  async function act(body: unknown) {
+  async function act(body: Record<string, unknown>) {
+    if ((body.action === "session" && body.paused === true) || (body.action === "toggle" && body.enabled === false)) {
+      setPin(""); setPinError(""); setPinAction(body);
+      return;
+    }
     setBusy(true);
     try { await post(body); await refresh(); if (selected) await load(selected); }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
+  }
+  async function confirmPin(event: FormEvent) {
+    event.preventDefault();
+    if (!pinAction || busy) return;
+    setBusy(true);
+    try {
+      await post({ ...pinAction, pin });
+      setPinAction(null);
+      await refresh();
+      if (selected) await load(selected);
+    } catch (e) { setPinError((e as Error).message); }
+    finally { setPin(""); setBusy(false); }
   }
   async function send(event: FormEvent) {
     event.preventDefault();
@@ -123,12 +142,25 @@ export default function WhatsAppInboxPage() {
       <PageHeader
         title="WhatsApp"
         icon={MessageCircle}
-        description="Conversas do número da pizzaria: cliente, robô e equipe no mesmo lugar. Responder por aqui pausa o robô naquela conversa."
+        description="Conversas do número da pizzaria: cliente, robô e equipe no mesmo lugar. Para assumir uma conversa, informe o PIN do proprietário."
         actions={<>
+          <Link href="/painel/whatsapp/relatorio" className="btn-secondary">Relatório do robô</Link>
           <Link href="/painel/whatsapp/laboratorio" className="btn-secondary"><FlaskConical size={16} />Laboratório</Link>
           <button type="button" className="btn-secondary" aria-pressed={panel} onClick={() => setPanel((v) => !v)}><Settings2 size={16} />Configurar robô</button>
         </>}
       />
+      {pinAction && <dialog open aria-labelledby="owner-pin-title" className="fixed inset-0 z-50 m-auto w-[min(92vw,24rem)] rounded-2xl border p-5 shadow-xl">
+        <form onSubmit={confirmPin} className="grid gap-3">
+          <h2 id="owner-pin-title" className="font-bold">{pinAction.action === "toggle" ? "Desativar o robô da pizzaria" : "Pausar o robô nesta conversa"}</h2>
+          <label>PIN do proprietário
+            <input autoFocus type="password" autoComplete="off" inputMode="numeric" required pattern="[0-9]{4}" maxLength={4} value={pin}
+              onChange={e => setPin(e.target.value.replace(/\D/g,""))} className="mt-1 block w-full rounded-lg border p-2" />
+          </label>
+          {pinError && <p role="alert" className="text-sm text-red-700">{pinError}</p>}
+          <div className="flex gap-2"><button type="submit" disabled={busy || pin.length!==4} className="btn-primary">Confirmar</button>
+            <button type="button" disabled={busy} className="btn-secondary" onClick={() => { setPinAction(null); setPin(""); }}>Cancelar</button></div>
+        </form>
+      </dialog>}
       {error && <p role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {panel && data && <SettingsPanel data={data} busy={busy} onAct={act} onClose={() => setPanel(false)} />}
 
@@ -203,8 +235,8 @@ export default function WhatsAppInboxPage() {
                 {thread?.messages.map((m) => <Bubble key={m.id} message={m} />)}
                 <div ref={bottom} />
               </div>
-              {blocked ? (
-                <p className="border-t border-black/5 bg-white p-3 text-center text-xs text-black/55">{blocked}</p>
+              {blocked || !current.paused ? (
+                <p className="border-t border-black/5 bg-white p-3 text-center text-xs text-black/55">{blocked || "Para responder, assuma a conversa com o PIN do proprietário."}</p>
               ) : (
                 <form onSubmit={send} className="flex items-end gap-2 border-t border-black/5 bg-white p-3">
                   <textarea
@@ -247,7 +279,7 @@ function Bubble({ message: m }: { message: Message }) {
   );
 }
 
-function SettingsPanel({ data, busy, onAct, onClose }: { data: Overview; busy: boolean; onAct: (body: unknown) => Promise<void>; onClose: () => void }) {
+function SettingsPanel({ data, busy, onAct, onClose }: { data: Overview; busy: boolean; onAct: (body: Record<string, unknown>) => Promise<void>; onClose: () => void }) {
   const [quiet, setQuiet] = useState(String(data.quiet_seconds));
   const [maxWait, setMaxWait] = useState(String(data.max_wait_seconds));
   const [followUp, setFollowUp] = useState(String(Math.round(data.follow_up_seconds / 60)));
