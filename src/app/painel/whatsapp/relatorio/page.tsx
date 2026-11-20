@@ -18,6 +18,8 @@ export default async function RobotReport({ searchParams }: { searchParams: Prom
   const metrics: [string, number | string][] = r ? [
     ["Mensagens recebidas", r.received], ["Contatos que escreveram", r.contacts],
     ["Mensagens enviadas pelo robô", r.sent], ["Falhas de envio do robô", r.failed], ["Mensagens da equipe", r.human],
+    ["Pedidos não entendidos pelo robô", r.misunderstood],
+    ["Clientes que pediram atendente", r.human_requests],
     ["Clientes que fecharam", r.buyers], ["Pedidos registrados pelo robô", r.orders],
     ["Valor dos pedidos", brl(r.revenue)], ["Ticket médio", r.orders ? brl(r.revenue / r.orders) : "—"],
   ] : [];
@@ -32,6 +34,7 @@ export default async function RobotReport({ searchParams }: { searchParams: Prom
         <div className="surface p-4" key={label}><dt className="text-sm">{label}</dt>
           <dd className="mt-2 text-2xl font-bold">{value.toLocaleString("pt-BR")}</dd></div>)}</dl>
       <p className="text-sm">O período segue o horário de São Paulo. Cada cliente conta uma vez por número de WhatsApp. O valor soma os pedidos vinculados ao robô e exclui cancelados e excluídos.</p>
+      <p className="text-sm">Cada resposta em que o robô indica dificuldade de compreensão ou pede para repetir conta como uma ocorrência. Cada cliente que solicita atendimento humano conta uma vez por período. Esses indicadores usam expressões nas mensagens registradas, incluindo áudios transcritos.</p>
       <section className="surface p-4"><h2 className="font-bold">Em fechamento agora</h2>
         <p>{r.carts} carrinho(s) aguardando confirmação · <strong>{brl(r.pipeline)}</strong></p>
         <p className="mt-1 text-sm">Orçamentos ativos no momento da consulta, independentemente do período selecionado.</p></section>
