@@ -64,7 +64,7 @@ export const toolSchema = {
   type: "object",
   properties: {
     action: { type: "string", enum: ["reply", "prepare", "human"] },
-    reply: { type: "string" },
+    reply: { type: "string", description: "Mensagem ao cliente. Durante a coleta, responda à dúvida direta ou pergunte só o próximo dado que falta, sem ecoar escolhas. Com os dados completos, use prepare." },
     order: nullable(orderSchema),
     send_menu: { type: "boolean", description: "true quando o cliente pediu o cardápio" },
     send_promo: { type: "boolean", description: "true quando o cliente perguntou da promoção do dia e você a apresentou" },
@@ -119,6 +119,9 @@ Estilo (muito importante):
 - SAUDAÇÃO SÓ UMA VEZ: cumprimente ("Olá", "Boa noite", "Seja bem-vindo") apenas na sua PRIMEIRA resposta da conversa. Se já existe resposta sua no histórico, NUNCA comece com saudação; vá direto ao assunto.
 - ÁUDIO: você entende áudios (eles chegam transcritos como texto). NUNCA peça para o cliente escrever, digitar ou mandar em texto. Se algo veio incompreensível, peça com gentileza para repetir ou siga a conversa.
 - NÃO repita nem resuma o que o cliente disse e NÃO peça confirmação de nada no meio ("certo?", "confirma?"). Entendeu → anote e vá para a próxima pergunta. O resumo final é a única conferência.
+- Trate cada informação clara como parte do pedido atual. Guarde quantidade, tamanho, sabores, endereço, bairro e pagamento para montar o pedido completo. A correção mais recente do cliente substitui a escolha anterior. Não reutilize itens de um pedido encerrado.
+- Exemplo: “duas pizzas grandes de calabresa” → registre quantidade 2, tamanho grande e sabor calabresa; se só falta escolher a massa, diga apenas “Prefere massa tradicional ou integral?”. Não diga “Anotei duas grandes de calabresa” nem “São duas, certo?”.
+- Exemplo: “Parque Indaiá, vou pagar no Pix” → aproveite bairro e pagamento de uma vez. Não responda “Seu bairro é Parque Indaiá?” nem “Pix, correto?”. Se faltar o número da casa, peça só o número. Se estiver completo, use prepare imediatamente. Quando houver uma ambiguidade real, pergunte apenas o que distingue as opções. Se o cliente pedir para conferir algo, responda à pergunta dele.
 - Não explique regras internas. Erro de digitação óbvio você corrige em silêncio.
 - Use *negrito* do WhatsApp só para nomes de sabores, produtos ou opções.
 - Ao sugerir, valorize a pizza com poucas palavras (ex.: "a *Sapori di Parma* leva presunto de Parma e rúcula, uma das mais pedidas").
@@ -164,7 +167,7 @@ Regras:
 export type AiResult = { action: "reply" | "prepare" | "human"; reply: string; order: Draft | null; sendMenu: boolean; sendPromo?: boolean; sendPix?: boolean; usage: unknown };
 
 export async function answer(opts: { store: { name: string; menuUrl: string }; catalog: string; history: Turn[]; context?: string }): Promise<AiResult> {
-  const turns = opts.history.slice(-20);
+  const turns = opts.history.slice(-60);
   // Dados vivos depois do prefixo em cache (instruções + catálogo), logo antes da última mensagem.
   const input = opts.context ? [...turns.slice(0, -1), { role: "developer", content: opts.context }, ...turns.slice(-1)] : turns;
   const effort = process.env.OPENAI_REASONING_EFFORT;

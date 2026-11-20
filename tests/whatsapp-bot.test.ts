@@ -7,7 +7,7 @@ import type { PizzaSelection } from "@/types";
 import { compactCatalog, matchDistrict, resolveDraft, type Draft, type DraftItem, type Zone } from "@/lib/whatsapp/catalog";
 import { affirmative, confirmation, ordersContext, pickLead, phoneVariants, summarize, type Pending } from "@/lib/whatsapp/domain";
 import { judgeReceipt } from "@/lib/whatsapp/pix";
-import { assistantTurn, CONFIRM_LINE, firstContactGuard, HUMAN_REPLY, PUDDING_OFFER } from "@/lib/whatsapp/turn";
+import { assistantTurn, CONFIRM_LINE, firstContactGuard, HUMAN_REPLY } from "@/lib/whatsapp/turn";
 import { pendingAfter } from "@/lib/whatsapp/turnRules";
 import { toolSchema, instructions } from "@/lib/whatsapp/ai";
 import { namesFor, type BotContext } from "@/lib/whatsapp/order";
@@ -48,10 +48,12 @@ describe("cardápio compacto da Basso", () => {
   it("gera códigos estáveis para o mesmo cardápio (cache de prompt)", () => {
     expect(compactCatalog(menu, zones, store).text).toBe(catalog.text);
   });
-  it("a instrução não pergunta borda e oferece pudim sem sugerir bebidas", () => {
+  it("a instrução reserva a confirmação ao resumo e evita ofertas espontâneas", () => {
     const text = instructions({ name: "La Forneria Basso", menuUrl: "https://x.test" });
     expect(text).toMatch(/Borda: NÃO pergunte/);
-    expect(text).toContain("Pudim no Copo: Tradicional");
+    expect(text).toContain("O resumo final é a única conferência.");
+    expect(text).toContain("use prepare imediatamente");
+    expect(text).toContain("Nunca ofereça sobremesa");
     expect(text).toContain("Não ofereça bebidas, refrigerantes ou vinhos");
     expect(JSON.stringify(toolSchema)).not.toMatch(/border|borda/i);
   });
@@ -164,10 +166,10 @@ describe("turno da atendente", () => {
 
   it("evita nova oferta de pudim quando a IA repete a oferta depois da recusa", async () => {
     const turn = await assistantTurn({
-      history: [{ role: "assistant", content: PUDDING_OFFER }, { role: "user", content: "sem sobremesa" }],
-      texts: ["sem sobremesa"], context, phone: "5511", quote, ai: ai({ reply: PUDDING_OFFER }),
+      history: [{ role: "assistant", content: "Gostaria de incluir uma sobremesa em seu pedido?" }, { role: "user", content: "sem sobremesa" }],
+      texts: ["sem sobremesa"], context, phone: "5511", quote, ai: ai({ reply: "Gostaria de incluir uma sobremesa em seu pedido?" }),
     });
-    expect(turn.response).toContain("finalizar?");
+    expect(turn.response).toBe("Podemos seguir com o pedido?");
     expect(turn.response).not.toContain("Pudim");
   });
 

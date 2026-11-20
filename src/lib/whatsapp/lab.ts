@@ -102,7 +102,7 @@ export async function labTurn(opts: { sessionId: string; texts: string[]; file?:
   } else if (opts.file) rest = [...rest, "[O cliente enviou uma imagem/arquivo]"];
 
   if (rest.length) {
-    const history = withoutPending([...previous.slice(-19), { role: "user" as const, content: rest.join("\n") }], pending);
+    const history = withoutPending([...previous.slice(-59), { role: "user" as const, content: rest.join("\n") }], pending);
     const turn = await assistantTurn({ history, texts: rest, context, pending, phone: LAB_PHONE, quote: quoteBasket });
     pending = pendingAfter(turn, pending);
     await reply(turn.response, { intent: turn.action, usage: Object.keys((turn.usage as object) ?? {}).length ? turn.usage : undefined });

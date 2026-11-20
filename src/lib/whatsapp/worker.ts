@@ -210,7 +210,7 @@ export async function processQueue({ limit = 5, budgetMs = 150000 }: { limit?: n
         }
         history.push({ role: "assistant", content: historyNote ? `${response!}\n${historyNote}` : response! });
         stage = "salvar-resposta";
-        const staged = await step("stage", { pending, history: history.slice(-30), response, usage: aiUsage, pause, allow_supersede: allowSupersede, claimed_at: claim.claimed_at });
+        const staged = await step("stage", { pending, history: history.slice(-60), response, usage: aiUsage, pause, allow_supersede: allowSupersede, claimed_at: claim.claimed_at });
         if (staged.stopped) {
           // Lotes descartados voltam para a fila e são respondidos juntos no próximo ciclo.
           if (!staged.superseded) processed++;
