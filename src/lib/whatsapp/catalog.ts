@@ -121,7 +121,7 @@ export function compactCatalog(menu: RuntimeMenu, zones: Zone[], store: { name: 
     for (const zone of zones) {
       const city = zone.city || "";
       const minimum = zone.minimum_order_cents ? ` (pedido mín. ${reais(zone.minimum_order_cents)})` : "";
-      for (const district of zone.districts) byCity.set(city, [...(byCity.get(city) ?? []), `${district} ${zone.fee_cents ? reais(zone.fee_cents) : "grátis"}${minimum}`]);
+      for (const district of districtSpellings(zone)) byCity.set(city, [...(byCity.get(city) ?? []), `${district} ${zone.fee_cents ? reais(zone.fee_cents) : "grátis"}${minimum}`]);
     }
     for (const [city, list] of [...byCity].sort(([a], [b]) => a.localeCompare(b, "pt-BR"))) lines.push(`${city || "Cidade da loja"}: ${list.sort((a, b) => a.localeCompare(b, "pt-BR")).join(" | ")}`);
   } else lines.push("ENTREGA: indisponível no momento (bairros não configurados). Ofereça retirada.");
@@ -182,10 +182,19 @@ function distance(a: string, b: string) {
  * erros, nome parcial) entre os bairros cadastrados no painel de delivery. A cidade vem do
  * bairro; só é perguntada quando o bairro existe em mais de uma cidade.
  */
+function districtSpellings(zone: Zone): string[] {
+  const names = new Map<string, string>();
+  for (const district of zone.districts) {
+    const key = norm(district);
+    if (key && !names.has(key)) names.set(key, district);
+  }
+  return [...names.values()];
+}
+
 export function matchDistrict(input: string, cityInput: string, zones: Zone[]): { district: string; city: string } {
   const wanted = loose(input);
   if (!wanted) throw new Error("Qual é o bairro da entrega?");
-  const all = zones.flatMap((zone) => zone.districts.map((district) => ({ district, city: zone.city || "" })));
+  const all = zones.flatMap((zone) => districtSpellings(zone).map((district) => ({ district, city: zone.city || "" })));
   const city = loose(cityInput);
   const pool = city ? all.filter((d) => loose(d.city) === city || loose(d.city).startsWith(city)) : all;
   const candidates = pool.length ? pool : all;

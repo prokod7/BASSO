@@ -16,6 +16,17 @@ describe("endereço pelo WhatsApp", () => {
     expect(expandDistrict("vila conde")).toBe("Vila Conde Siciliano");
   });
 
+  it("resolve as duas grafias do Parque Indaiá na mesma área e distingue cidades", () => {
+    const area = { ...zones[0], districts: ["Parque Indaia", "Parque Indaiá"], fee_cents: 600 };
+    const expected = { city: area.city, district: "Parque Indaia" };
+    for (const input of ["Parque Indaiá", "parque indaia", "Pq. Indaiá"]) {
+      expect(matchDistrict(input, "", [area])).toEqual(expected);
+    }
+    const both = [area, { ...area, city: "Ribeirão Pires" }];
+    expect(() => matchDistrict("Parque Indaiá", "", both)).toThrow(/qual cidade/);
+    expect(matchDistrict("Parque Indaiá", "Rio Grande da Serra", both)).toEqual(expected);
+  });
+
   it("entende bairro abreviado", () => {
     expect(matchDistrict("Jd Sta Tereza", "", zones)).toEqual({ district: "Jardim Santa Tereza", city: "Rio Grande da Serra" });
     expect(matchDistrict("Vl Conde", "", zones).district).toBe("Vila Conde Siciliano");
