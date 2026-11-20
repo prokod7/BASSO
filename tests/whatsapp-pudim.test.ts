@@ -1,17 +1,12 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { sendMedia } from '@/lib/whatsapp/provider';
-import { PUDDING_OFFER, PUDDING_IMAGE } from '@/lib/whatsapp/turn';
+import { describe, expect, it } from "vitest";
+import { removeDessertPitch } from "@/lib/whatsapp/turnRules";
 
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
-describe('oferta de pudim', () => {
-  it('envia a foto com a legenda na mesma mensagem', async () => {
-    vi.stubEnv('WHATSAPP_PHONE_NUMBER_ID','test'); vi.stubEnv('DUALHOOK_API_KEY','test');
-    const fetcher = vi.fn().mockResolvedValue({ok:true,json:async()=>({messages:[{id:'message-test'}]})});
-    vi.stubGlobal('fetch',fetcher);
-    expect(await sendMedia('5511999999999',PUDDING_IMAGE,'job-test',PUDDING_OFFER)).toBe('message-test');
-    const payload=JSON.parse(fetcher.mock.calls[0][1].body);
-    expect(payload.type).toBe('image');
-    expect(payload.image).toEqual({link:PUDDING_IMAGE,caption:PUDDING_OFFER});
-    expect(payload.image.caption).toBe('Para finalizar, gostaria de incluir uma sobremesa em seu pedido?\n\nPudim no Copo: Tradicional, Frutas Vermelhas, Limão Siciliano e Maracujá — R$ 15,00 a unidade. 💛');
+describe("atendimento sem oferta de sobremesa", () => {
+  it("retira a oferta antiga com a legenda", () => {
+    expect(removeDessertPitch("Para finalizar, gostaria de incluir uma sobremesa em seu pedido?\n\nPudim no Copo: Tradicional — R$ 15,00")).toBe("Podemos seguir com o pedido?");
+  });
+  it("preserva a próxima pergunta e a escolha de um item solicitado", () => {
+    expect(removeDessertPitch("Quer adicionar um pudim? Entrega ou retirada?")).toBe("Entrega ou retirada?");
+    expect(removeDessertPitch("Qual sabor de pudim você prefere?")).toBe("Qual sabor de pudim você prefere?");
   });
 });

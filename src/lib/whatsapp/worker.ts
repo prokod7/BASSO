@@ -1,4 +1,4 @@
-import { PUDDING_OFFER, PUDDING_IMAGE, isPuddingOffer } from "./turn";
+import { removeDessertPitch } from "./turnRules";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Turn } from "./ai";
 import { enabled } from "./config";
@@ -220,7 +220,8 @@ export async function processQueue({ limit = 5, budgetMs = 150000 }: { limit?: n
       stage = "enviar";
       const sending = await step("sending");
       if (sending.stopped) { processed++; continue; }
-      const id = isPuddingOffer(response) ? await sendMedia(session.phone, PUDDING_IMAGE, job.id, PUDDING_OFFER) : await sendMessage(session.phone, response!, job.id);
+      response = removeDessertPitch(response!);
+      const id = await sendMessage(session.phone, response, job.id);
       stage = "confirmar-envio";
       await step("sent", { outbound_id: id, pause });
       if (menuSent) await db().from("wa_sessions").update({ menu_sent_at: new Date().toISOString() }).eq("id", session.id);

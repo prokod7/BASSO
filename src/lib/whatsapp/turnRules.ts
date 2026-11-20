@@ -18,3 +18,9 @@ export function pendingAfter(turn: TurnLike, current: Pending | null) {
     ? current
     : null;
 }
+
+/** Remove a antiga abordagem de venda, inclusive quando veio de um turno já preparado. */
+export function removeDessertPitch(reply: string) {
+  const cleaned = reply.replace(/(?:para finalizar,\s*)?(?:gostaria de|quer|deseja)\s+(?:incluir|adicionar)\s+(?:uma?\s+)?(?:sobremesa|pudim)\b[^?\n]*\?[\t ]*(?:\s*\*?pudim no copo\*?:[^\n]*)?/giu, "").trim();
+  return cleaned || "Podemos seguir com o pedido?";
+}
